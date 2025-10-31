@@ -3,12 +3,12 @@ const mysql = require("mysql2/promise"); // Il driver per MariaDB (usiamo la ver
 const cors = require("cors"); // Per permettere la comunicazione tra app e API
 const app = express();
 const PORT = 4000; // Scegliamo una porta su cui l'API ascolterà. Puoi cambiarla se la 3000 è occupata.
-const path = require('path');       // (1 - NUOVO) Pacchetto per gestire i percorsi
-const multer = require('multer');   // (2 - NUOVO) Pacchetto per gestire gli upload
+const path = require("path"); // (1 - NUOVO) Pacchetto per gestire i percorsi
+const multer = require("multer"); // (2 - NUOVO) Pacchetto per gestire gli upload
 
 app.use(cors()); // Abilita CORS per tutte le richieste
 app.use(express.json()); // Permette al server di capire i dati JSON inviati dall'app (es. quando creiamo un articolo)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // 4. Configurazione della connessione al Database
 const dbConfig = {
@@ -19,15 +19,18 @@ const dbConfig = {
 };
 
 const storage = multer.diskStorage({
-    // La destinazione è la cartella 'uploads' che abbiamo creato
-    destination: function (req, file, cb) {
-        cb(null, 'uploads');
-    },
-    // Creiamo un nome file univoco
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
+  // La destinazione è la cartella 'uploads' che abbiamo creato
+  destination: function (req, file, cb) {
+    cb(null, "uploads");
+  },
+  // Creiamo un nome file univoco
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(
+      null,
+      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
+    );
+  },
 });
 
 const upload = multer({ storage: storage }); // Creiamo l'istanza di multer
@@ -68,9 +71,12 @@ app.get("/api/items", async (req, res) => {
   try {
     // Usiamo il pool per eseguire la query SQL
     // Ordiniamo per i più recenti (created_at)
-    const [items] = await pool.query(
-      "SELECT * FROM items ORDER BY created_at DESC"
-    );
+    const [items] = await pool.query(`
+    SELECT i.*, c.name as category_name 
+    FROM items i
+    LEFT JOIN categories c ON i.category_id = c.category_id
+    ORDER BY i.created_at DESC
+`);
 
     // Inviamo i risultati all'app come JSON
     res.json(items);
@@ -99,7 +105,7 @@ app.post("/api/items", async (req, res) => {
   // 2. Prendiamo i dati che l'app ci ha inviato nel "body"
   const {
     name,
-    category,
+    category_id,
     description,
     brand,
     value,
@@ -131,7 +137,7 @@ app.post("/api/items", async (req, res) => {
     // 5. Query 1: Inseriamo l'articolo nella tabella 'items'
     const itemSql = `
             INSERT INTO items 
-            (unique_code, name, category, description, brand, \`value\`, sale_price, has_variants, quantity, purchase_price)
+            (unique_code, name, category_id, description, brand, \`value\`, sale_price, has_variants, quantity, purchase_price)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
@@ -139,7 +145,7 @@ app.post("/api/items", async (req, res) => {
     const itemValues = [
       unique_code,
       name,
-      category,
+      category_id,
       description,
       brand,
       value,
@@ -197,6 +203,58 @@ app.post("/api/items", async (req, res) => {
       connection.release();
       console.log("Connessione rilasciata.");
     }
+  }
+});
+
+/*
+ * GET /api/items/:id
+ * Recupera i dettagli di un SINGOLO articolo
+ */
+app.get("/api/items/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [items] = await pool.query(
+      `SELECT i.*, c.name as category_name 
+     FROM items i
+     LEFT JOIN categories c ON i.category_id = c.category_id
+     WHERE i.item_id = ?`,
+      [id]
+    );
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: "Articolo non trovato" });
+    }
+
+    // (Opzionale, ma utile) Recuperiamo anche le piattaforme
+    const [platforms] = await pool.query(
+      "SELECT platform_id FROM item_platforms WHERE item_id = ?",
+      [id]
+    );
+
+    // Aggiungiamo l'array di ID piattaforma all'oggetto articolo
+    const item = items[0];
+    item.platforms = platforms.map((p) => p.platform_id); // es. [1, 2]
+
+    res.json(item);
+  } catch (error) {
+    console.error(`Errore in GET /api/items/${id}:`, error);
+    res.status(500).json({ error: "Errore nel recupero dell'articolo" });
+  }
+});
+
+/*
+ * GET /api/categories
+ * Recupera l'elenco di tutte le categorie
+ */
+app.get("/api/categories", async (req, res) => {
+  try {
+    const [categories] = await pool.query(
+      "SELECT * FROM categories ORDER BY category_id ASC"
+    );
+    res.json(categories);
+  } catch (error) {
+    console.error("Errore in GET /api/categories:", error);
+    res.status(500).json({ error: "Errore nel recupero delle categorie" });
   }
 });
 
@@ -488,6 +546,93 @@ app.post("/api/sales", async (req, res) => {
 });
 
 /*
+ * PUT /api/items/:id
+ * Aggiorna un articolo esistente
+ */
+app.put("/api/items/:id", async (req, res) => {
+  // (A) Prendiamo l'ID dall'URL e i dati dal corpo
+  const { id } = req.params;
+  const {
+    name,
+    category_id,
+    description,
+    brand,
+    value,
+    sale_price,
+    has_variants,
+    quantity,
+    purchase_price,
+    // platforms // Per ora non gestiamo l'aggiornamento delle piattaforme
+  } = req.body;
+
+  // (B) Validazione
+  if (!name || has_variants === undefined) {
+    return res
+      .status(400)
+      .json({ error: 'Campi "name" e "has_variants" sono obbligatori' });
+  }
+
+  // (C) Prepariamo i valori: se has_variants è true, forziamo quantity e purchase_price a NULL
+  //     Questo è FONDAMENTALE se un utente cambia has_variants da false a true
+  const itemValues = [
+    name,
+    category_id,
+    description,
+    brand,
+    value,
+    sale_price,
+    has_variants,
+    has_variants ? null : quantity,
+    has_variants ? null : purchase_price,
+    id, // L'ID va alla fine per la clausola WHERE
+  ];
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // (D) Query 1: Aggiorniamo l'articolo
+    const updateSql = `
+            UPDATE items SET 
+                name = ?, category_id = ?, description = ?, brand = ?, 
+                \`value\` = ?, sale_price = ?, has_variants = ?, 
+                quantity = ?, purchase_price = ?
+            WHERE item_id = ?
+        `;
+    await connection.query(updateSql, itemValues);
+
+    // (E) LOGICA SPECIALE: Se l'utente ha appena attivato "has_variants" (da false a true),
+    //     dobbiamo cancellare le piattaforme associate all'articolo (item_platforms)
+    //     perché ora saranno gestite dalle varianti.
+    if (has_variants) {
+      await connection.query("DELETE FROM item_platforms WHERE item_id = ?", [
+        id,
+      ]);
+    }
+
+    // (Per ora non gestiamo il caso opposto, cioè cosa fare se
+    //  un utente disattiva "has_variants" quando ci sono già varianti.
+    //  L'app non dovrebbe permetterlo.)
+
+    // (F) Se siamo arrivati qui, è andato tutto bene. Confermiamo.
+    await connection.commit();
+
+    res.status(200).json({
+      message: "Articolo aggiornato con successo!",
+    });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error(`Errore in PUT /api/items/${id}:`, error);
+    res
+      .status(500)
+      .json({ error: "Errore durante l'aggiornamento dell'articolo" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+/*
  * GET /api/platforms
  * Recupera l'elenco di tutte le piattaforme di pubblicazione disponibili
  */
@@ -511,18 +656,18 @@ app.get("/api/platforms", async (req, res) => {
  * GET /api/items/:id/photos
  * Recupera la lista di foto per un articolo (e le sue varianti)
  */
-app.get('/api/items/:id/photos', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const [photos] = await pool.query(
-            'SELECT * FROM photos WHERE item_id = ?', 
-            [id]
-        );
-        res.json(photos);
-    } catch (error) {
-        console.error(`Errore in GET /api/items/${id}/photos:`, error);
-        res.status(500).json({ error: 'Errore nel recupero delle foto' });
-    }
+app.get("/api/items/:id/photos", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [photos] = await pool.query(
+      "SELECT * FROM photos WHERE item_id = ?",
+      [id]
+    );
+    res.json(photos);
+  } catch (error) {
+    console.error(`Errore in GET /api/items/${id}/photos:`, error);
+    res.status(500).json({ error: "Errore nel recupero delle foto" });
+  }
 });
 
 /*
@@ -531,47 +676,47 @@ app.get('/api/items/:id/photos', async (req, res) => {
  */
 // (5 - NUOVO) Usiamo il middleware 'upload.single('photo')'
 // 'photo' deve essere il nome del campo che l'app userà
-app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
-    
-    // (A) Multer ha già salvato il file. I suoi dati sono in 'req.file'
-    if (!req.file) {
-        return res.status(400).json({ error: 'Nessun file caricato.' });
-    }
+app.post("/api/photos/upload", upload.single("photo"), async (req, res) => {
+  // (A) Multer ha già salvato il file. I suoi dati sono in 'req.file'
+  if (!req.file) {
+    return res.status(400).json({ error: "Nessun file caricato." });
+  }
 
-    // (B) I dati del form (a quale articolo/variante appartiene) sono in 'req.body'
-    const { item_id, variant_id, description } = req.body;
+  // (B) I dati del form (a quale articolo/variante appartiene) sono in 'req.body'
+  const { item_id, variant_id, description } = req.body;
 
-    if (!item_id) {
-        return res.status(400).json({ error: 'item_id è obbligatorio.' });
-    }
+  if (!item_id) {
+    return res.status(400).json({ error: "item_id è obbligatorio." });
+  }
 
-    // (C) Creiamo il percorso URL per salvare nel DB
-    // es. "uploads/photo-123456.jpg"
-    const file_path = 'uploads/' + req.file.filename;
+  // (C) Creiamo il percorso URL per salvare nel DB
+  // es. "uploads/photo-123456.jpg"
+  const file_path = "uploads/" + req.file.filename;
 
-    try {
-        // (D) Salviamo il riferimento nel DB
-        const sql = `
+  try {
+    // (D) Salviamo il riferimento nel DB
+    const sql = `
             INSERT INTO photos (item_id, variant_id, file_path, description)
             VALUES (?, ?, ?, ?)
         `;
-        await pool.query(sql, [
-            item_id,
-            variant_id ? variant_id : null, // Salva null se variant_id è assente
-            file_path,
-            description
-        ]);
-        
-        // (E) Inviamo una risposta di successo con il percorso del file
-        res.status(201).json({
-            message: 'Foto caricata con successo!',
-            filePath: file_path 
-        });
+    await pool.query(sql, [
+      item_id,
+      variant_id ? variant_id : null, // Salva null se variant_id è assente
+      file_path,
+      description,
+    ]);
 
-    } catch (error) {
-        console.error("Errore salvataggio foto su DB:", error);
-        res.status(500).json({ error: 'Errore durante il salvataggio della foto nel database' });
-    }
+    // (E) Inviamo una risposta di successo con il percorso del file
+    res.status(201).json({
+      message: "Foto caricata con successo!",
+      filePath: file_path,
+    });
+  } catch (error) {
+    console.error("Errore salvataggio foto su DB:", error);
+    res
+      .status(500)
+      .json({ error: "Errore durante il salvataggio della foto nel database" });
+  }
 });
 
 // ---------- AVVIO SERVER ----------

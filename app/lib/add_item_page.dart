@@ -1,23 +1,22 @@
-// lib/add_item_page.dart
+// lib/add_item_page.dart - AGGIORNATO CON CATEGORIE DINAMICHE
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class AddItemPage extends StatefulWidget {
-  const AddItemPage({super.key});
+  final int? itemId;
+  const AddItemPage({super.key, this.itemId});
 
   @override
   State<AddItemPage> createState() => _AddItemPageState();
 }
 
 class _AddItemPageState extends State<AddItemPage> {
-  // (1) Chiave per il nostro Form: tiene traccia dello stato e della validazione
   final _formKey = GlobalKey<FormState>();
 
-  // (2) Controller per recuperare il testo dai campi
+  // (1 - MODIFICA) Rimuoviamo il _categoryController
   final _nameController = TextEditingController();
-  final _categoryController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _brandController = TextEditingController();
   final _valueController = TextEditingController();
@@ -25,90 +24,173 @@ class _AddItemPageState extends State<AddItemPage> {
   final _quantityController = TextEditingController();
   final _purchasePriceController = TextEditingController();
 
-  // (3) Variabili di stato
-  bool _hasVariants = false;
-  bool _isLoading = false;
+  // (2 - NUOVO) Variabili per il dropdown delle categorie
+  List _categories = []; // Conterrà la lista di categorie dall'API
+  int? _selectedCategoryId; // Conterrà l'ID della categoria scelta
+  bool _categoriesLoading = true; // Flag per il caricamento
 
-  // (4) La funzione principale che salva il nuovo articolo
-  Future<void> _saveItem() async {
-    // (A) Prima, controlliamo se il form è valido (es. campi obbligatori compilati)
+  // Variabili di stato
+  bool _isEditMode = false;
+  bool _isLoading = false;
+  bool _isPageLoading = false;
+  bool _hasVariants = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // (3 - NUOVO) Carichiamo le categorie all'avvio
+    _fetchCategories();
+
+    if (widget.itemId != null) {
+      _isEditMode = true;
+      _isPageLoading = true; // Imposta _isPageLoading qui
+      _loadItemData();
+    }
+  }
+
+  // (4 - NUOVO) Funzione per caricare le categorie dall'API
+  Future<void> _fetchCategories() async {
+    try {
+      const url = 'http://trentin-nas.synology.me:4000/api/categories';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _categories = jsonDecode(response.body);
+            _categoriesLoading = false;
+          });
+        }
+      } else {
+        _showError('Errore nel caricare le categorie');
+      }
+    } catch (e) {
+      _showError('Errore di rete: $e');
+      if (mounted) {
+        setState(() {
+          _categoriesLoading = false;
+        });
+      }
+    }
+  }
+
+  // Funzione per caricare i dati dell'articolo (Aggiornata)
+  Future<void> _loadItemData() async {
+    // Non impostare _isPageLoading qui, è già stato fatto in initState
+    try {
+      final url = 'http://trentin-nas.synology.me:4000/api/items/${widget.itemId}';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final item = jsonDecode(response.body);
+
+        _nameController.text = item['name'] ?? '';
+        // (5 - MODIFICA) Impostiamo l'ID della categoria
+        _selectedCategoryId = item['category_id'];
+        _descriptionController.text = item['description'] ?? '';
+        _brandController.text = item['brand'] ?? '';
+        _valueController.text = item['value']?.toString() ?? '';
+        _salePriceController.text = item['sale_price']?.toString() ?? '';
+        _hasVariants = item['has_variants'] == 1;
+        if (!_hasVariants) {
+          _quantityController.text = item['quantity']?.toString() ?? '';
+          _purchasePriceController.text =
+              item['purchase_price']?.toString() ?? '';
+        }
+      } else {
+        _showError('Errore nel caricare i dati dell\'articolo');
+      }
+    } catch (e) {
+      _showError('Errore di rete: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPageLoading = false;
+        });
+      }
+    }
+  }
+
+  // Funzione per salvare (Aggiornata)
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
-      return; // Non valido, non fare nulla
+      return;
+    }
+    // (6 - NUOVO) Validazione per il dropdown
+    if (_selectedCategoryId == null) {
+      _showError('Per favore, seleziona una categoria');
+      return;
     }
 
-    // (B) Impostiamo lo stato di caricamento
     setState(() {
       _isLoading = true;
     });
 
-    // (C) Prepariamo il "corpo" (body) JSON da inviare alla nostra API
     final body = {
       "name": _nameController.text,
-      "category": _categoryController.text,
+      // (7 - MODIFICA) Inviamo l'ID della categoria
+      "category_id": _selectedCategoryId,
       "description": _descriptionController.text,
       "brand": _brandController.text,
       "value": double.tryParse(_valueController.text),
       "sale_price": double.tryParse(_salePriceController.text),
       "has_variants": _hasVariants,
-      
-      // Inviamo i campi solo se NON ci sono varianti
       "quantity": _hasVariants ? null : int.tryParse(_quantityController.text),
-      "purchase_price": _hasVariants ? null : double.tryParse(_purchasePriceController.text),
-      
-      // Per ora inviamo un array vuoto di piattaforme. Le aggiungeremo dopo.
-      "platforms": [] 
+      "purchase_price":
+          _hasVariants ? null : double.tryParse(_purchasePriceController.text),
+      "platforms": []
     };
 
     try {
-      // (D) Chiamiamo la nostra API (stessa rotta della home, ma con POST)
-      const url = 'http://trentin-nas.synology.me:4000/api/items';
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(body), // Codifichiamo la nostra mappa in una stringa JSON
-      );
+      http.Response response;
 
-      // (E) Controlliamo la risposta
-      if (response.statusCode == 201) { // 201 = "Created" (Creato con successo)
-        // Se tutto va bene, chiudiamo la pagina e torniamo alla home
-        // Passiamo 'true' per dire alla HomePage "Ehi, ricarica la lista!"
+      if (_isEditMode) {
+        final url =
+            'http://trentin-nas.synology.me:4000/api/items/${widget.itemId}';
+        response = await http.put(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode(body),
+        );
+      } else {
+        const url = 'http://trentin-nas.synology.me:4000/api/items';
+        response = await http.post(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode(body),
+        );
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-           Navigator.pop(context, true);
+          Navigator.pop(context, true);
         }
       } else {
-        // Mostra un errore se il server risponde male
         _showError('Errore server: ${response.statusCode}');
       }
     } catch (e) {
-      // Mostra un errore se c'è un problema di rete
       _showError('Errore di rete: $e');
     } finally {
-      // (F) In ogni caso, togliamo lo stato di caricamento
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // Funzione di utilità per mostrare un messaggio di errore
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
     }
   }
 
-  // (5) Puliamo i controller quando la pagina viene "distrutta"
   @override
   void dispose() {
     _nameController.dispose();
-    _categoryController.dispose();
     _descriptionController.dispose();
     _brandController.dispose();
     _valueController.dispose();
@@ -118,133 +200,149 @@ class _AddItemPageState extends State<AddItemPage> {
     super.dispose();
   }
 
-  // (6) Costruiamo l'interfaccia
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Aggiungi Nuovo Articolo'),
+        title: Text(
+            _isEditMode ? 'Modifica Articolo' : 'Aggiungi Nuovo Articolo'),
         actions: [
-          // Bottone "Salva"
           IconButton(
-            icon: _isLoading 
-                ? const SizedBox( // Se sta caricando, mostra un mini-loader
-                    width: 20, 
-                    height: 20, 
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                  ) 
-                : const Icon(Icons.save), // Altrimenti, l'icona "salva"
-            onPressed: _isLoading ? null : _saveItem, // Disabilita il bottone durante il caricamento
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child:
+                        CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.save),
+            onPressed: _isLoading ? null : _submitForm,
             tooltip: 'Salva',
           )
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView( // Usiamo ListView per evitare che la tastiera copra i campi
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            // --- Campo Nome ---
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Nome Articolo'),
-              validator: (value) { // Validazione: non può essere vuoto
-                if (value == null || value.isEmpty) {
-                  return 'Per favore, inserisci un nome';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16), // Spaziatore
-
-            // --- Campo Categoria ---
-            TextFormField(
-              controller: _categoryController,
-              decoration: const InputDecoration(labelText: 'Categoria'),
-            ),
-            const SizedBox(height: 16),
-
-            // --- Campo Brand ---
-            TextFormField(
-              controller: _brandController,
-              decoration: const InputDecoration(labelText: 'Brand'),
-            ),
-            const SizedBox(height: 16),
-
-            // --- Campo Descrizione ---
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Descrizione'),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-
-            // --- Campo Valore e Prezzo Vendita (affiancati) ---
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _valueController,
-                    decoration: const InputDecoration(labelText: 'Valore (€)'),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _salePriceController,
-                    decoration: const InputDecoration(labelText: 'Prezzo Vendita (€)'),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // --- Switch per le Varianti ---
-            SwitchListTile.adaptive(
-              title: const Text('L\'articolo ha varianti?'),
-              subtitle: const Text('Se sì, quantità e prezzi saranno gestiti per ogni variante'),
-              value: _hasVariants,
-              onChanged: (bool value) {
-                setState(() {
-                  _hasVariants = value;
-                });
-              },
-              activeColor: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            
-            // --- CAMPI CONDIZIONALI ---
-            // Mostriamo questi campi solo se _hasVariants è FALSO
-            if (!_hasVariants) ...[
-              const Divider(),
-              const SizedBox(height: 16),
-              // --- Campo Quantità e Prezzo Acquisto (affiancati) ---
-              Row(
+      body: _isPageLoading || _categoriesLoading // (8 - MODIFICA) Mostra loader
+          ? Center(
+              child:
+                  CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _quantityController,
-                      decoration: const InputDecoration(labelText: 'N. Pezzi'),
-                      keyboardType: TextInputType.number,
-                    ),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: 'Nome Articolo'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Per favore, inserisci un nome';
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _purchasePriceController,
-                      decoration: const InputDecoration(labelText: 'Prezzo Acquisto (€)'),
-                      keyboardType: TextInputType.number,
-                    ),
+                  const SizedBox(height: 16),
+
+                  // (9 - MODIFICA) Sostituzione del campo Categoria
+                  DropdownButtonFormField<int>(
+                    decoration: const InputDecoration(labelText: 'Categoria'),
+                    value: _selectedCategoryId,
+                    // Costruiamo la lista di opzioni
+                    items: _categories.map<DropdownMenuItem<int>>((category) {
+                      return DropdownMenuItem<int>(
+                        value: category['category_id'],
+                        child: Text(category['name']),
+                      );
+                    }).toList(),
+                    // Funzione chiamata quando un'opzione viene scelta
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCategoryId = value;
+                      });
+                    },
+                    validator: (value) => value == null ? 'Obbligatoria' : null,
                   ),
+                  const SizedBox(height: 16),
+                  
+                  // ... (tutti gli altri campi restano invariati) ...
+                  TextFormField(
+                    controller: _brandController,
+                    decoration: const InputDecoration(labelText: 'Brand'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: const InputDecoration(labelText: 'Descrizione'),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _valueController,
+                          decoration:
+                              const InputDecoration(labelText: 'Valore (€)'),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _salePriceController,
+                          decoration: const InputDecoration(
+                              labelText: 'Prezzo Vendita (€)'),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SwitchListTile.adaptive(
+                    title: const Text('L\'articolo ha varianti?'),
+                    subtitle: const Text(
+                        'Se sì, quantità e prezzi saranno gestiti per ogni variante'),
+                    value: _hasVariants,
+                    onChanged: (bool value) {
+                      if (_isEditMode && !value) {
+                        _showError(
+                            'Non puoi disattivare le varianti su un articolo esistente.');
+                        return;
+                      }
+                      setState(() {
+                        _hasVariants = value;
+                      });
+                    },
+                    activeColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  if (!_hasVariants) ...[
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _quantityController,
+                            decoration:
+                                const InputDecoration(labelText: 'N. Pezzi'),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _purchasePriceController,
+                            decoration: const InputDecoration(
+                                labelText: 'Prezzo Acquisto (€)'),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ]
                 ],
               ),
-              const SizedBox(height: 16),
-            ]
-          ],
-        ),
-      ),
+            ),
     );
   }
 }

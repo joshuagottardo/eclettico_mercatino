@@ -1,10 +1,10 @@
-// lib/home_page.dart - AGGIORNATO PER L'API
+// lib/home_page.dart - AGGIORNATO CON RICERCA DINAMICA
 
-import 'dart:convert'; // (1) Per decodificare JSON
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http; // (2) Il nostro pacchetto di rete
+import 'dart:convert';
 import 'package:app/add_item_page.dart';
 import 'package:app/item_detail_page.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,63 +14,134 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // (3) Variabili di "stato"
-  bool _isLoading = true; // Mostra il caricamento all'inizio
-  List _items = []; // Lista vuota per contenere gli articoli
+  bool _isLoading = true;
+  
+  // (1 - MODIFICATO) Creiamo due liste
+  List _allItems = []; // Conterrà SEMPRE tutti gli articoli
+  List _filteredItems = []; // Conterrà gli articoli da mostrare
+  
+  // (2 - NUOVO) Creiamo un controller per la barra di ricerca
+  // Questo ci permette di "ascoltare" cosa scrive l'utente
+  final _searchController = TextEditingController();
 
-  // (4) Questa funzione viene chiamata AUTOMATICAMENTE quando la pagina si carica
   @override
   void initState() {
     super.initState();
-    fetchItems(); // Chiamiamo la nostra funzione per caricare i dati
+    // (3 - NUOVO) Aggiungiamo un "ascoltatore"
+    // Ogni volta che il testo cambia, chiama la funzione _filterItems
+    _searchController.addListener(_filterItems);
+    
+    // Carichiamo i dati iniziali
+    fetchItems();
   }
 
-  // (5) La funzione che parla con la tua API
-  Future<void> fetchItems() async {
-    // Sostituisci questo IP se il tuo NAS è diverso!
-    const url = 'http://trentin-nas.synology.me:4000/api/items';
+  // (4 - NUOVO) Ricorda di "pulire" il controller
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterItems);
+    _searchController.dispose();
+    super.dispose();
+  }
 
+  // (5 - MODIFICATO) Ora questa funzione popola entrambe le liste
+  Future<void> fetchItems() async {
+    // Non serve reimpostare _isLoading a true se non è la prima volta
+    if (!_isLoading) {
+      setState(() { _isLoading = true; });
+    }
+    
+    const url = 'http://trentin-nas.synology.me:4000/api/items';
     try {
       final response = await http.get(Uri.parse(url));
-
       if (response.statusCode == 200) {
-        // (6) Successo! Decodifichiamo il JSON e aggiorniamo lo stato
         final data = jsonDecode(response.body);
-
-        // (7) setState() dice a Flutter: "Ho nuovi dati, ridisegna l'interfaccia!"
-        setState(() {
-          _items = data;
-          _isLoading = false; // Finito di caricare
-        });
+        if (mounted) {
+          setState(() {
+            _allItems = data; // Popola la lista principale
+            _filteredItems = data; // Popola la lista filtrata
+            _isLoading = false;
+          });
+        }
       } else {
-        // Gestiamo un errore del server (es. 500)
-        print('Errore server: ${response.statusCode}');
-        setState(() {
-          _isLoading = false; // Finito di caricare (con errore)
-        });
+        // ... (gestione errore)
+        if (mounted) setState(() { _isLoading = false; });
       }
     } catch (e) {
-      // Gestiamo un errore di rete (es. WiFi spento, API non raggiungibile)
+      // ... (gestione errore)
       print('Errore di rete: $e');
-      setState(() {
-        _isLoading = false; // Finito di caricare (con errore)
-      });
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
-  // (8) Il metodo build che disegna l'interfaccia
+  // (6 - NUOVO) Questa è la funzione magica della ricerca!
+  void _filterItems() {
+    // Prende il testo dalla barra e lo mette in minuscolo
+    final searchTerm = _searchController.text.toLowerCase();
+    
+    List tempFilteredList = [];
+
+    // Se la barra è vuota, mostra di nuovo tutti gli articoli
+    if (searchTerm.isEmpty) {
+      tempFilteredList = _allItems;
+    } else {
+      // Altrimenti, "filtra" la lista principale
+      tempFilteredList = _allItems.where((item) {
+        
+        // (A) Controlla il nome (titolo)
+        final name = item['name']?.toLowerCase() ?? '';
+        // (B) Controlla il codice univoco
+        final code = item['unique_code']?.toLowerCase() ?? '';
+        
+        // Se uno dei due contiene il termine di ricerca, l'articolo "passa"
+        return name.contains(searchTerm) || code.contains(searchTerm);
+        
+      }).toList(); // Converte il risultato in una nuova Lista
+    }
+
+    // (C) Aggiorna lo stato, dicendo a Flutter di ridisegnare
+    //     l'interfaccia con la nuova lista filtrata
+    setState(() {
+      _filteredItems = tempFilteredList;
+    });
+  }
+
+  // (7 - MODIFICATO) Funzione per la navigazione
+  //    Ora dobbiamo ricaricare i dati quando torniamo indietro (Fix 1)
+  Future<void> _navigateAndReload(BuildContext context, Widget page) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+
+    // (8 - FIX 1) Se torniamo indietro e abbiamo un risultato 'true'
+    //    (come da AddItemPage o dal futuro ItemDetailPage), ricarichiamo!
+    if (result == true) {
+      fetchItems();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        // (9 - MODIFICATO) Colleghiamo il controller
         title: TextField(
+          controller: _searchController,
           decoration: InputDecoration(
-            hintText: 'Cerca articolo...',
+            hintText: 'Cerca per nome o codice...',
             prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+            // (10 - NUOVO) Aggiungiamo un bottone "X" per pulire la ricerca
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear(); // Pulisce il testo
+                    },
+                  )
+                : null, // Non mostra nulla se la barra è vuota
           ),
-          onChanged: (text) {
-            // Logica di ricerca (la faremo dopo)
-          },
+          // (11 - NUOVO) Gestisce il tasto "Invio" sulla tastiera
+          onSubmitted: (value) => _filterItems(),
         ),
         actions: [
           IconButton(
@@ -80,67 +151,49 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-
-      // --- IL CORPO DELLA PAGINA (AGGIORNATO) ---
-      body:
-          _isLoading
-              // (A) Se stiamo caricando, mostra il cerchio azzurro
-              ? Center(
-                child: CircularProgressIndicator(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
+          // (12 - MODIFICATO) Mostra un messaggio se la ricerca non produce risultati
+          : _filteredItems.isEmpty
+            ? const Center(
+                child: Text('Nessun articolo trovato.'),
               )
-              // (B) Altrimenti, mostra la lista
-              : ListView.builder(
-                padding: const EdgeInsets.all(8.0), // Un po' di spazio
-                itemCount: _items.length,
+            : ListView.builder(
+                padding: const EdgeInsets.all(8.0),
+                // (13 - MODIFICATO) Usiamo la lista filtrata
+                itemCount: _filteredItems.length,
                 itemBuilder: (context, index) {
-                  // Prendiamo il singolo articolo dalla lista
-                  final item = _items[index];
+                  // (14 - MODIFICATO) Usiamo la lista filtrata
+                  final item = _filteredItems[index];
 
-                  // (9) ListTile è un widget perfetto per una riga di una lista
-                  // Cerca questo blocco:
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 4.0),
                     child: ListTile(
                       title: Text(item['name']),
-                      subtitle: Text(
-                        'Codice: ${item['unique_code']} | Pz: ${item['quantity'] ?? 'N/A'}',
-                      ),
+                      subtitle: Text('Codice: ${item['unique_code']} | Pz: ${item['quantity'] ?? 'N/A'}'),
                       trailing: const Icon(Icons.chevron_right),
-
-                      // (1) MODIFICHIAMO QUESTA FUNZIONE
                       onTap: () {
-                        // (2) Usiamo Navigator.push per aprire la nuova pagina
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            // (3) Passiamo l'oggetto "item" al costruttore della pagina di dettaglio
-                            builder: (context) => ItemDetailPage(item: item),
-                          ),
+                        // (15 - MODIFICATO) Usiamo la nostra nuova funzione
+                        _navigateAndReload(
+                          context, 
+                          ItemDetailPage(item: item),
                         );
                       },
                     ),
                   );
                 },
               ),
-
-      // Cerca questo blocco:
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // (A) Rendi la funzione "async"
-
-          // (B) Apriamo la nuova pagina e ASPETTIAMO che si chiuda
-          final bool? newItemAdded = await Navigator.push(
+        onPressed: () {
+          // (16 - MODIFICATO) Usiamo la nostra nuova funzione
+          _navigateAndReload(
             context,
-            MaterialPageRoute(builder: (context) => const AddItemPage()),
+            const AddItemPage(),
           );
-
-          // (C) Se la pagina è stata chiusa con "true" (ovvero abbiamo salvato)...
-          if (newItemAdded == true) {
-            // ... ricarichiamo la lista degli articoli!
-            fetchItems();
-          }
         },
         tooltip: 'Aggiungi articolo',
         backgroundColor: Theme.of(context).colorScheme.primary,
