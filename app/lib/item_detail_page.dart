@@ -1,4 +1,4 @@
-// lib/item_detail_page.dart - AGGIORNATO CON FOTO PER VARIANTI
+// lib/item_detail_page.dart - AGGIORNATO CON INDICAZIONE "VENDUTO"
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -20,6 +20,7 @@ class ItemDetailPage extends StatefulWidget {
 
 class _ItemDetailPageState extends State<ItemDetailPage> {
   late Map<String, dynamic> _currentItem;
+
   List _variants = [];
   bool _isVariantsLoading = false;
   List _salesLog = [];
@@ -29,32 +30,48 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
   bool _dataDidChange = false;
+  List _allPlatforms = [];
+  bool _platformsLoading = true;
+
+  // (1 - NUOVO) Variabile di stato per is_sold
+  bool _isItemSold = false;
 
   @override
   void initState() {
     super.initState();
     _currentItem = widget.item;
-    _refreshAllData(isInitialLoad: true);
+
+    _isVariantsLoading = true;
+    _isLogLoading = true;
+    _isPhotosLoading = true;
+    _platformsLoading = true;
+    // (2 - NUOVO) Inizializza _isItemSold dal dato iniziale (anche se verrà aggiornato)
+    _isItemSold = _currentItem['is_sold'] == 1;
+
+    _refreshAllData();
   }
 
   // --- FUNZIONI DI CARICAMENTO DATI ---
 
-  Future<void> _refreshAllData({bool isInitialLoad = false}) async {
-    if (!isInitialLoad) {
+  Future<void> _refreshAllData() async {
+    if (mounted) {
       setState(() {
         _isVariantsLoading = true;
         _isLogLoading = true;
         _isPhotosLoading = true;
+        _platformsLoading = true;
       });
     }
-    if (!isInitialLoad) {
-      await _fetchItemDetails();
-    }
+
+    await _fetchItemDetails();
+
     if (_currentItem['has_variants'] == 1) {
       await _fetchVariants();
+    } else {
+      if (mounted) setState(() => _isVariantsLoading = false);
     }
-    await _fetchSalesLog();
-    await _fetchPhotos();
+
+    await Future.wait([_fetchSalesLog(), _fetchPhotos(), _fetchPlatforms()]);
   }
 
   Future<void> _fetchItemDetails() async {
@@ -65,6 +82,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _currentItem = jsonDecode(response.body);
+          // (3 - NUOVO) Aggiorna _isItemSold qui
+          _isItemSold = _currentItem['is_sold'] == 1;
         });
       }
     } catch (e) {
@@ -73,10 +92,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<void> _fetchVariants() async {
+    /* ... codice invariato ... */
     if (!mounted) return;
-    setState(() {
-      _isVariantsLoading = true;
-    });
     try {
       final itemId = _currentItem['item_id'];
       final url =
@@ -98,10 +115,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<void> _fetchSalesLog() async {
+    /* ... codice invariato ... */
     if (!mounted) return;
-    setState(() {
-      _isLogLoading = true;
-    });
     try {
       final itemId = _currentItem['item_id'];
       final url = 'http://trentin-nas.synology.me:4000/api/items/$itemId/sales';
@@ -122,10 +137,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<void> _fetchPhotos() async {
+    /* ... codice invariato ... */
     if (!mounted) return;
-    setState(() {
-      _isPhotosLoading = true;
-    });
     try {
       final itemId = _currentItem['item_id'];
       final url =
@@ -146,59 +159,53 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     }
   }
 
-  // --- FUNZIONI DI AZIONE ---
+  Future<void> _fetchPlatforms() async {
+    /* ... codice invariato ... */
+    if (!mounted) return;
+    try {
+      const url = 'http://trentin-nas.synology.me:4000/api/platforms';
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200 && mounted) {
+        setState(() {
+          _allPlatforms = jsonDecode(response.body);
+        });
+      }
+    } catch (e) {
+      print('Errore caricamento piattaforme: $e');
+    } finally {
+      if (mounted)
+        setState(() {
+          _platformsLoading = false;
+        });
+    }
+  }
 
-  // (1 - MODIFICA) Funzione _pickAndUploadImage
+  // --- FUNZIONI DI AZIONE (INVARIATE) ---
   Future<void> _pickAndUploadImage() async {
-    // (A - NUOVO) Chiediamo all'utente a cosa collegare la foto
+    /* ... codice ... */
     final dynamic photoTarget = await _showPhotoTargetDialog();
-
-    // 'cancel' è il valore speciale che restituiamo se l'utente preme "Annulla"
-    if (photoTarget == 'cancel') {
-      return; // L'utente ha annullato il primo pop-up
-    }
-
-    // (B) Apri il selettore file per scegliere un'immagine
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile == null) {
-      return; // L'utente ha annullato il selettore
-    }
-
+    if (photoTarget == 'cancel') return;
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+    if (pickedFile == null) return;
     setState(() {
       _isUploading = true;
     });
-
     try {
-      // (C) Prepara la richiesta "multipart"
       const url = 'http://trentin-nas.synology.me:4000/api/photos/upload';
       var request = http.MultipartRequest('POST', Uri.parse(url));
-
-      // (D) Aggiungi i campi di testo
       request.fields['item_id'] = _currentItem['item_id'].toString();
-
-      // (E - NUOVO) Aggiungiamo il variant_id SE l'utente ne ha scelto uno
-      // Se photoTarget è 'null', significa che ha scelto "Articolo Principale"
       if (photoTarget != null) {
         request.fields['variant_id'] = photoTarget.toString();
       }
-
-      // (F) Aggiungi il file
       request.files.add(
-        await http.MultipartFile.fromPath(
-          'photo', // Questo DEVE corrispondere a 'photo' in index.js
-          pickedFile.path,
-        ),
+        await http.MultipartFile.fromPath('photo', pickedFile.path),
       );
-
-      // (G) Invia la richiesta
       var streamedResponse = await request.send();
-
-      // (H) Controlla la risposta
       if (streamedResponse.statusCode == 201) {
         _dataDidChange = true;
-        _fetchPhotos(); // Successo! Ricarica la galleria
+        _fetchPhotos();
       } else {
         final response = await http.Response.fromStream(streamedResponse);
         print('Errore upload: ${response.body}');
@@ -206,57 +213,48 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print('Errore (catch) durante l\'upload: $e');
     } finally {
-      if (mounted) {
+      if (mounted)
         setState(() {
           _isUploading = false;
         });
-      }
     }
   }
 
-  // (2 - NUOVO) Funzione per mostrare il pop-up di selezione
   Future<dynamic> _showPhotoTargetDialog() {
-    // 'null' rappresenta l'articolo principale
-    dynamic selectedTarget = null; // 'dynamic' per contenere null o int
-
+    /* ... codice ... */
+    dynamic selectedTarget = null;
     return showDialog(
       context: context,
       builder: (BuildContext context) {
-        // Usiamo StatefulBuilder per permettere al dialog di aggiornarsi
-        // quando l'utente seleziona un'opzione (senza aggiornare l'intera pagina)
         return StatefulBuilder(
           builder: (context, dialogSetState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1E1E),
               title: const Text('Lega foto a:'),
-              content: SingleChildScrollView( // Per sicurezza se ci sono troppe varianti
+              content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Opzione 1: Articolo Principale
                     RadioListTile<dynamic>(
                       title: const Text('Articolo Principale'),
-                      value: null, // Il nostro "ID" per l'articolo principale
+                      value: null,
                       groupValue: selectedTarget,
-                      onChanged: (value) {
-                        dialogSetState(() {
-                          selectedTarget = value;
-                        });
-                      },
+                      onChanged:
+                          (value) => dialogSetState(() {
+                            selectedTarget = value;
+                          }),
                       activeColor: Theme.of(context).colorScheme.primary,
                     ),
                     const Divider(),
-                    // Opzione 2..N: Le Varianti
                     ..._variants.map((variant) {
                       return RadioListTile<dynamic>(
                         title: Text(variant['variant_name'] ?? 'Variante'),
-                        value: variant['variant_id'], // L'ID vero e proprio
+                        value: variant['variant_id'],
                         groupValue: selectedTarget,
-                        onChanged: (value) {
-                          dialogSetState(() {
-                            selectedTarget = value;
-                          });
-                        },
+                        onChanged:
+                            (value) => dialogSetState(() {
+                              selectedTarget = value;
+                            }),
                         activeColor: Theme.of(context).colorScheme.primary,
                       );
                     }).toList(),
@@ -265,14 +263,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context, 'cancel'), // Valore speciale
+                  onPressed: () => Navigator.pop(context, 'cancel'),
                   child: const Text('Annulla'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    // Restituisce l'ID selezionato (o null)
-                    Navigator.pop(context, selectedTarget);
-                  },
+                  onPressed: () => Navigator.pop(context, selectedTarget),
                   child: const Text('OK'),
                 ),
               ],
@@ -284,6 +279,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   void _copyToClipboard(String text) {
+    /* ... codice ... */
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Codice copiato negli appunti!')),
@@ -294,6 +290,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   @override
   Widget build(BuildContext context) {
     final item = _currentItem;
+
+    final bool isPageLoading =
+        _isVariantsLoading ||
+        _isLogLoading ||
+        _isPhotosLoading ||
+        _platformsLoading;
 
     return WillPopScope(
       onWillPop: () async {
@@ -310,7 +312,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           ),
           title: Text(item['name'] ?? 'Dettaglio Articolo'),
           actions: [
-            // Bottone Modifica
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Modifica Articolo',
@@ -318,9 +319,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 final bool? itemChanged = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => AddItemPage(
-                      itemId: item['item_id'],
-                    ),
+                    builder: (context) => AddItemPage(itemId: item['item_id']),
                   ),
                 );
                 if (itemChanged == true) {
@@ -329,161 +328,316 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 }
               },
             ),
-
-            // Bottone Vendi
+            // (4 - MODIFICA) Bottone VENDI condizionale
             TextButton.icon(
               style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor:
+                    _isItemSold
+                        ? Theme.of(context).colorScheme.onSurface.withOpacity(
+                          0.5,
+                        ) // Grigio se venduto
+                        : Theme.of(context).colorScheme.primary,
               ),
-              icon: const Icon(Icons.sell_outlined),
-              label: const Text('VENDI'),
-              onPressed: () async {
-                final bool? saleRegistered = await showDialog(
-                  context: context,
-                  builder: (context) {
-                    return SellItemDialog(
-                      itemId: item['item_id'],
-                      hasVariants: item['has_variants'] == 1,
-                      variants: _variants,
-                    );
-                  },
-                );
-                if (saleRegistered == true) {
-                  _dataDidChange = true;
-                  if (item['has_variants'] == 1) _fetchVariants();
-                  _fetchSalesLog();
-                }
-              },
+              icon: Icon(
+                Icons.sell_outlined,
+                color:
+                    _isItemSold
+                        ? Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.5)
+                        : Theme.of(context).colorScheme.primary,
+              ),
+              label: Text(
+                'VENDI',
+                style: TextStyle(
+                  color:
+                      _isItemSold
+                          ? Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.5)
+                          : Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              onPressed:
+                  _isItemSold
+                      ? null
+                      : () async {
+                        // Disabilita se venduto
+                        final bool? saleRegistered = await showDialog(
+                          context: context,
+                          builder: (context) {
+                            return SellItemDialog(
+                              itemId: item['item_id'],
+                              hasVariants: item['has_variants'] == 1,
+                              variants: _variants,
+                            );
+                          },
+                        );
+                        if (saleRegistered == true) {
+                          _dataDidChange = true;
+                          if (item['has_variants'] == 1) _fetchVariants();
+                          _fetchSalesLog();
+                          _fetchItemDetails(); // Ricarica anche i dettagli dell'articolo per aggiornare is_sold
+                        }
+                      },
             ),
             const SizedBox(width: 8),
           ],
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            // ... (Sezioni Info e Varianti sono invariate) ...
-            Text(
-              'CODICE UNIVOCo',
-              style: TextStyle(
-                  color: Colors.grey[400], fontSize: 12, letterSpacing: 1.5),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  item['unique_code'] ?? 'N/D',
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: Icon(Icons.copy,
-                      color: Theme.of(context).colorScheme.primary),
-                  onPressed: () => _copyToClipboard(item['unique_code'] ?? ''),
-                  tooltip: 'Copia codice',
-                ),
-              ],
-            ),
-            const Divider(height: 32),
-            _buildInfoRow('Categoria', item['category_name']),
-            _buildInfoRow('Brand', item['brand']),
-            _buildInfoRow('Descrizione', item['description']),
-            const Divider(height: 32),
-            _buildInfoRow('Valore Stimato', '€ ${item['value'] ?? 'N/D'}'),
-            _buildInfoRow(
-                'Prezzo di Vendita', '€ ${item['sale_price'] ?? 'N/D'}'),
-            if (item['has_variants'] == 1) ...[
-              const Divider(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('VARIANTI',
-                      style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 12,
-                          letterSpacing: 1.5)),
-                  TextButton.icon(
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Aggiungi'),
-                    onPressed: () async {
-                      final bool? newVariantAdded = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                AddVariantPage(itemId: item['item_id'])),
-                      );
-                      if (newVariantAdded == true) {
-                        _dataDidChange = true;
-                        _fetchVariants();
-                      }
-                    },
+        body:
+            isPageLoading
+                ? Center(
+                  child: CircularProgressIndicator(
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _buildVariantsSection(),
-            ] else ...[
-              const Divider(height: 32),
-              _buildInfoRow('Pezzi Disponibili', '${item['quantity'] ?? '0'}'),
-              _buildInfoRow(
-                  'Prezzo di Acquisto', '€ ${item['purchase_price'] ?? 'N/D'}'),
-            ],
+                )
+                : ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    // (5 - NUOVO) Banner "VENDUTO"
+                    if (_isItemSold)
+                      Container(
+                        padding: const EdgeInsets.all(12.0),
+                        margin: const EdgeInsets.only(bottom: 16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.red[700],
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.money_off,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'ARTICOLO VENDUTO',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-            // Sezione Galleria Foto
-            const Divider(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('GALLERIA FOTO',
-                    style: TextStyle(
+                    // ... (restanti sezioni invariate) ...
+                    Text(
+                      'CODICE UNIVOCo',
+                      style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 12,
-                        letterSpacing: 1.5)),
-                TextButton.icon(
-                  icon: _isUploading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.add_a_photo_outlined, size: 16),
-                  label: const Text('Aggiungi'),
-                  onPressed: _isUploading ? null : _pickAndUploadImage,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildPhotoGallery(), // (MODIFICATA)
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          item['unique_code'] ?? 'N/D',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.copy,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          onPressed:
+                              () => _copyToClipboard(item['unique_code'] ?? ''),
+                          tooltip: 'Copia codice',
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 32),
+                    _buildInfoRow('Categoria', item['category_name']),
+                    _buildInfoRow('Brand', item['brand']),
+                    _buildInfoRow('Descrizione', item['description']),
+                    const Divider(height: 32),
+                    _buildInfoRow(
+                      'Valore Stimato',
+                      '€ ${item['value'] ?? 'N/D'}',
+                    ),
+                    _buildInfoRow(
+                      'Prezzo di Vendita',
+                      '€ ${item['sale_price'] ?? 'N/D'}',
+                    ),
 
-            // Sezione Log Vendite
-            const Divider(height: 32),
-            Text('LOG VENDITE',
-                style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                    letterSpacing: 1.5)),
-            const SizedBox(height: 8),
-            _buildSalesLogSection(),
-          ],
-        ),
+                    if (item['has_variants'] == 1) ...[
+                      const Divider(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'VARIANTI',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          TextButton.icon(
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Aggiungi'),
+                            onPressed: () async {
+                              final bool? newVariantAdded =
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => AddVariantPage(
+                                            itemId: item['item_id'],
+                                          ),
+                                    ),
+                                  );
+                              if (newVariantAdded == true) {
+                                _dataDidChange = true;
+                                _refreshAllData(); // Ricarica tutto dopo una nuova variante
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _buildVariantsSection(),
+                    ] else ...[
+                      const Divider(height: 32),
+                      _buildInfoRow(
+                        'Pezzi Disponibili',
+                        '${item['quantity'] ?? '0'}',
+                      ),
+                      _buildInfoRow(
+                        'Prezzo di Acquisto',
+                        '€ ${item['purchase_price'] ?? 'N/D'}',
+                      ),
+
+                      const SizedBox(height: 16),
+                      Text(
+                        'PIATTAFORME DI PUBBLICAZIONE',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 12,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildPlatformsSection(),
+                    ],
+
+                    const Divider(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'GALLERIA FOTO',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        TextButton.icon(
+                          icon:
+                              _isUploading
+                                  ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : const Icon(
+                                    Icons.add_a_photo_outlined,
+                                    size: 16,
+                                  ),
+                          label: const Text('Aggiungi'),
+                          onPressed: _isUploading ? null : _pickAndUploadImage,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildPhotoGallery(),
+
+                    const Divider(height: 32),
+                    Text(
+                      'LOG VENDITE',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSalesLogSection(),
+                  ],
+                ),
       ),
     );
   }
 
-  // --- WIDGET HELPER ---
+  // --- WIDGET HELPER (INVARIATI) ---
+  Widget _buildPlatformsSection() {
+    /* ... codice invariato ... */
+    final List<dynamic> selectedIds = _currentItem['platforms'] ?? [];
+    if (selectedIds.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Text('Nessuna piattaforma selezionata.'),
+        ),
+      );
+    }
+    final List<String> platformNames =
+        _allPlatforms
+            .where((platform) => selectedIds.contains(platform['platform_id']))
+            .map((platform) => platform['name'].toString())
+            .toList();
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 4.0,
+      children:
+          platformNames
+              .map(
+                (name) => Chip(
+                  label: Text(name),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.2),
+                  labelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  side: BorderSide.none,
+                ),
+              )
+              .toList(),
+    );
+  }
 
-  // (3 - MODIFICA) _buildPhotoGallery
   Widget _buildPhotoGallery() {
+    /* ... codice invariato ... */
     if (_isPhotosLoading)
       return const Center(
-          child: Padding(
-              padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()));
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
     if (_photos.isEmpty)
       return const Center(
-          child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Nessuna foto trovata.')));
-
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Nessuna foto trovata.'),
+        ),
+      );
     return SizedBox(
-      height: 140, // Aumentata l'altezza per far spazio al testo
+      height: 140,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _photos.length,
@@ -491,46 +645,48 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           final photo = _photos[index];
           final photoUrl =
               'http://trentin-nas.synology.me:4000/${photo['file_path']}';
-
-          // (NUOVO) Cerca il nome della variante a cui la foto è collegata
           String targetName = 'Articolo Principale';
           if (photo['variant_id'] != null) {
-            // Cerca nella nostra lista _variants
             final matchingVariant = _variants.firstWhere(
               (v) => v['variant_id'] == photo['variant_id'],
-              orElse: () => null, // Ritorna null se non trova
+              orElse: () => null,
             );
             if (matchingVariant != null) {
               targetName = matchingVariant['variant_name'] ?? 'Variante';
             } else {
-              targetName = 'Variante'; // La foto è legata ma la variante non è (ancora) caricata
+              targetName = 'Variante';
             }
           }
-
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: Card(
               clipBehavior: Clip.antiAlias,
               child: AspectRatio(
-                aspectRatio: 1, // Foto quadrate
+                aspectRatio: 1,
                 child: InkWell(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         fullscreenDialog: true,
-                        builder: (context) => PhotoViewerPage(photoUrl: photoUrl),
+                        builder:
+                            (context) => PhotoViewerPage(photoUrl: photoUrl),
                       ),
                     );
                   },
-                  // (NUOVO) Usiamo GridTile per aggiungere una barra in basso
                   child: GridTile(
                     footer: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
                       color: Colors.black.withOpacity(0.6),
                       child: Text(
                         targetName,
-                        style: const TextStyle(color: Colors.white, fontSize: 10),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -541,10 +697,14 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       loadingBuilder: (context, child, progress) {
                         if (progress == null) return child;
                         return const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2));
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.broken_image, color: Colors.grey);
+                        return const Icon(
+                          Icons.broken_image,
+                          color: Colors.grey,
+                        );
                       },
                     ),
                   ),
@@ -558,65 +718,84 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Widget _buildVariantsSection() {
+    /* ... codice invariato ... */
     if (_isVariantsLoading)
       return const Center(
-          child: Padding(
-              padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()));
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
     if (_variants.isEmpty)
       return const Center(
-          child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Nessuna variante trovata.')));
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Nessuna variante trovata.'),
+        ),
+      );
     return Column(
-      children: _variants.map((variant) {
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4.0),
-          child: ListTile(
-            title: Text(variant['variant_name'] ?? 'Senza nome'),
-            subtitle: Text(
-                'Pezzi: ${variant['quantity']} | Prezzo Acq: € ${variant['purchase_price']}'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              /* TODO: Aprire dettaglio variante */
-            },
-          ),
-        );
-      }).toList(),
+      children:
+          _variants.map((variant) {
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4.0),
+              child: ListTile(
+                title: Text(variant['variant_name'] ?? 'Senza nome'),
+                subtitle: Text(
+                  'Pezzi: ${variant['quantity']} | Prezzo Acq: € ${variant['purchase_price']}',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  /* TODO: Aprire dettaglio variante */
+                },
+              ),
+            );
+          }).toList(),
     );
   }
 
   Widget _buildSalesLogSection() {
+    /* ... codice invariato ... */
     if (_isLogLoading)
       return const Center(
-          child: Padding(
-              padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()));
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
     if (_salesLog.isEmpty)
       return const Center(
-          child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Nessuna vendita registrata.')));
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Nessuna vendita registrata.'),
+        ),
+      );
     return Column(
-      children: _salesLog.map((sale) {
-        String title = 'Venduto su ${sale['platform_name'] ?? 'N/D'}';
-        if (sale['variant_name'] != null) {
-          title += ' (${sale['variant_name']})';
-        }
-        String date = sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4.0),
-          child: ListTile(
-            leading:
-                const Icon(Icons.check_circle_outline, color: Colors.green),
-            title: Text(title),
-            subtitle: Text(
-                '$date | ${sale['quantity_sold']} pz | Tot: € ${sale['total_price']}'),
-          ),
-        );
-      }).toList(),
+      children:
+          _salesLog.map((sale) {
+            String title = 'Venduto su ${sale['platform_name'] ?? 'N/D'}';
+            if (sale['variant_name'] != null)
+              title += ' (${sale['variant_name']})';
+            String date =
+                sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4.0),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.green,
+                ),
+                title: Text(title),
+                subtitle: Text(
+                  '$date | ${sale['quantity_sold']} pz | Tot: € ${sale['total_price']}',
+                ),
+              ),
+            );
+          }).toList(),
     );
   }
 
   Widget _buildInfoRow(String label, String? value) {
+    /* ... codice invariato ... */
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -625,7 +804,10 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-                color: Colors.grey[400], fontSize: 12, letterSpacing: 1.5),
+              color: Colors.grey[400],
+              fontSize: 12,
+              letterSpacing: 1.5,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
