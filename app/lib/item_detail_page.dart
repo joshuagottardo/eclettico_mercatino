@@ -1,4 +1,4 @@
-// lib/item_detail_page.dart - AGGIORNATO CON INDICAZIONE "VENDUTO"
+// lib/item_detail_page.dart - AGGIORNATO PER MODIFICA VENDITA
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -9,6 +9,7 @@ import 'package:app/sell_item_dialog.dart';
 import 'package:app/photo_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:app/add_item_page.dart';
+import 'package:app/edit_sale_dialog.dart'; // (1 - NUOVO) Import
 
 class ItemDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -32,22 +33,17 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   bool _dataDidChange = false;
   List _allPlatforms = [];
   bool _platformsLoading = true;
-
-  // (1 - NUOVO) Variabile di stato per is_sold
   bool _isItemSold = false;
 
   @override
   void initState() {
     super.initState();
     _currentItem = widget.item;
-
     _isVariantsLoading = true;
     _isLogLoading = true;
     _isPhotosLoading = true;
     _platformsLoading = true;
-    // (2 - NUOVO) Inizializza _isItemSold dal dato iniziale (anche se verrà aggiornato)
     _isItemSold = _currentItem['is_sold'] == 1;
-
     _refreshAllData();
   }
 
@@ -82,7 +78,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _currentItem = jsonDecode(response.body);
-          // (3 - NUOVO) Aggiorna _isItemSold qui
           _isItemSold = _currentItem['is_sold'] == 1;
         });
       }
@@ -91,6 +86,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     }
   }
 
+  // ... (Tutte le altre funzioni _fetch..., _pick..., _show..., _copy... sono INVARIATE) ...
   Future<void> _fetchVariants() async {
     /* ... codice invariato ... */
     if (!mounted) return;
@@ -180,9 +176,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     }
   }
 
-  // --- FUNZIONI DI AZIONE (INVARIATE) ---
   Future<void> _pickAndUploadImage() async {
-    /* ... codice ... */
+    /* ... codice invariato ... */
     final dynamic photoTarget = await _showPhotoTargetDialog();
     if (photoTarget == 'cancel') return;
     final XFile? pickedFile = await _picker.pickImage(
@@ -221,7 +216,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<dynamic> _showPhotoTargetDialog() {
-    /* ... codice ... */
+    /* ... codice invariato ... */
     dynamic selectedTarget = null;
     return showDialog(
       context: context,
@@ -279,7 +274,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   void _copyToClipboard(String text) {
-    /* ... codice ... */
+    /* ... codice invariato ... */
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Codice copiato negli appunti!')),
@@ -290,7 +285,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   @override
   Widget build(BuildContext context) {
     final item = _currentItem;
-
     final bool isPageLoading =
         _isVariantsLoading ||
         _isLogLoading ||
@@ -304,6 +298,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       },
       child: Scaffold(
         appBar: AppBar(
+          // ... (codice appBar invariato) ...
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
@@ -328,14 +323,13 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 }
               },
             ),
-            // (4 - MODIFICA) Bottone VENDI condizionale
             TextButton.icon(
               style: TextButton.styleFrom(
                 foregroundColor:
                     _isItemSold
-                        ? Theme.of(context).colorScheme.onSurface.withOpacity(
-                          0.5,
-                        ) // Grigio se venduto
+                        ? Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.5)
                         : Theme.of(context).colorScheme.primary,
               ),
               icon: Icon(
@@ -362,7 +356,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                   _isItemSold
                       ? null
                       : () async {
-                        // Disabilita se venduto
                         final bool? saleRegistered = await showDialog(
                           context: context,
                           builder: (context) {
@@ -375,9 +368,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                         );
                         if (saleRegistered == true) {
                           _dataDidChange = true;
-                          if (item['has_variants'] == 1) _fetchVariants();
-                          _fetchSalesLog();
-                          _fetchItemDetails(); // Ricarica anche i dettagli dell'articolo per aggiornare is_sold
+                          _refreshAllData(); // Ricarica tutto
                         }
                       },
             ),
@@ -394,7 +385,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 : ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
-                    // (5 - NUOVO) Banner "VENDUTO"
+                    // ... (Banner VENDUTO e Sezioni Info... invariate) ...
                     if (_isItemSold)
                       Container(
                         padding: const EdgeInsets.all(12.0),
@@ -424,8 +415,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                           ],
                         ),
                       ),
-
-                    // ... (restanti sezioni invariate) ...
                     Text(
                       'CODICE UNIVOCo',
                       style: TextStyle(
@@ -461,7 +450,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                     _buildInfoRow('Descrizione', item['description']),
                     const Divider(height: 32),
                     _buildInfoRow(
-                      'Valore Stimato',
+                      'Valore Estimato',
                       '€ ${item['value'] ?? 'N/D'}',
                     ),
                     _buildInfoRow(
@@ -486,19 +475,18 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                             icon: const Icon(Icons.add, size: 16),
                             label: const Text('Aggiungi'),
                             onPressed: () async {
-                              final bool? newVariantAdded =
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) => AddVariantPage(
-                                            itemId: item['item_id'],
-                                          ),
-                                    ),
-                                  );
-                              if (newVariantAdded == true) {
+                              final bool? dataChanged = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => AddVariantPage(
+                                        itemId: item['item_id'],
+                                      ),
+                                ),
+                              );
+                              if (dataChanged == true) {
                                 _dataDidChange = true;
-                                _refreshAllData(); // Ricarica tutto dopo una nuova variante
+                                _refreshAllData();
                               }
                             },
                           ),
@@ -516,7 +504,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                         'Prezzo di Acquisto',
                         '€ ${item['purchase_price'] ?? 'N/D'}',
                       ),
-
                       const SizedBox(height: 16),
                       Text(
                         'PIATTAFORME DI PUBBLICAZIONE',
@@ -574,14 +561,15 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildSalesLogSection(),
+                    _buildSalesLogSection(), // (MODIFICATO)
                   ],
                 ),
       ),
     );
   }
 
-  // --- WIDGET HELPER (INVARIATI) ---
+  // --- WIDGET HELPER ---
+
   Widget _buildPlatformsSection() {
     /* ... codice invariato ... */
     final List<dynamic> selectedIds = _currentItem['platforms'] ?? [];
@@ -736,16 +724,44 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     return Column(
       children:
           _variants.map((variant) {
+            final bool isVariantSold = variant['is_sold'] == 1;
             return Card(
+              color:
+                  isVariantSold
+                      ? const Color(0xFF422B2B)
+                      : Theme.of(context).cardColor,
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
-                title: Text(variant['variant_name'] ?? 'Senza nome'),
+                title: Text(
+                  variant['variant_name'] ?? 'Senza nome',
+                  style: TextStyle(
+                    color: isVariantSold ? Colors.grey[300] : null,
+                    decoration:
+                        isVariantSold ? TextDecoration.lineThrough : null,
+                  ),
+                ),
                 subtitle: Text(
                   'Pezzi: ${variant['quantity']} | Prezzo Acq: € ${variant['purchase_price']}',
+                  style: TextStyle(
+                    color: isVariantSold ? Colors.grey[400] : null,
+                  ),
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  /* TODO: Aprire dettaglio variante */
+                onTap: () async {
+                  final bool? dataChanged = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => AddVariantPage(
+                            itemId: _currentItem['item_id'],
+                            variantId: variant['variant_id'],
+                          ),
+                    ),
+                  );
+                  if (dataChanged == true) {
+                    _dataDidChange = true;
+                    _refreshAllData(); // Ricarica tutto
+                  }
                 },
               ),
             );
@@ -753,8 +769,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
+  // (2 - MODIFICA) Sezione Log Vendite
   Widget _buildSalesLogSection() {
-    /* ... codice invariato ... */
     if (_isLogLoading)
       return const Center(
         child: Padding(
@@ -769,6 +785,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           child: Text('Nessuna vendita registrata.'),
         ),
       );
+
     return Column(
       children:
           _salesLog.map((sale) {
@@ -777,6 +794,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               title += ' (${sale['variant_name']})';
             String date =
                 sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
+
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
@@ -788,6 +806,25 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 subtitle: Text(
                   '$date | ${sale['quantity_sold']} pz | Tot: € ${sale['total_price']}',
                 ),
+                trailing: const Icon(
+                  Icons.edit_note_outlined,
+                  size: 20,
+                ), // Icona per modifica
+                // (3 - NUOVO) Azione onTap
+                onTap: () async {
+                  final bool? dataChanged = await showDialog(
+                    context: context,
+                    builder:
+                        (context) => EditSaleDialog(
+                          sale: sale,
+                          allPlatforms: _allPlatforms, // Passiamo la lista
+                        ),
+                  );
+                  if (dataChanged == true) {
+                    _dataDidChange = true;
+                    _refreshAllData(); // Ricarica tutto
+                  }
+                },
               ),
             );
           }).toList(),

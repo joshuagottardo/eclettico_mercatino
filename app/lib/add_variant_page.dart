@@ -1,4 +1,4 @@
-// lib/add_variant_page.dart - AGGIORNATO CON CHECKBOX PIATTAFORME
+// lib/add_variant_page.dart - AGGIORNATO PER MODIFICA E DELETE
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -6,7 +6,10 @@ import 'package:http/http.dart' as http;
 
 class AddVariantPage extends StatefulWidget {
   final int itemId;
-  const AddVariantPage({super.key, required this.itemId});
+  // (1 - MODIFICA) Aggiungiamo variantId opzionale
+  final int? variantId;
+
+  const AddVariantPage({super.key, required this.itemId, this.variantId});
 
   @override
   State<AddVariantPage> createState() => _AddVariantPageState();
@@ -15,27 +18,73 @@ class AddVariantPage extends StatefulWidget {
 class _AddVariantPageState extends State<AddVariantPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controller
+  // Controller (invariati)
   final _nameController = TextEditingController();
   final _purchasePriceController = TextEditingController();
   final _quantityController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  // (1 - NUOVO) Dati per Piattaforme
+  // Dati per Piattaforme (invariati)
   List _platforms = [];
   bool _platformsLoading = true;
   final Set<int> _selectedPlatformIds = {};
 
-  bool _isLoading = false;
+  // (2 - NUOVO) Stati per la logica di pagina
+  bool _isLoading = false; // Per il salvataggio
+  bool _isPageLoading = false; // Per il caricamento iniziale
+  bool _isEditMode = false;
 
   @override
   void initState() {
     super.initState();
-    // (2 - NUOVO) Carichiamo le piattaforme
     _fetchPlatforms();
+
+    // (3 - NUOVO) Logica per la modalità Modifica
+    if (widget.variantId != null) {
+      _isEditMode = true;
+      _isPageLoading = true;
+      _loadVariantData();
+    }
   }
 
-  // (3 - NUOVO) Funzione per caricare le piattaforme
+  // (4 - NUOVO) Funzione per caricare i dati della variante
+  Future<void> _loadVariantData() async {
+    try {
+      final url =
+          'http://trentin-nas.synology.me:4000/api/variants/${widget.variantId}';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final variant = jsonDecode(response.body);
+        if (mounted) {
+          // Popoliamo i controller
+          _nameController.text = variant['variant_name'] ?? '';
+          _purchasePriceController.text =
+              variant['purchase_price']?.toString() ?? '';
+          _quantityController.text = variant['quantity']?.toString() ?? '';
+          _descriptionController.text = variant['description'] ?? '';
+
+          // Popoliamo le piattaforme
+          if (variant['platforms'] != null) {
+            _selectedPlatformIds.clear();
+            _selectedPlatformIds.addAll(List<int>.from(variant['platforms']));
+          }
+        }
+      } else {
+        _showError('Errore nel caricare i dati della variante');
+      }
+    } catch (e) {
+      _showError('Errore di rete: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPageLoading = false;
+        });
+      }
+    }
+  }
+
+  // Funzione per caricare le piattaforme (invariata)
   Future<void> _fetchPlatforms() async {
     try {
       const url = 'http://trentin-nas.synology.me:4000/api/platforms';
@@ -56,7 +105,8 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  Future<void> _saveVariant() async {
+  // (5 - MODIFICA) Rinominata in _submitForm
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _isLoading = true;
@@ -67,21 +117,35 @@ class _AddVariantPageState extends State<AddVariantPage> {
       "purchase_price": double.tryParse(_purchasePriceController.text),
       "quantity": int.tryParse(_quantityController.text),
       "description": _descriptionController.text,
-      // (4 - MODIFICA) Inviamo la lista di ID
       "platforms": _selectedPlatformIds.toList(),
     };
 
     try {
-      final url =
-          'http://trentin-nas.synology.me:4000/api/items/${widget.itemId}/variants';
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode(body),
-      );
+      http.Response response;
 
-      if (response.statusCode == 201) {
-        if (mounted) Navigator.pop(context, true);
+      // (6 - NUOVO) Logica per POST (Crea) o PUT (Modifica)
+      if (_isEditMode) {
+        // --- MODALITÀ MODIFICA ---
+        final url =
+            'http://trentin-nas.synology.me:4000/api/variants/${widget.variantId}';
+        response = await http.put(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode(body),
+        );
+      } else {
+        // --- MODALITÀ CREAZIONE ---
+        final url =
+            'http://trentin-nas.synology.me:4000/api/items/${widget.itemId}/variants';
+        response = await http.post(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode(body),
+        );
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) Navigator.pop(context, true); // Successo!
       } else {
         _showError('Errore server: ${response.statusCode}');
       }
@@ -93,6 +157,63 @@ class _AddVariantPageState extends State<AddVariantPage> {
           _isLoading = false;
         });
     }
+  }
+
+  // (7 - NUOVO) Funzione per eliminare la variante
+  Future<void> _deleteVariant() async {
+    // Chiedi conferma
+    final bool? confirmed = await _showDeleteConfirmation();
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+    }); // Usiamo lo stesso loader
+    try {
+      final url =
+          'http://trentin-nas.synology.me:4000/api/variants/${widget.variantId}';
+      final response = await http.delete(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        if (mounted) Navigator.pop(context, true); // Successo!
+      } else {
+        // Mostra l'errore specifico (es. "ha vendite associate")
+        final error = jsonDecode(response.body);
+        _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showError('Errore di rete: $e');
+    } finally {
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+        });
+    }
+  }
+
+  // (8 - NUOVO) Dialog di conferma eliminazione
+  Future<bool?> _showDeleteConfirmation() {
+    return showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            title: const Text('Sei sicuro?'),
+            content: const Text(
+              'Vuoi davvero eliminare questa variante? L\'azione non è reversibile.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Annulla'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sì, elimina'),
+              ),
+            ],
+          ),
+    );
   }
 
   void _showError(String message) {
@@ -116,8 +237,16 @@ class _AddVariantPageState extends State<AddVariantPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Aggiungi Variante'),
+        // (9 - MODIFICA) Titolo e Azioni dinamiche
+        title: Text(_isEditMode ? 'Modifica Variante' : 'Aggiungi Variante'),
         actions: [
+          // (10 - NUOVO) Bottone Elimina (solo in Modifica)
+          if (_isEditMode)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: _isLoading ? null : _deleteVariant,
+              tooltip: 'Elimina Variante',
+            ),
           IconButton(
             icon:
                 _isLoading
@@ -130,14 +259,14 @@ class _AddVariantPageState extends State<AddVariantPage> {
                       ),
                     )
                     : const Icon(Icons.save),
-            onPressed: _isLoading ? null : _saveVariant,
+            onPressed: _isLoading ? null : _submitForm, // (11 - MODIFICA)
             tooltip: 'Salva',
           ),
         ],
       ),
-      // (5 - MODIFICA) Mostra loader se carica piattaforme
+      // (12 - MODIFICA) Mostra loader
       body:
-          _platformsLoading
+          _isPageLoading || _platformsLoading
               ? Center(
                 child: CircularProgressIndicator(
                   color: Theme.of(context).colorScheme.primary,
@@ -148,7 +277,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                 child: ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
-                    // ... (Campi nome, quantità, prezzo, descrizione INVARIATI) ...
+                    // ... (Campi modulo invariati) ...
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -191,7 +320,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
                       maxLines: 3,
                     ),
 
-                    // (6 - NUOVO) Sezione Checkbox Piattaforme
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 16),
@@ -207,7 +335,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
     );
   }
 
-  // (7 - NUOVO) Funzione Helper per costruire le checkbox
   List<Widget> _buildPlatformCheckboxes() {
     return _platforms.map((platform) {
       final platformId = platform['platform_id'];
