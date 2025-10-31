@@ -1,4 +1,4 @@
-// lib/item_detail_page.dart - AGGIORNATO PER MODIFICA VENDITA
+// lib/item_detail_page.dart - AGGIORNATO PER PASSARE STOCK AL DIALOG
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -9,7 +9,7 @@ import 'package:app/sell_item_dialog.dart';
 import 'package:app/photo_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:app/add_item_page.dart';
-import 'package:app/edit_sale_dialog.dart'; // (1 - NUOVO) Import
+import 'package:app/edit_sale_dialog.dart';
 
 class ItemDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -47,7 +47,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     _refreshAllData();
   }
 
-  // --- FUNZIONI DI CARICAMENTO DATI ---
+  // --- FUNZIONI DI CARICAMENTO DATI (TUTTE INVARIATE) ---
 
   Future<void> _refreshAllData() async {
     if (mounted) {
@@ -58,15 +58,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         _platformsLoading = true;
       });
     }
-
     await _fetchItemDetails();
-
     if (_currentItem['has_variants'] == 1) {
       await _fetchVariants();
     } else {
       if (mounted) setState(() => _isVariantsLoading = false);
     }
-
     await Future.wait([_fetchSalesLog(), _fetchPhotos(), _fetchPlatforms()]);
   }
 
@@ -86,7 +83,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     }
   }
 
-  // ... (Tutte le altre funzioni _fetch..., _pick..., _show..., _copy... sono INVARIATE) ...
   Future<void> _fetchVariants() async {
     /* ... codice invariato ... */
     if (!mounted) return;
@@ -176,6 +172,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     }
   }
 
+  // --- FUNZIONI DI AZIONE (INVARIATE) ---
   Future<void> _pickAndUploadImage() async {
     /* ... codice invariato ... */
     final dynamic photoTarget = await _showPhotoTargetDialog();
@@ -298,7 +295,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          // ... (codice appBar invariato) ...
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
@@ -323,6 +319,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 }
               },
             ),
+            // (1 - MODIFICA) Bottone VENDI
             TextButton.icon(
               style: TextButton.styleFrom(
                 foregroundColor:
@@ -363,12 +360,16 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                               itemId: item['item_id'],
                               hasVariants: item['has_variants'] == 1,
                               variants: _variants,
+                              // (2 - NUOVO) Passiamo lo stock dell'articolo singolo
+                              itemQuantity: item['quantity'],
                             );
                           },
                         );
                         if (saleRegistered == true) {
                           _dataDidChange = true;
-                          _refreshAllData(); // Ricarica tutto
+                          // (3 - MODIFICA) Ricarica tutto per aggiornare
+                          // lo stock E lo stato is_sold
+                          _refreshAllData();
                         }
                       },
             ),
@@ -496,6 +497,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       _buildVariantsSection(),
                     ] else ...[
                       const Divider(height: 32),
+                      // (4 - MODIFICA) Mostra lo stock reale
                       _buildInfoRow(
                         'Pezzi Disponibili',
                         '${item['quantity'] ?? '0'}',
@@ -561,14 +563,14 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildSalesLogSection(), // (MODIFICATO)
+                    _buildSalesLogSection(),
                   ],
                 ),
       ),
     );
   }
 
-  // --- WIDGET HELPER ---
+  // --- WIDGET HELPER (INVARIATI) ---
 
   Widget _buildPlatformsSection() {
     /* ... codice invariato ... */
@@ -760,7 +762,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                   );
                   if (dataChanged == true) {
                     _dataDidChange = true;
-                    _refreshAllData(); // Ricarica tutto
+                    _refreshAllData();
                   }
                 },
               ),
@@ -769,8 +771,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
-  // (2 - MODIFICA) Sezione Log Vendite
   Widget _buildSalesLogSection() {
+    /* ... codice invariato ... */
     if (_isLogLoading)
       return const Center(
         child: Padding(
@@ -785,7 +787,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           child: Text('Nessuna vendita registrata.'),
         ),
       );
-
     return Column(
       children:
           _salesLog.map((sale) {
@@ -794,7 +795,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               title += ' (${sale['variant_name']})';
             String date =
                 sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
-
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
@@ -806,23 +806,19 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 subtitle: Text(
                   '$date | ${sale['quantity_sold']} pz | Tot: € ${sale['total_price']}',
                 ),
-                trailing: const Icon(
-                  Icons.edit_note_outlined,
-                  size: 20,
-                ), // Icona per modifica
-                // (3 - NUOVO) Azione onTap
+                trailing: const Icon(Icons.edit_note_outlined, size: 20),
                 onTap: () async {
                   final bool? dataChanged = await showDialog(
                     context: context,
                     builder:
                         (context) => EditSaleDialog(
                           sale: sale,
-                          allPlatforms: _allPlatforms, // Passiamo la lista
+                          allPlatforms: _allPlatforms,
                         ),
                   );
                   if (dataChanged == true) {
                     _dataDidChange = true;
-                    _refreshAllData(); // Ricarica tutto
+                    _refreshAllData();
                   }
                 },
               ),
