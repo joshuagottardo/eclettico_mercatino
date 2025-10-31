@@ -473,6 +473,25 @@ app.post("/api/sales", async (req, res) => {
   }
 });
 
+/*
+ * GET /api/platforms
+ * Recupera l'elenco di tutte le piattaforme di pubblicazione disponibili
+ */
+app.get("/api/platforms", async (req, res) => {
+  try {
+    // (A) Semplice query per prendere tutto dalla tabella platforms
+    const [platforms] = await pool.query(
+      "SELECT * FROM platforms ORDER BY name ASC"
+    );
+
+    // (B) Invia i risultati
+    res.json(platforms);
+  } catch (error) {
+    console.error("Errore in GET /api/platforms:", error);
+    res.status(500).json({ error: "Errore nel recupero delle piattaforme" });
+  }
+});
+
 // ---------- AVVIO SERVER ----------
 app.listen(PORT, () => {
   console.log(`🚀 Server API in ascolto sulla porta ${PORT}`);

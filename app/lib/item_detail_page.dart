@@ -1,10 +1,11 @@
-// lib/item_detail_page.dart - AGGIORNATO CON GESTIONE VARIANTI
+// lib/item_detail_page.dart - AGGIORNATO CON LOG VENDITE
 
-import 'dart:convert'; // (1) Import per JSON
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http; // (2) Import per HTTP
-import 'package:app/add_variant_page.dart';
+import 'package:http/http.dart' as http;
+import 'package:app/add_variant_page.dart'; // Ci serve ancora
+import 'package:app/sell_item_dialog.dart';
 
 class ItemDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -15,81 +16,148 @@ class ItemDetailPage extends StatefulWidget {
 }
 
 class _ItemDetailPageState extends State<ItemDetailPage> {
-  // (3) Nuove variabili di stato per le varianti
-  List _variants = []; // Conterrà la lista delle varianti
-  bool _isVariantsLoading = false; // true = stiamo caricando
+  // Variabili per le varianti
+  List _variants = [];
+  bool _isVariantsLoading = false;
 
-  // (4) initState: viene chiamato all'avvio della pagina
+  // (1 - NUOVO) Variabili di stato per il log vendite
+  List _salesLog = [];
+  bool _isLogLoading = false;
+
   @override
   void initState() {
     super.initState();
 
-    // Controlliamo se l'articolo ha varianti
-    if (widget.item['has_variants'] == true) {
-      // Se sì, avviamo il caricamento
+    // Carichiamo le varianti (se necessario)
+    if (widget.item['has_variants'] == 1) {
       _fetchVariants();
     }
+
+    // (2 - NUOVO) Carichiamo sempre lo storico vendite
+    _fetchSalesLog();
   }
 
-  // (5) Nuova funzione per caricare le varianti dall'API
+  // Funzione per caricare le varianti (invariata)
   Future<void> _fetchVariants() async {
-    // Impostiamo lo stato di caricamento
     setState(() {
       _isVariantsLoading = true;
     });
-
     try {
-      // Prendiamo l'ID dell'articolo
       final itemId = widget.item['item_id'];
       final url =
           'http://trentin-nas.synology.me:4000/api/items/$itemId/variants';
-
       final response = await http.get(Uri.parse(url));
-
       if (response.statusCode == 200) {
-        // Successo! Aggiorniamo la nostra lista
-        setState(() {
-          _variants = jsonDecode(response.body);
-          _isVariantsLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _variants = jsonDecode(response.body);
+            _isVariantsLoading = false;
+          });
+        }
       } else {
-        // Errore server
-        print('Errore server nel caricare varianti: ${response.statusCode}');
+        throw Exception('Errore server nel caricare varianti');
+      }
+    } catch (e) {
+      print(e);
+      if (mounted) {
         setState(() {
           _isVariantsLoading = false;
         });
       }
-    } catch (e) {
-      // Errore di rete
-      print('Errore di rete nel caricare varianti: $e');
-      setState(() {
-        _isVariantsLoading = false;
-      });
     }
   }
 
-  // Funzione per copiare
+  // (3 - NUOVO) Funzione per caricare lo storico vendite
+  Future<void> _fetchSalesLog() async {
+    setState(() {
+      _isLogLoading = true;
+    });
+
+    try {
+      final itemId = widget.item['item_id'];
+      final url = 'http://trentin-nas.synology.me:4000/api/items/$itemId/sales';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _salesLog = jsonDecode(response.body);
+            _isLogLoading = false;
+          });
+        }
+      } else {
+        throw Exception('Errore server nel caricare log vendite');
+      }
+    } catch (e) {
+      print(e);
+      if (mounted) {
+        setState(() {
+          _isLogLoading = false;
+        });
+      }
+    }
+  }
+
+  // Funzione per copiare (invariata)
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Codice copiato negli appunti!'),
-        duration: Duration(seconds: 2),
-      ),
+      const SnackBar(content: Text('Codice copiato negli appunti!')),
     );
   }
 
-  // (6) Metodo Build (aggiornato)
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
 
     return Scaffold(
-      appBar: AppBar(title: Text(item['name'] ?? 'Dettaglio Articolo')),
+      appBar: AppBar(
+        title: Text(item['name'] ?? 'Dettaglio Articolo'),
+
+        // (4 - NUOVO) Bottone "Vendi"
+        actions: [
+          // Cerca questo blocco
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary,
+            ),
+            icon: const Icon(Icons.sell_outlined),
+            label: const Text('VENDI'),
+
+            // (1) MODIFICHIAMO QUESTA FUNZIONE
+            onPressed: () async {
+              // (2) Mostriamo il nostro nuovo pop-up e ASPETTIAMO una risposta
+              final bool? saleRegistered = await showDialog(
+                context: context,
+                builder: (context) {
+                  return SellItemDialog(
+                    itemId: widget.item['item_id'],
+                    hasVariants: widget.item['has_variants'] == 1,
+                    variants:
+                        _variants, // Passiamo la lista di varianti che abbiamo già caricato
+                  );
+                },
+              );
+
+              // (3) Se il pop-up è stato chiuso con 'true' (vendita registrata!)...
+              if (saleRegistered == true) {
+                // ... ricarichiamo SIA il log vendite CHE la lista varianti!
+                _fetchSalesLog();
+                if (widget.item['has_variants'] == 1) {
+                  _fetchVariants();
+                }
+                // TODO: In futuro, dovremo anche ricaricare l'articolo
+                //       principale per aggiornare il suo stato "is_sold".
+              }
+            },
+          ),
+          const SizedBox(width: 8), // Un po' di spazio
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // --- Sezione Codice Univoco (invariata) ---
+          // --- Sezioni Info e Varianti (invariate) ---
           Text(
             'CODICE UNIVOCo',
             style: TextStyle(
@@ -119,8 +187,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             ],
           ),
           const Divider(height: 32),
-
-          // --- Sezione Info Principali (invariata) ---
           _buildInfoRow('Categoria', item['category']),
           _buildInfoRow('Brand', item['brand']),
           _buildInfoRow('Descrizione', item['description']),
@@ -131,10 +197,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             '€ ${item['sale_price'] ?? 'N/D'}',
           ),
 
-          // --- (7) SEZIONE VARIANTI (MODIFICATA) ---
           if (item['has_variants'] == 1) ...[
             const Divider(height: 32),
-            // Titolo della sezione Varianti
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -146,29 +210,19 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                     letterSpacing: 1.5,
                   ),
                 ),
-                // Bottone per aggiungere nuove varianti
-                // Cerca questo blocco (riga 120 circa)
                 TextButton.icon(
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Aggiungi'),
-
-                  // (1) MODIFICHIAMO QUESTA FUNZIONE
                   onPressed: () async {
-                    // (2) Apriamo la pagina AddVariantPage e ASPETTIAMO
                     final bool? newVariantAdded = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder:
-                            (context) => AddVariantPage(
-                              // (3) Passiamo l'ID dell'articolo corrente!
-                              itemId: widget.item['item_id'],
-                            ),
+                            (context) =>
+                                AddVariantPage(itemId: widget.item['item_id']),
                       ),
                     );
-
-                    // (4) Se la pagina è stata chiusa con "true" (ovvero abbiamo salvato)...
                     if (newVariantAdded == true) {
-                      // ... ricarichiamo la lista delle varianti!
                       _fetchVariants();
                     }
                   },
@@ -176,11 +230,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               ],
             ),
             const SizedBox(height: 8),
-
-            // Contenuto della sezione Varianti
             _buildVariantsSection(),
           ] else ...[
-            // Mostra i dati dell'articolo singolo (invariato)
             const Divider(height: 32),
             _buildInfoRow('Pezzi Disponibili', '${item['quantity'] ?? '0'}'),
             _buildInfoRow(
@@ -189,16 +240,25 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             ),
           ],
 
+          // (5 - NUOVO) Sezione Log Vendite
           const Divider(height: 32),
-          // TODO: Gallerie e Log vendite...
+          Text(
+            'LOG VENDITE',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 12,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildSalesLogSection(), // Chiamiamo il nuovo widget
         ],
       ),
     );
   }
 
-  // (8) Nuovo Widget Helper per mostrare la sezione varianti
+  // --- Widget Helper per le Varianti (invariato) ---
   Widget _buildVariantsSection() {
-    // Caso 1: Sta caricando
     if (_isVariantsLoading) {
       return const Center(
         child: Padding(
@@ -207,8 +267,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         ),
       );
     }
-
-    // Caso 2: Ha finito di caricare e la lista è vuota
     if (_variants.isEmpty) {
       return const Center(
         child: Padding(
@@ -217,10 +275,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         ),
       );
     }
-
-    // Caso 3: Ha finito di caricare e ci sono varianti
-    // Usiamo un Column perché la lista sarà dentro un'altra ListView
-    // e questo evita errori di scrolling.
     return Column(
       children:
           _variants.map((variant) {
@@ -233,16 +287,70 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  // TODO: Aprire la pagina di dettaglio della variante
+                  /* TODO: Aprire dettaglio variante */
                 },
               ),
             );
-          }).toList(), // Convertiamo la mappa in una Lista di Widget
+          }).toList(),
     );
   }
 
-  // Funzione helper per le righe (invariata)
+  // (6 - NUOVO) Widget Helper per il Log Vendite
+  Widget _buildSalesLogSection() {
+    // Caso 1: Sta caricando
+    if (_isLogLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Caso 2: Ha finito di caricare e la lista è vuota
+    if (_salesLog.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Nessuna vendita registrata.'),
+        ),
+      );
+    }
+
+    // Caso 3: Ha finito di caricare e ci sono vendite
+    return Column(
+      children:
+          _salesLog.map((sale) {
+            // Costruiamo il titolo (es. "Venduto su Vinted (Rosso, XL)")
+            String title = 'Venduto su ${sale['platform_name'] ?? 'N/D'}';
+            if (sale['variant_name'] != null) {
+              title += ' (${sale['variant_name']})';
+            }
+
+            // Formattiamo la data (rimuoviamo l'ora)
+            String date =
+                sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4.0),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.green,
+                ),
+                title: Text(title),
+                subtitle: Text(
+                  '$date | ${sale['quantity_sold']} pz | Tot: € ${sale['total_price']}',
+                ),
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  // --- Widget Helper per le righe (invariato) ---
   Widget _buildInfoRow(String label, String? value) {
+    // ... (codice invariato)
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
