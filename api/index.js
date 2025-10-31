@@ -545,91 +545,90 @@ app.post("/api/sales", async (req, res) => {
   }
 });
 
+
 /*
  * PUT /api/items/:id
- * Aggiorna un articolo esistente
+ * Aggiorna un articolo esistente (MODIFICATO per gestire le piattaforme)
  */
-app.put("/api/items/:id", async (req, res) => {
-  // (A) Prendiamo l'ID dall'URL e i dati dal corpo
-  const { id } = req.params;
-  const {
-    name,
-    category_id,
-    description,
-    brand,
-    value,
-    sale_price,
-    has_variants,
-    quantity,
-    purchase_price,
-    // platforms // Per ora non gestiamo l'aggiornamento delle piattaforme
-  } = req.body;
+app.put('/api/items/:id', async (req, res) => {
+    const { id } = req.params;
+    const {
+        name,
+        category_id, // Già aggiornato
+        description,
+        brand,
+        value,
+        sale_price,
+        has_variants,
+        quantity,
+        purchase_price,
+        platforms // (1 - NUOVO) Riceviamo l'array di piattaforme [1, 2]
+    } = req.body;
 
-  // (B) Validazione
-  if (!name || has_variants === undefined) {
-    return res
-      .status(400)
-      .json({ error: 'Campi "name" e "has_variants" sono obbligatori' });
-  }
+    if (!name || has_variants === undefined) {
+        return res.status(400).json({ error: 'Campi "name" e "has_variants" sono obbligatori' });
+    }
+    
+    const itemValues = [
+        name,
+        category_id,
+        description,
+        brand,
+        value,
+        sale_price,
+        has_variants,
+        has_variants ? null : quantity,
+        has_variants ? null : purchase_price,
+        id 
+    ];
 
-  // (C) Prepariamo i valori: se has_variants è true, forziamo quantity e purchase_price a NULL
-  //     Questo è FONDAMENTALE se un utente cambia has_variants da false a true
-  const itemValues = [
-    name,
-    category_id,
-    description,
-    brand,
-    value,
-    sale_price,
-    has_variants,
-    has_variants ? null : quantity,
-    has_variants ? null : purchase_price,
-    id, // L'ID va alla fine per la clausola WHERE
-  ];
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
-  let connection;
-  try {
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
-
-    // (D) Query 1: Aggiorniamo l'articolo
-    const updateSql = `
+        // Query 1: Aggiorniamo l'articolo (invariata)
+        const updateSql = `
             UPDATE items SET 
                 name = ?, category_id = ?, description = ?, brand = ?, 
                 \`value\` = ?, sale_price = ?, has_variants = ?, 
                 quantity = ?, purchase_price = ?
             WHERE item_id = ?
         `;
-    await connection.query(updateSql, itemValues);
+        await connection.query(updateSql, itemValues);
 
-    // (E) LOGICA SPECIALE: Se l'utente ha appena attivato "has_variants" (da false a true),
-    //     dobbiamo cancellare le piattaforme associate all'articolo (item_platforms)
-    //     perché ora saranno gestite dalle varianti.
-    if (has_variants) {
-      await connection.query("DELETE FROM item_platforms WHERE item_id = ?", [
-        id,
-      ]);
+        // Query 2: Aggiorniamo le piattaforme
+        if (has_variants) {
+             // (2 - MODIFICA) Se ha varianti, le piattaforme sono gestite altrove
+             // Cancelliamo qualsiasi piattaforma rimasta sull'articolo
+             await connection.query('DELETE FROM item_platforms WHERE item_id = ?', [id]);
+        } else {
+            // (3 - NUOVO) Se NON ha varianti, aggiorniamo le sue piattaforme
+            
+            // (A) Cancelliamo le vecchie piattaforme per "resettare"
+            await connection.query('DELETE FROM item_platforms WHERE item_id = ?', [id]);
+
+            // (B) Inseriamo le nuove (se l'array non è vuoto)
+            if (platforms && platforms.length > 0) {
+                const platformSql = 'INSERT INTO item_platforms (item_id, platform_id) VALUES ?';
+                const platformValues = platforms.map(platformId => [id, platformId]);
+                await connection.query(platformSql, [platformValues]);
+            }
+        }
+        
+        await connection.commit();
+        
+        res.status(200).json({ 
+            message: 'Articolo aggiornato con successo!'
+        });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error(`Errore in PUT /api/items/${id}:`, error);
+        res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'articolo' });
+    } finally {
+        if (connection) connection.release();
     }
-
-    // (Per ora non gestiamo il caso opposto, cioè cosa fare se
-    //  un utente disattiva "has_variants" quando ci sono già varianti.
-    //  L'app non dovrebbe permetterlo.)
-
-    // (F) Se siamo arrivati qui, è andato tutto bene. Confermiamo.
-    await connection.commit();
-
-    res.status(200).json({
-      message: "Articolo aggiornato con successo!",
-    });
-  } catch (error) {
-    if (connection) await connection.rollback();
-    console.error(`Errore in PUT /api/items/${id}:`, error);
-    res
-      .status(500)
-      .json({ error: "Errore durante l'aggiornamento dell'articolo" });
-  } finally {
-    if (connection) connection.release();
-  }
 });
 
 /*
