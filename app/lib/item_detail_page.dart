@@ -1,11 +1,13 @@
-// lib/item_detail_page.dart - AGGIORNATO CON LOG VENDITE
+// lib/item_detail_page.dart - AGGIORNATO CON UPLOAD FOTO
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/add_variant_page.dart'; // Ci serve ancora
+import 'package:app/add_variant_page.dart';
 import 'package:app/sell_item_dialog.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:app/photo_viewer_page.dart';
 
 class ItemDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -16,29 +18,32 @@ class ItemDetailPage extends StatefulWidget {
 }
 
 class _ItemDetailPageState extends State<ItemDetailPage> {
-  // Variabili per le varianti
+  // Variabili di stato
   List _variants = [];
   bool _isVariantsLoading = false;
-
-  // (1 - NUOVO) Variabili di stato per il log vendite
   List _salesLog = [];
   bool _isLogLoading = false;
+  List _photos = [];
+  bool _isPhotosLoading = false;
+
+  // (2 - NUOVO) Stato per il caricamento di una foto
+  bool _isUploading = false;
+  final ImagePicker _picker = ImagePicker(); // Istanza di ImagePicker
 
   @override
   void initState() {
     super.initState();
-
-    // Carichiamo le varianti (se necessario)
     if (widget.item['has_variants'] == 1) {
       _fetchVariants();
     }
-
-    // (2 - NUOVO) Carichiamo sempre lo storico vendite
     _fetchSalesLog();
+    _fetchPhotos();
   }
 
-  // Funzione per caricare le varianti (invariata)
+  // --- FUNZIONI DI CARICAMENTO DATI ---
+  // ... (tutte le funzioni _fetch... rimangono invariate) ...
   Future<void> _fetchVariants() async {
+    /* ... codice ... */
     setState(() {
       _isVariantsLoading = true;
     });
@@ -48,51 +53,123 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           'http://trentin-nas.synology.me:4000/api/items/$itemId/variants';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted) {
+        if (mounted)
           setState(() {
             _variants = jsonDecode(response.body);
-            _isVariantsLoading = false;
           });
-        }
-      } else {
-        throw Exception('Errore server nel caricare varianti');
       }
     } catch (e) {
       print(e);
-      if (mounted) {
+    } finally {
+      if (mounted)
         setState(() {
           _isVariantsLoading = false;
         });
-      }
     }
   }
 
-  // (3 - NUOVO) Funzione per caricare lo storico vendite
   Future<void> _fetchSalesLog() async {
+    /* ... codice ... */
     setState(() {
       _isLogLoading = true;
     });
-
     try {
       final itemId = widget.item['item_id'];
       final url = 'http://trentin-nas.synology.me:4000/api/items/$itemId/sales';
       final response = await http.get(Uri.parse(url));
-
       if (response.statusCode == 200) {
-        if (mounted) {
+        if (mounted)
           setState(() {
             _salesLog = jsonDecode(response.body);
-            _isLogLoading = false;
           });
-        }
-      } else {
-        throw Exception('Errore server nel caricare log vendite');
       }
     } catch (e) {
       print(e);
-      if (mounted) {
+    } finally {
+      if (mounted)
         setState(() {
           _isLogLoading = false;
+        });
+    }
+  }
+
+  Future<void> _fetchPhotos() async {
+    /* ... codice ... */
+    setState(() {
+      _isPhotosLoading = true;
+    });
+    try {
+      final itemId = widget.item['item_id'];
+      final url =
+          'http://trentin-nas.synology.me:4000/api/items/$itemId/photos';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        if (mounted)
+          setState(() {
+            _photos = jsonDecode(response.body);
+          });
+      }
+    } catch (e) {
+      print(e);
+    } finally {
+      if (mounted)
+        setState(() {
+          _isPhotosLoading = false;
+        });
+    }
+  }
+
+  // (3 - NUOVO) Funzione per scegliere e caricare una foto
+  Future<void> _pickAndUploadImage() async {
+    // (A) Apri il selettore file per scegliere un'immagine
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile == null) {
+      return; // L'utente ha annullato
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      // (B) Prepara la richiesta "multipart" (per file)
+      const url = 'http://trentin-nas.synology.me:4000/api/photos/upload';
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+
+      // (C) Aggiungi i campi di testo (come item_id)
+      request.fields['item_id'] = widget.item['item_id'].toString();
+      // TODO: Aggiungere un modo per selezionare la variante (variant_id)
+      // request.fields['description'] = 'Descrizione foto';
+
+      // (D) Aggiungi il file
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'photo', // Questo DEVE corrispondere a 'photo' in index.js
+          pickedFile.path,
+        ),
+      );
+
+      // (E) Invia la richiesta
+      var streamedResponse = await request.send();
+
+      // (F) Controlla la risposta
+      if (streamedResponse.statusCode == 201) {
+        _fetchPhotos(); // Successo! Ricarica la galleria
+      } else {
+        // Leggi la risposta di errore dal server
+        final response = await http.Response.fromStream(streamedResponse);
+        print('Errore upload: ${response.body}');
+      }
+    } catch (e) {
+      print('Errore (catch) durante l\'upload: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
         });
       }
     }
@@ -100,64 +177,54 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   // Funzione per copiare (invariata)
   void _copyToClipboard(String text) {
+    /* ... codice ... */
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Codice copiato negli appunti!')),
     );
   }
 
+  // --- FUNZIONE PRINCIPALE BUILD ---
   @override
   Widget build(BuildContext context) {
+    // ... (codice invariato) ...
     final item = widget.item;
 
     return Scaffold(
       appBar: AppBar(
+        /* ... codice appbar invariato ... */
         title: Text(item['name'] ?? 'Dettaglio Articolo'),
-
-        // (4 - NUOVO) Bottone "Vendi"
         actions: [
-          // Cerca questo blocco
           TextButton.icon(
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.primary,
             ),
             icon: const Icon(Icons.sell_outlined),
             label: const Text('VENDI'),
-
-            // (1) MODIFICHIAMO QUESTA FUNZIONE
             onPressed: () async {
-              // (2) Mostriamo il nostro nuovo pop-up e ASPETTIAMO una risposta
               final bool? saleRegistered = await showDialog(
                 context: context,
                 builder: (context) {
                   return SellItemDialog(
                     itemId: widget.item['item_id'],
                     hasVariants: widget.item['has_variants'] == 1,
-                    variants:
-                        _variants, // Passiamo la lista di varianti che abbiamo già caricato
+                    variants: _variants,
                   );
                 },
               );
-
-              // (3) Se il pop-up è stato chiuso con 'true' (vendita registrata!)...
               if (saleRegistered == true) {
-                // ... ricarichiamo SIA il log vendite CHE la lista varianti!
                 _fetchSalesLog();
-                if (widget.item['has_variants'] == 1) {
-                  _fetchVariants();
-                }
-                // TODO: In futuro, dovremo anche ricaricare l'articolo
-                //       principale per aggiornare il suo stato "is_sold".
+                if (widget.item['has_variants'] == 1) _fetchVariants();
               }
             },
           ),
-          const SizedBox(width: 8), // Un po' di spazio
+          const SizedBox(width: 8),
         ],
       ),
       body: ListView(
+        /* ... codice listview e sezioni info/varianti invariato ... */
         padding: const EdgeInsets.all(16.0),
         children: [
-          // --- Sezioni Info e Varianti (invariate) ---
           Text(
             'CODICE UNIVOCo',
             style: TextStyle(
@@ -222,9 +289,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                                 AddVariantPage(itemId: widget.item['item_id']),
                       ),
                     );
-                    if (newVariantAdded == true) {
-                      _fetchVariants();
-                    }
+                    if (newVariantAdded == true) _fetchVariants();
                   },
                 ),
               ],
@@ -240,7 +305,39 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             ),
           ],
 
-          // (5 - NUOVO) Sezione Log Vendite
+          // (4 - SEZIONE GALLERIA MODIFICATA)
+          const Divider(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'GALLERIA FOTO',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              // Bottone Aggiungi (ora è attivo!)
+              TextButton.icon(
+                // (5) Mostra un loader se sta caricando
+                icon:
+                    _isUploading
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.add_a_photo_outlined, size: 16),
+                label: const Text('Aggiungi'),
+                // (6) Collega la funzione e disabilita durante l'upload
+                onPressed: _isUploading ? null : _pickAndUploadImage,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildPhotoGallery(), // (invariato)
+          // --- Sezione Log Vendite (invariata) ---
           const Divider(height: 32),
           Text(
             'LOG VENDITE',
@@ -251,30 +348,104 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             ),
           ),
           const SizedBox(height: 8),
-          _buildSalesLogSection(), // Chiamiamo il nuovo widget
+          _buildSalesLogSection(),
         ],
       ),
     );
   }
 
-  // --- Widget Helper per le Varianti (invariato) ---
-  Widget _buildVariantsSection() {
-    if (_isVariantsLoading) {
+  // --- TUTTI I WIDGET HELPER (_build...Section, _buildInfoRow) ---
+  // --- SONO INVARIATI ---
+
+  Widget _buildPhotoGallery() {
+    /* ... codice invariato ... */
+    if (_isPhotosLoading)
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    }
-    if (_variants.isEmpty) {
+    if (_photos.isEmpty)
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Nessuna foto trovata.'),
+        ),
+      );
+    return SizedBox(
+      height: 120,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _photos.length,
+        // Cerca questo blocco (dentro _buildPhotoGallery)
+        itemBuilder: (context, index) {
+          final photo = _photos[index];
+          final photoUrl =
+              'http://trentin-nas.synology.me:4000/${photo['file_path']}';
+
+          // (1) SOSTITUISCI QUESTA PARTE
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: AspectRatio(
+                aspectRatio: 1,
+
+                // (2) CON QUESTA NUOVA PARTE
+                child: InkWell(
+                  // <-- Aggiunto InkWell per l'effetto "tocco"
+                  onTap: () {
+                    // (3) Apriamo la nuova pagina!
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        // (4) Usiamo fullscreenDialog per un'apertura "dal basso"
+                        fullscreenDialog: true,
+                        builder:
+                            (context) => PhotoViewerPage(photoUrl: photoUrl),
+                      ),
+                    );
+                  },
+                  // (5) Il resto del codice dell'immagine è ora "figlio" di InkWell
+                  child: Image.network(
+                    photoUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.broken_image, color: Colors.grey);
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildVariantsSection() {
+    /* ... codice invariato ... */
+    if (_isVariantsLoading)
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    if (_variants.isEmpty)
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna variante trovata.'),
         ),
       );
-    }
     return Column(
       children:
           _variants.map((variant) {
@@ -295,42 +466,30 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
-  // (6 - NUOVO) Widget Helper per il Log Vendite
   Widget _buildSalesLogSection() {
-    // Caso 1: Sta caricando
-    if (_isLogLoading) {
+    /* ... codice invariato ... */
+    if (_isLogLoading)
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    }
-
-    // Caso 2: Ha finito di caricare e la lista è vuota
-    if (_salesLog.isEmpty) {
+    if (_salesLog.isEmpty)
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna vendita registrata.'),
         ),
       );
-    }
-
-    // Caso 3: Ha finito di caricare e ci sono vendite
     return Column(
       children:
           _salesLog.map((sale) {
-            // Costruiamo il titolo (es. "Venduto su Vinted (Rosso, XL)")
             String title = 'Venduto su ${sale['platform_name'] ?? 'N/D'}';
-            if (sale['variant_name'] != null) {
+            if (sale['variant_name'] != null)
               title += ' (${sale['variant_name']})';
-            }
-
-            // Formattiamo la data (rimuoviamo l'ora)
             String date =
                 sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
-
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
@@ -348,9 +507,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
-  // --- Widget Helper per le righe (invariato) ---
   Widget _buildInfoRow(String label, String? value) {
-    // ... (codice invariato)
+    /* ... codice invariato ... */
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(

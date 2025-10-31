@@ -1,22 +1,36 @@
 const express = require("express"); // Il framework per il server
 const mysql = require("mysql2/promise"); // Il driver per MariaDB (usiamo la versione "promise" per codice più pulito)
-
 const cors = require("cors"); // Per permettere la comunicazione tra app e API
 const app = express();
 const PORT = 4000; // Scegliamo una porta su cui l'API ascolterà. Puoi cambiarla se la 3000 è occupata.
+const path = require('path');       // (1 - NUOVO) Pacchetto per gestire i percorsi
+const multer = require('multer');   // (2 - NUOVO) Pacchetto per gestire gli upload
 
 app.use(cors()); // Abilita CORS per tutte le richieste
-
 app.use(express.json()); // Permette al server di capire i dati JSON inviati dall'app (es. quando creiamo un articolo)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 4. Configurazione della connessione al Database
-
 const dbConfig = {
   host: "localhost", // O l'IP del tuo NAS se il DB non è sulla stessa macchina dell'API
   user: "eclettico_admin", // Sostituisci con il tuo utente
   password: "MercaAdmin25!", // Sostituisci con la tua password
   database: "eclettico_mercatino", // Sostituisci con il nome del DB che hai creato
 };
+
+const storage = multer.diskStorage({
+    // La destinazione è la cartella 'uploads' che abbiamo creato
+    destination: function (req, file, cb) {
+        cb(null, 'uploads');
+    },
+    // Creiamo un nome file univoco
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ storage: storage }); // Creiamo l'istanza di multer
 
 // Creiamo un "pool" di connessioni. È più efficiente che aprire e chiudere
 // una connessione per ogni singola richiesta.
@@ -490,6 +504,74 @@ app.get("/api/platforms", async (req, res) => {
     console.error("Errore in GET /api/platforms:", error);
     res.status(500).json({ error: "Errore nel recupero delle piattaforme" });
   }
+});
+
+// --- FOTO ---
+/*
+ * GET /api/items/:id/photos
+ * Recupera la lista di foto per un articolo (e le sue varianti)
+ */
+app.get('/api/items/:id/photos', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [photos] = await pool.query(
+            'SELECT * FROM photos WHERE item_id = ?', 
+            [id]
+        );
+        res.json(photos);
+    } catch (error) {
+        console.error(`Errore in GET /api/items/${id}/photos:`, error);
+        res.status(500).json({ error: 'Errore nel recupero delle foto' });
+    }
+});
+
+/*
+ * POST /api/photos/upload
+ * Carica una nuova foto e la salva nel database
+ */
+// (5 - NUOVO) Usiamo il middleware 'upload.single('photo')'
+// 'photo' deve essere il nome del campo che l'app userà
+app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
+    
+    // (A) Multer ha già salvato il file. I suoi dati sono in 'req.file'
+    if (!req.file) {
+        return res.status(400).json({ error: 'Nessun file caricato.' });
+    }
+
+    // (B) I dati del form (a quale articolo/variante appartiene) sono in 'req.body'
+    const { item_id, variant_id, description } = req.body;
+
+    if (!item_id) {
+        return res.status(400).json({ error: 'item_id è obbligatorio.' });
+    }
+
+    // (C) Creiamo il percorso URL per salvare nel DB
+    // es. "uploads/photo-123456.jpg"
+    const file_path = 'uploads/' + req.file.filename;
+
+    try {
+        // (D) Salviamo il riferimento nel DB
+        const sql = `
+            INSERT INTO photos (item_id, variant_id, file_path, description)
+            VALUES (?, ?, ?, ?)
+        `;
+        await pool.query(sql, [
+            item_id,
+            variant_id ? variant_id : null, // Salva null se variant_id è assente
+            file_path,
+            description
+        ]);
+        
+        // (E) Inviamo una risposta di successo con il percorso del file
+        res.status(201).json({
+            message: 'Foto caricata con successo!',
+            filePath: file_path 
+        });
+
+    } catch (error) {
+        console.error("Errore salvataggio foto su DB:", error);
+        res.status(500).json({ error: 'Errore durante il salvataggio della foto nel database' });
+    }
 });
 
 // ---------- AVVIO SERVER ----------
