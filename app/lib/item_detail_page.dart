@@ -53,18 +53,20 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           'http://trentin-nas.synology.me:4000/api/items/$itemId/variants';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _variants = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isVariantsLoading = false;
         });
+      }
     }
   }
 
@@ -78,18 +80,20 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       final url = 'http://trentin-nas.synology.me:4000/api/items/$itemId/sales';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _salesLog = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLogLoading = false;
         });
+      }
     }
   }
 
@@ -105,18 +109,20 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _photos = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isPhotosLoading = false;
         });
+      }
     }
   }
 
@@ -359,20 +365,22 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   Widget _buildPhotoGallery() {
     /* ... codice invariato ... */
-    if (_isPhotosLoading)
+    if (_isPhotosLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_photos.isEmpty)
+    }
+    if (_photos.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna foto trovata.'),
         ),
       );
+    }
     return SizedBox(
       height: 120,
       child: ListView.builder(
@@ -432,20 +440,22 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   Widget _buildVariantsSection() {
     /* ... codice invariato ... */
-    if (_isVariantsLoading)
+    if (_isVariantsLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_variants.isEmpty)
+    }
+    if (_variants.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna variante trovata.'),
         ),
       );
+    }
     return Column(
       children:
           _variants.map((variant) {
@@ -468,26 +478,29 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   Widget _buildSalesLogSection() {
     /* ... codice invariato ... */
-    if (_isLogLoading)
+    if (_isLogLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_salesLog.isEmpty)
+    }
+    if (_salesLog.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna vendita registrata.'),
         ),
       );
+    }
     return Column(
       children:
           _salesLog.map((sale) {
             String title = 'Venduto su ${sale['platform_name'] ?? 'N/D'}';
-            if (sale['variant_name'] != null)
+            if (sale['variant_name'] != null) {
               title += ' (${sale['variant_name']})';
+            }
             String date =
                 sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
             return Card(
