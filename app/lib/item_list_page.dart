@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:app/icon_helper.dart'; // (FIX 2) Importa l'helper
 import 'package:iconsax/iconsax.dart'; // (FIX 2) Importa iconsax
+import 'package:app/api_config.dart';
 
 class ItemListPage extends StatefulWidget {
   final int categoryId;
@@ -33,7 +34,7 @@ class _ItemListPageState extends State<ItemListPage> {
 
   Future<void> _fetchItemsByCategory() async {
     try {
-      final url = 'http://trentin-nas.synology.me:4000/api/items/category/${widget.categoryId}';
+      final url = '$kBaseUrl/api/items/category/${widget.categoryId}';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && mounted) {
         setState(() {

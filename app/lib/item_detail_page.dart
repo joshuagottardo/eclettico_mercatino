@@ -12,6 +12,7 @@ import 'package:app/add_item_page.dart';
 import 'package:app/edit_sale_dialog.dart';
 import 'package:app/icon_helper.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:app/api_config.dart';
 
 class ItemDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -127,8 +128,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   Future<void> _fetchItemDetails() async {
     try {
-      final url =
-          'http://trentin-nas.synology.me:4000/api/items/${_currentItem['item_id']}';
+      final url = '$kBaseUrl/api/items/${_currentItem['item_id']}';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && mounted) {
         setState(() {
@@ -145,8 +145,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     if (!mounted) return;
     try {
       final itemId = _currentItem['item_id'];
-      final url =
-          'http://trentin-nas.synology.me:4000/api/items/$itemId/variants';
+      final url = '$kBaseUrl/api/items/$itemId/variants';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && mounted) {
         setState(() {
@@ -168,7 +167,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     if (!mounted) return;
     try {
       final itemId = _currentItem['item_id'];
-      final url = 'http://trentin-nas.synology.me:4000/api/items/$itemId/sales';
+      final url = '$kBaseUrl/api/items/$itemId/sales';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && mounted) {
         setState(() {
@@ -190,8 +189,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     if (!mounted) return;
     try {
       final itemId = _currentItem['item_id'];
-      final url =
-          'http://trentin-nas.synology.me:4000/api/items/$itemId/photos';
+      final url = '$kBaseUrl/api/items/$itemId/photos';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && mounted) {
         setState(() {
@@ -212,7 +210,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     /* ... codice invariato ... */
     if (!mounted) return;
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/platforms';
+      const url = '$kBaseUrl/api/platforms';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && mounted) {
         setState(() {
@@ -242,7 +240,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       _isUploading = true;
     });
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/photos/upload';
+      const url = '$kBaseUrl/api/photos/upload';
       var request = http.MultipartRequest('POST', Uri.parse(url));
       request.fields['item_id'] = _currentItem['item_id'].toString();
       if (photoTarget != null) {
@@ -774,8 +772,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         itemCount: _photos.length,
         itemBuilder: (context, index) {
           final photo = _photos[index];
-          final photoUrl =
-              'http://trentin-nas.synology.me:4000/${photo['file_path']}';
+          final photoUrl = '$kBaseUrl/${photo['file_path']}';
           String targetName = 'Articolo Principale';
           if (photo['variant_id'] != null) {
             final matchingVariant = _variants.firstWhere(

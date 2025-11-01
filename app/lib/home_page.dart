@@ -11,6 +11,7 @@ import 'package:app/add_item_page.dart';
 import 'package:app/item_list_page.dart';
 import 'package:app/item_detail_page.dart';
 import 'package:app/library_page.dart';
+import 'package:app/api_config.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -41,8 +42,9 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final responses = await Future.wait([
-        http.get(Uri.parse('http://trentin-nas.synology.me:4000/api/dashboard/latest-sale')),
-        http.get(Uri.parse('http://trentin-nas.synology.me:4000/api/dashboard/latest-item')),
+        // (2 - MODIFICA) Usiamo kBaseUrl
+        http.get(Uri.parse('$kBaseUrl/api/dashboard/latest-sale')),
+        http.get(Uri.parse('$kBaseUrl/api/dashboard/latest-item')),
       ]);
 
       if (!mounted) return;
@@ -77,13 +79,13 @@ class _HomePageState extends State<HomePage> {
       _fetchDashboardData();
     }
   }
-  
+
   // Funzione per navigare al dettaglio dopo aver preso i dati
   void _navigateToDetail(int itemId) async {
     try {
-      final url = 'http://trentin-nas.synology.me:4000/api/items/$itemId';
+      final url = '$kBaseUrl/api/items/$itemId';
       final response = await http.get(Uri.parse(url));
-      
+
       if (response.statusCode == 200) {
         final itemData = jsonDecode(response.body);
         _navigateAndReload(ItemDetailPage(item: itemData));
@@ -94,7 +96,9 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore di rete durante il recupero dei dettagli.')),
+        SnackBar(
+          content: Text('Errore di rete durante il recupero dei dettagli.'),
+        ),
       );
     }
   }
@@ -109,66 +113,71 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _fetchDashboardData,
             tooltip: 'Aggiorna',
-          )
+          ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage != null
+      body:
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : _errorMessage != null
               ? Center(child: Text(_errorMessage!))
               : ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: [
-                    // --- Riga 1: I "Tastoni" ---
-                    Row(
-                      children: [
-                        _buildDashboardButton(
-                          context,
-                          icon: Icons.search,
-                          label: 'Ricerca',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const SearchPage()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        
-                        _buildDashboardButton(
-                          context,
-                          icon: Icons.inventory_2,
-                          label: 'Libreria',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const LibraryPage()),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 16),
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  // --- Riga 1: I "Tastoni" ---
+                  Row(
+                    children: [
+                      _buildDashboardButton(
+                        context,
+                        icon: Icons.search,
+                        label: 'Ricerca',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SearchPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 16),
 
-                        _buildDashboardButton(
-                          context,
-                          icon: Icons.add,
-                          label: 'Inserisci',
-                          onTap: () {
-                            _navigateAndReload(const AddItemPage());
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
+                      _buildDashboardButton(
+                        context,
+                        icon: Icons.inventory_2,
+                        label: 'Libreria',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LibraryPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 16),
 
-                    // --- Blocco ULTIME VENDITE ---
-                    _buildSalesList(),
+                      _buildDashboardButton(
+                        context,
+                        icon: Icons.add,
+                        label: 'Inserisci',
+                        onTap: () {
+                          _navigateAndReload(const AddItemPage());
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
 
-                    const SizedBox(height: 32),
+                  // --- Blocco ULTIME VENDITE ---
+                  _buildSalesList(),
 
-                    // --- Blocco ULTIMI ARRIVI ---
-                    _buildArrivalsList(),
-                  ],
-                ),
+                  const SizedBox(height: 32),
+
+                  // --- Blocco ULTIMI ARRIVI ---
+                  _buildArrivalsList(),
+                ],
+              ),
     );
   }
 
@@ -191,8 +200,11 @@ class _HomePageState extends State<HomePage> {
           ),
           child: Column(
             children: [
-              Icon(icon,
-                  size: 32, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                icon,
+                size: 32,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 8),
               Text(label, style: Theme.of(context).textTheme.titleMedium),
             ],
@@ -207,7 +219,10 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('ULTERIORI VENDITE'.toUpperCase(), style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'ULTERIORI VENDITE'.toUpperCase(),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 12),
         if (_latestSales.isEmpty)
           const Text('Nessuna vendita recente.')
@@ -223,19 +238,20 @@ class _HomePageState extends State<HomePage> {
 
   // Widget per la singola riga di vendita
   Widget _buildSaleTile(Map<String, dynamic> sale) {
-    String title = '${sale['item_name']} ${sale['variant_name'] != null ? '(${sale['variant_name']})' : ''}';
-    
+    String title =
+        '${sale['item_name']} ${sale['variant_name'] != null ? '(${sale['variant_name']})' : ''}';
+
     // CORREZIONE: Gestione sicura del prezzo
     String price = '+€ 0.00';
     if (sale['total_price'] != null) {
       // Usiamo toString() sulla stringa o sul numero per il parsing
       final num? total_price = num.tryParse(sale['total_price'].toString());
       if (total_price != null) {
-         if (total_price == total_price.toInt()) {
-             price = '+€ ${total_price.toInt()}';
-         } else {
-             price = '+€ ${total_price.toStringAsFixed(2)}';
-         }
+        if (total_price == total_price.toInt()) {
+          price = '+€ ${total_price.toInt()}';
+        } else {
+          price = '+€ ${total_price.toStringAsFixed(2)}';
+        }
       }
     }
 
@@ -249,12 +265,14 @@ class _HomePageState extends State<HomePage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(child: Text(
-              title, 
-              maxLines: 1, 
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyLarge,
-            )),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
             Text(
               price,
               style: TextStyle(
@@ -267,20 +285,24 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  
+
   // Widget per la lista dei Nuovi Arrivi
   Widget _buildArrivalsList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('ULTIMI ARRIVI'.toUpperCase(), style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'ULTIMI ARRIVI'.toUpperCase(),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 12),
         if (_latestItems.isEmpty)
           const Text('Nessun articolo aggiunto di recente.')
         else
           // Usiamo un ListView.separated per avere le linee divisorie
           ListView.separated(
-            physics: const NeverScrollableScrollPhysics(), // Non far scrollare la lista interna
+            physics:
+                const NeverScrollableScrollPhysics(), // Non far scrollare la lista interna
             shrinkWrap: true, // Adatta la lista al contenuto
             itemCount: _latestItems.length,
             separatorBuilder: (context, index) => const Divider(height: 16),
@@ -304,13 +326,23 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
         child: Row(
           children: [
-            Icon(Icons.new_releases, size: 20, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.new_releases,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item['name'] ?? 'Senza Nome', style: Theme.of(context).textTheme.bodyLarge),
-                Text(item['category_name'] ?? 'N/D', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  item['name'] ?? 'Senza Nome',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                Text(
+                  item['category_name'] ?? 'N/D',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ],

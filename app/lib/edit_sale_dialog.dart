@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:app/api_config.dart';
 
 class EditSaleDialog extends StatefulWidget {
   final Map<String, dynamic> sale;
@@ -65,7 +66,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     };
 
     try {
-      final url = 'http://trentin-nas.synology.me:4000/api/sales/${widget.sale['sale_id']}';
+      final url = '$kBaseUrl/api/sales/${widget.sale['sale_id']}';
       final response = await http.put(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -107,7 +108,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     if (confirmed != true) return;
     setState(() { _isLoading = true; });
     try {
-      final url = 'http://trentin-nas.synology.me:4000/api/sales/${widget.sale['sale_id']}';
+      final url = '$kBaseUrl/api/sales/${widget.sale['sale_id']}';
       final response = await http.delete(Uri.parse(url));
       if (response.statusCode == 200) {
         if (mounted) Navigator.pop(context, true);

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http; // (1 - NUOVO) Import per http.delete
 import 'package:path_provider/path_provider.dart';
+import 'package:app/api_config.dart';
 
 class PhotoViewerPage extends StatefulWidget {
   // (2 - MODIFICA) Riceviamo ID e URL
@@ -93,8 +94,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       _isDeleting = true;
     });
     try {
-      final url =
-          'http://trentin-nas.synology.me:4000/api/photos/${widget.photoId}';
+      final url = '$kBaseUrl/api/photos/${widget.photoId}';
       final response = await http.delete(Uri.parse(url));
 
       if (response.statusCode == 200) {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 // Importiamo le pagine necessarie
 import 'package:app/item_detail_page.dart'; 
+import 'package:app/api_config.dart';
 
 class AddItemPage extends StatefulWidget {
   final int? itemId;
@@ -59,7 +60,7 @@ class _AddItemPageState extends State<AddItemPage> {
 
   Future<void> _fetchCategories() async {
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/categories';
+      const url = '$kBaseUrl/api/categories';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         if (mounted)
@@ -79,7 +80,7 @@ class _AddItemPageState extends State<AddItemPage> {
 
   Future<void> _fetchPlatforms() async {
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/platforms';
+      const url = '$kBaseUrl/api/platforms';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         if (mounted)
@@ -99,8 +100,7 @@ class _AddItemPageState extends State<AddItemPage> {
 
   Future<void> _loadItemData() async {
     try {
-      final url =
-          'http://trentin-nas.synology.me:4000/api/items/${widget.itemId}';
+      final url = '$kBaseUrl/api/items/${widget.itemId}';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -165,8 +165,7 @@ class _AddItemPageState extends State<AddItemPage> {
     try {
       http.Response response;
       if (_isEditMode) {
-        final url =
-            'http://trentin-nas.synology.me:4000/api/items/${widget.itemId}';
+        final url = '$kBaseUrl/api/items/${widget.itemId}';
         response = await http.put(
           Uri.parse(url),
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -174,7 +173,7 @@ class _AddItemPageState extends State<AddItemPage> {
         );
       } else {
         // --- LOGICA DI CREAZIONE ---
-        const url = 'http://trentin-nas.synology.me:4000/api/items';
+        const url = '$kBaseUrl/api/items';
         response = await http.post(
           Uri.parse(url),
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -218,7 +217,7 @@ class _AddItemPageState extends State<AddItemPage> {
     // Poi, naviga al dettaglio dell'articolo appena creato
     // Usiamo una rotta 'GET /api/items/:id' per prelevare i dati completi
     try {
-        final url = 'http://trentin-nas.synology.me:4000/api/items/$itemId';
+        final url = '$kBaseUrl/api/items/$itemId';
         final response = await http.get(Uri.parse(url));
         
         if (response.statusCode == 200) {

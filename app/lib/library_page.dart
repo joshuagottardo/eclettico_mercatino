@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:app/item_list_page.dart';
 import 'package:app/icon_helper.dart'; // (FIX 2) Importa l'helper
+import 'package:app/api_config.dart';
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -25,7 +26,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
   Future<void> _fetchCategories() async {
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/categories';
+      const url = '$kBaseUrl/api/categories';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && mounted) {
         setState(() {

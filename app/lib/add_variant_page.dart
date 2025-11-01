@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:app/api_config.dart';
 
 class AddVariantPage extends StatefulWidget {
   final int itemId;
@@ -50,8 +51,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
   // (4 - NUOVO) Funzione per caricare i dati della variante
   Future<void> _loadVariantData() async {
     try {
-      final url =
-          'http://trentin-nas.synology.me:4000/api/variants/${widget.variantId}';
+      final url = '$kBaseUrl/api/variants/${widget.variantId}';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -87,7 +87,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
   // Funzione per caricare le piattaforme (invariata)
   Future<void> _fetchPlatforms() async {
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/platforms';
+      const url = '$kBaseUrl/api/platforms';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         if (mounted) {
@@ -128,8 +128,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
       // (6 - NUOVO) Logica per POST (Crea) o PUT (Modifica)
       if (_isEditMode) {
         // --- MODALITÀ MODIFICA ---
-        final url =
-            'http://trentin-nas.synology.me:4000/api/variants/${widget.variantId}';
+        final url = '$kBaseUrl/api/variants/${widget.variantId}';
         response = await http.put(
           Uri.parse(url),
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -137,8 +136,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
         );
       } else {
         // --- MODALITÀ CREAZIONE ---
-        final url =
-            'http://trentin-nas.synology.me:4000/api/items/${widget.itemId}/variants';
+        final url = '$kBaseUrl/api/items/${widget.itemId}/variants';
         response = await http.post(
           Uri.parse(url),
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -172,8 +170,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
       _isLoading = true;
     }); // Usiamo lo stesso loader
     try {
-      final url =
-          'http://trentin-nas.synology.me:4000/api/variants/${widget.variantId}';
+      final url = '$kBaseUrl/api/variants/${widget.variantId}';
       final response = await http.delete(Uri.parse(url));
 
       if (response.statusCode == 200) {
