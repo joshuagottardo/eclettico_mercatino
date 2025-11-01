@@ -559,6 +559,39 @@ app.get("/api/items/:id/sales", async (req, res) => {
 });
 
 /*
+ * GET /api/items/category/:id
+ * Recupera tutti gli articoli per una specifica categoria
+ */
+app.get('/api/items/category/:id', async (req, res) => {
+    const { id } = req.params; // Questo è il category_id
+
+    try {
+        const [items] = await pool.query(`
+            SELECT 
+                i.*, 
+                c.name as category_name,
+                
+                -- Logica per calcolare la quantità (esattamente come nella rotta /api/items)
+                IF(i.has_variants = 1, 
+                   IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
+                   i.quantity
+                ) AS display_quantity 
+                
+            FROM items i
+            LEFT JOIN categories c ON i.category_id = c.category_id
+            WHERE i.category_id = ?  -- La nuova condizione!
+            ORDER BY i.created_at DESC
+        `, [id]); // Passa l'ID di categoria
+        
+        res.json(items);
+
+    } catch (error) {
+        console.error(`Errore in GET /api/items/category/${id}:`, error);
+        res.status(500).json({ error: 'Errore nel recupero degli articoli' });
+    }
+});
+
+/*
  * POST /api/sales
  * Registra una nuova vendita e aggiorna le quantità
  */
@@ -1099,6 +1132,57 @@ app.delete('/api/photos/:id', async (req, res) => {
         res.status(500).json({ error: 'Errore durante l\'eliminazione della foto.' });
     } finally {
         if (connection) connection.release();
+    }
+});
+
+/*
+ * GET /api/dashboard/latest-sale (CORRETTO)
+ * Recupera le ULTIME 3 vendite registrate
+ */
+app.get('/api/dashboard/latest-sale', async (req, res) => {
+    try {
+        const [sales] = await pool.query(`
+            SELECT 
+                s.sale_id, s.total_price, s.sale_date,
+                p.name AS platform_name, 
+                v.variant_name,
+                i.name AS item_name,
+                i.item_id  -- Includiamo item_id per la navigazione!
+            FROM sales_log s
+            JOIN items i ON s.item_id = i.item_id
+            JOIN platforms p ON s.platform_id = p.platform_id
+            LEFT JOIN variants v ON s.variant_id = v.variant_id
+            ORDER BY s.sale_id DESC
+            LIMIT 3;
+        `);
+        // RESTITUISCE SEMPRE UNA LISTA (anche se vuota)
+        res.json(sales); 
+
+    } catch (error) {
+        console.error("Errore in GET /api/dashboard/latest-sale:", error);
+        res.status(500).json({ error: 'Errore nel recupero ultima vendita' });
+    }
+});
+
+/*
+ * GET /api/dashboard/latest-item (CORRETTO)
+ * Recupera gli ULTIMI 3 articoli aggiunti
+ */
+app.get('/api/dashboard/latest-item', async (req, res) => {
+    try {
+        const [items] = await pool.query(`
+            SELECT i.item_id, i.name, i.unique_code, c.name as category_name 
+            FROM items i
+            LEFT JOIN categories c ON i.category_id = c.category_id
+            ORDER BY i.item_id DESC
+            LIMIT 3;
+        `);
+        // RESTITUISCE SEMPRE UNA LISTA (anche se vuota)
+        res.json(items); 
+
+    } catch (error) {
+        console.error("Errore in GET /api/dashboard/latest-item:", error);
+        res.status(500).json({ error: 'Errore nel recupero ultimo articolo' });
     }
 });
 

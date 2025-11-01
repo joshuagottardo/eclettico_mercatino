@@ -53,10 +53,11 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       print('Errore download: $e');
       _showFeedback(success: false, message: 'Download fallito.');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isDownloading = false;
         });
+      }
     }
   }
 
@@ -111,10 +112,11 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     } catch (e) {
       _showFeedback(success: false, message: 'Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isDeleting = false;
         });
+      }
     }
   }
 

@@ -66,18 +66,20 @@ class _AddItemPageState extends State<AddItemPage> {
       const url = 'http://trentin-nas.synology.me:4000/api/categories';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _categories = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       _showError('Errore caricamento categorie');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _categoriesLoading = false;
         });
+      }
     }
   }
 
@@ -87,18 +89,20 @@ class _AddItemPageState extends State<AddItemPage> {
       const url = 'http://trentin-nas.synology.me:4000/api/platforms';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _platforms = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       _showError('Errore caricamento piattaforme');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _platformsLoading = false;
         });
+      }
     }
   }
 
@@ -136,10 +140,11 @@ class _AddItemPageState extends State<AddItemPage> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isPageLoading = false;
         });
+      }
     }
   }
 
@@ -164,7 +169,11 @@ class _AddItemPageState extends State<AddItemPage> {
       "has_variants": _hasVariants,
       "quantity": _hasVariants ? null : int.tryParse(_quantityController.text),
       "purchase_price":
-          _hasVariants ? null : double.tryParse(_purchasePriceController.text),
+          _hasVariants
+              ? null
+              : double.tryParse(
+                _purchasePriceController.text.replaceAll(',', '.'),
+              ),
       // (6 - MODIFICA) Inviamo la lista di ID
       "platforms": _selectedPlatformIds.toList(),
     };
@@ -197,10 +206,11 @@ class _AddItemPageState extends State<AddItemPage> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 

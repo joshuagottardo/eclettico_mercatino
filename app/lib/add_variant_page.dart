@@ -90,18 +90,20 @@ class _AddVariantPageState extends State<AddVariantPage> {
       const url = 'http://trentin-nas.synology.me:4000/api/platforms';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _platforms = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       _showError('Errore caricamento piattaforme');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _platformsLoading = false;
         });
+      }
     }
   }
 
@@ -152,10 +154,11 @@ class _AddVariantPageState extends State<AddVariantPage> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -183,10 +186,11 @@ class _AddVariantPageState extends State<AddVariantPage> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 

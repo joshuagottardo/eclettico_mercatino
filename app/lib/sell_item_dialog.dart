@@ -120,10 +120,11 @@ class _SellItemDialogState extends State<SellItemDialog> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -245,8 +246,9 @@ class _SellItemDialogState extends State<SellItemDialog> {
                               keyboardType: TextInputType.number,
                               // (8 - NUOVO) Validatore
                               validator: (value) {
-                                if (value == null || value.isEmpty)
+                                if (value == null || value.isEmpty) {
                                   return 'Obbl.';
+                                }
                                 final int? enteredQuantity = int.tryParse(
                                   value,
                                 );

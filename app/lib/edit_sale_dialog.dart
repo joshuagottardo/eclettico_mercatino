@@ -46,7 +46,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
 
     // (3 - NUOVO) Calcola lo stock massimo
     // Stock attuale + Quantità già inclusa in questa vendita = Totale
-    _maxAvailableQuantity = (widget.currentStock + (widget.sale['quantity_sold'] ?? 0)).toInt();
+    _maxAvailableQuantity = (widget.currentStock + (num.tryParse(widget.sale['quantity_sold'].toString()) ?? 0)).toInt();
   }
 
   // Funzione per MODIFICARE la vendita (invariata)

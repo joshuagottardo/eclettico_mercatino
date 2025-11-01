@@ -96,10 +96,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isVariantsLoading = false;
         });
+      }
     }
   }
 
@@ -117,10 +118,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLogLoading = false;
         });
+      }
     }
   }
 
@@ -139,10 +141,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isPhotosLoading = false;
         });
+      }
     }
   }
 
@@ -159,10 +162,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print('Errore caricamento piattaforme: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _platformsLoading = false;
         });
+      }
     }
   }
 
@@ -197,15 +201,16 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print('Errore (catch) durante l\'upload: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isUploading = false;
         });
+      }
     }
   }
 
   Future<dynamic> _showPhotoTargetDialog() {
-    dynamic selectedTarget = null;
+    dynamic selectedTarget;
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -240,7 +245,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                             }),
                         activeColor: Theme.of(context).colorScheme.primary,
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),
@@ -726,20 +731,22 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   // (2 - MODIFICA) Sezione Varianti
   Widget _buildVariantsSection() {
-    if (_isVariantsLoading)
+    if (_isVariantsLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_variants.isEmpty)
+    }
+    if (_variants.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna variante trovata.'),
         ),
       );
+    }
 
     return Column(
       children:
@@ -801,26 +808,29 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   Widget _buildSalesLogSection() {
     // ... (codice invariato con il fix per lo stock) ...
-    if (_isLogLoading)
+    if (_isLogLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_salesLog.isEmpty)
+    }
+    if (_salesLog.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna vendita registrata.'),
         ),
       );
+    }
     return Column(
       children:
           _salesLog.map((sale) {
             String title = 'Venduto su ${sale['platform_name'] ?? 'N/D'}';
-            if (sale['variant_name'] != null)
+            if (sale['variant_name'] != null) {
               title += ' (${sale['variant_name']})';
+            }
             String date =
                 sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
             return Card(
