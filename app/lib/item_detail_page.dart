@@ -43,9 +43,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   final Color _soldColor = Colors.red[500]!;
   final Color _availableColor = Colors.green[500]!;
   final Color _headerTextColor = Colors.grey[600]!;
-  
+
   // Colore per il card del Log Vendite
-  final Color _logDrawerColor = const Color(0xFF161616); 
+  final Color _logDrawerColor = const Color(0xFF161616);
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     return WillPopScope(
       onWillPop: () async {
         // Torna indietro e indica se i dati sono cambiati per ricaricare la Home/Lista
-        Navigator.pop(context, _dataDidChange); 
+        Navigator.pop(context, _dataDidChange);
         return false;
       },
       child: Scaffold(
@@ -78,12 +78,14 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             IconButton(
               tooltip: 'Copia Codice: ${_currentItem['unique_code'] ?? 'N/D'}',
               icon: const Icon(Iconsax.copy),
-              onPressed: () => _copyToClipboard(_currentItem['unique_code'].toString()),
+              onPressed:
+                  () =>
+                      _copyToClipboard(_currentItem['unique_code'].toString()),
             ),
-            
+
             // FIX 2: RIMOSSO Tasto Aggiorna (Icons.refresh)
 
-             // Bottone Modifica Articolo
+            // Bottone Modifica Articolo
             IconButton(
               tooltip: 'Modifica Articolo',
               icon: const Icon(Icons.edit),
@@ -91,9 +93,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 final bool? dataChanged = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => AddItemPage(
-                      itemId: _currentItem['item_id'],
-                    ),
+                    builder:
+                        (context) =>
+                            AddItemPage(itemId: _currentItem['item_id']),
                   ),
                 );
                 if (dataChanged == true) {
@@ -102,26 +104,33 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 }
               },
             ),
-             // Bottone Vendi Articolo
+            // Bottone Vendi Articolo
             IconButton(
               tooltip: 'Registra Vendita',
               icon: const Icon(Icons.sell_outlined),
-              onPressed: _calculateTotalStock() > 0 ? () async {
-                final bool? dataChanged = await showDialog(
-                  context: context,
-                  builder: (context) => SellItemDialog(
-                    itemId: _currentItem['item_id'],
-                    variants: _variants, 
-                    allPlatforms: _allPlatforms,
-                    hasVariants: _currentItem['has_variants'] == 1,
-                    mainItemQuantity: (_currentItem['quantity'] as num?)?.toInt() ?? 0,
-                  ),
-                );
-                if (dataChanged == true) {
-                  _dataDidChange = true;
-                  _refreshAllData();
-                }
-              } : null, // Disabilita se stock è zero
+              onPressed:
+                  _calculateTotalStock() > 0
+                      ? () async {
+                        final bool? dataChanged = await showDialog(
+                          context: context,
+                          builder:
+                              (context) => SellItemDialog(
+                                itemId: _currentItem['item_id'],
+                                variants: _variants,
+                                allPlatforms: _allPlatforms,
+                                hasVariants: _currentItem['has_variants'] == 1,
+                                mainItemQuantity:
+                                    (_currentItem['quantity'] as num?)
+                                        ?.toInt() ??
+                                    0,
+                              ),
+                        );
+                        if (dataChanged == true) {
+                          _dataDidChange = true;
+                          _refreshAllData();
+                        }
+                      }
+                      : null, // Disabilita se stock è zero
             ),
           ],
         ),
@@ -149,7 +158,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 if (_allPlatforms.isNotEmpty && !_platformsLoading)
                   Text(
                     'PIATTAFORME',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                 if (_allPlatforms.isNotEmpty && !_platformsLoading)
                   _buildPlatformsSection(),
@@ -159,7 +170,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 if (_currentItem['has_variants'] == 1) ...[
                   Text(
                     'VARIANTI',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                   const SizedBox(height: 8),
                   _buildVariantsSection(),
@@ -169,7 +182,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 // --- 6. GALLERIA FOTO ---
                 Text(
                   'GALLERIA FOTO',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                 ),
                 const SizedBox(height: 8),
                 _buildPhotoGallery(),
@@ -187,7 +202,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   // --- FUNZIONI DI CARICAMENTO DATI (Invariate) ---
-  
+
   Future<void> _refreshAllData() async {
     if (mounted) {
       setState(() {
@@ -305,42 +320,79 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   // --- FUNZIONI DI AZIONE (Invariate) ---
-  
+
+  // Funzioni di caricamento (AGGIORNATE per selezione multipla)
   Future<void> _pickAndUploadImage() async {
     final dynamic photoTarget = await _showPhotoTargetDialog();
     if (photoTarget == 'cancel') return;
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile == null) return;
+
+    // (FIX 1) Usa pickMultiImage per selezionare più file
+    final List<XFile>? pickedFiles = await _picker.pickMultiImage();
+
+    // Controlla se almeno un file è stato selezionato
+    if (pickedFiles == null || pickedFiles.isEmpty) return;
+
+    // Avvia l'indicatore di caricamento
     setState(() {
       _isUploading = true;
     });
+
     try {
-      const url = '$kBaseUrl/api/photos/upload';
-      var request = http.MultipartRequest('POST', Uri.parse(url));
-      request.fields['item_id'] = _currentItem['item_id'].toString();
-      if (photoTarget != null) {
-        request.fields['variant_id'] = photoTarget.toString();
+      // (FIX 2) Itera su ogni file selezionato per l'upload
+      for (final XFile pickedFile in pickedFiles) {
+        await _uploadSingleImage(pickedFile, photoTarget);
       }
-      request.files.add(
-        await http.MultipartFile.fromPath('photo', pickedFile.path),
+
+      // Se almeno un upload ha avuto successo, ricarica la galleria
+      _dataDidChange = true;
+      _fetchPhotos();
+
+      // Mostra un feedback di successo per il blocco di file
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Caricamento di ${pickedFiles.length} foto completato!',
+          ),
+        ),
       );
-      var streamedResponse = await request.send();
-      if (streamedResponse.statusCode == 201) {
-        _dataDidChange = true;
-        _fetchPhotos();
-      } else {
-        final response = await http.Response.fromStream(streamedResponse);
-        print('Errore upload: ${response.body}');
-      }
     } catch (e) {
-      print('Errore (catch) durante l\'upload: $e');
+      print('Errore (catch) durante l\'upload multiplo: $e');
+      // La gestione dell'errore per il singolo file è spostata in _uploadSingleImage
     } finally {
       if (mounted)
         setState(() {
           _isUploading = false;
         });
+    }
+  }
+
+  // (NUOVA FUNZIONE) Gestisce l'upload di un singolo file
+  Future<void> _uploadSingleImage(XFile pickedFile, dynamic photoTarget) async {
+    try {
+      const url = '$kBaseUrl/api/photos/upload';
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+
+      request.fields['item_id'] = _currentItem['item_id'].toString();
+      if (photoTarget != null) {
+        request.fields['variant_id'] = photoTarget.toString();
+      }
+
+      request.files.add(
+        await http.MultipartFile.fromPath('photo', pickedFile.path),
+      );
+
+      var streamedResponse = await request.send();
+
+      if (streamedResponse.statusCode != 201) {
+        final response = await http.Response.fromStream(streamedResponse);
+        print('Errore upload di ${pickedFile.name}: ${response.body}');
+        // Potresti voler mostrare un errore per ogni file fallito qui,
+        // ma per ora logghiamo e proseguiamo con il prossimo file.
+      }
+    } catch (e) {
+      print('Errore upload di ${pickedFile.name}: $e');
+      // Ignora l'errore per continuare con il prossimo file, l'errore generale
+      // verrà catturato dal blocco superiore se necessario.
     }
   }
 
@@ -420,7 +472,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       return (_currentItem['quantity'] as num?)?.toInt() ?? 0;
     }
   }
-  
+
   // Widget _buildPriceAndPurchaseInfo() { ... } (Invariato)
   Widget _buildPriceAndPurchaseInfo() {
     final String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}';
@@ -435,8 +487,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             children: [
               Text(
                 'VALORE STIMATO',
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: _headerTextColor),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
               ),
               const SizedBox(height: 4),
               Text(
@@ -457,8 +510,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             children: [
               Text(
                 'PREZZO ACQUISTO',
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: _headerTextColor),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
               ),
               const SizedBox(height: 4),
               Text(
@@ -474,31 +528,25 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       ],
     );
   }
-  
+
   // Widget _buildInfoDetailSection() { ... } (Invariato)
   Widget _buildInfoDetailSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoRow(
-          'CATEGORIA', 
-          _currentItem['category_name'], 
-          _currentItem['category_name'] != null ? getIconForCategory(_currentItem['category_name']) : Iconsax.box_1,
+          'CATEGORIA',
+          _currentItem['category_name'],
+          _currentItem['category_name'] != null
+              ? getIconForCategory(_currentItem['category_name'])
+              : Iconsax.box_1,
         ),
-        _buildInfoRow(
-          'BRAND', 
-          _currentItem['brand'],
-          Iconsax.tag
-        ),
-        _buildInfoRow(
-          'DESCRIZIONE', 
-          _currentItem['description'],
-          Iconsax.text
-        ),
+        _buildInfoRow('BRAND', _currentItem['brand'], Iconsax.tag),
+        _buildInfoRow('DESCRIZIONE', _currentItem['description'], Iconsax.text),
       ],
     );
   }
-  
+
   // Widget _buildInfoRow(...) { ... } (Invariato)
   Widget _buildInfoRow(String label, String? value, [IconData? icon]) {
     return Padding(
@@ -526,12 +574,14 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             value ?? 'Non specificato',
             style: const TextStyle(fontSize: 16),
           ),
-          const Divider(height: 1, color: Color(0xFF2A2A2A)), // Divisore più discreto
+          const Divider(
+            height: 1,
+            color: Color(0xFF2A2A2A),
+          ), // Divisore più discreto
         ],
       ),
     );
   }
-
 
   // Widget _buildStockAndSalePrice() { ... } (Invariato)
   Widget _buildStockAndSalePrice() {
@@ -552,15 +602,14 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 children: [
                   Text(
                     'PEZZI DISPONIBILI', // Titolo intero
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: _headerTextColor),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     totalStock.toString(),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.copyWith(
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: totalStock > 0 ? _availableColor : _soldColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 34,
@@ -583,15 +632,14 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 children: [
                   Text(
                     'PREZZO VENDITA',
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: _headerTextColor),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     salePrice,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.copyWith(
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: accentColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 34,
@@ -660,7 +708,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           child: Container(
             height: _isSalesLogOpen ? null : 0, // Altezza dinamica
             // Lo sfondo del corpo del log sarà lo stesso della Card
-            color: _logDrawerColor, 
+            color: _logDrawerColor,
             child: Visibility(
               visible: _isSalesLogOpen,
               child: _buildSalesLogSection(),
@@ -684,7 +732,10 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
-          child: Text('Nessuna vendita registrata.', style: TextStyle(color: Colors.white70)),
+          child: Text(
+            'Nessuna vendita registrata.',
+            style: TextStyle(color: Colors.white70),
+          ),
         ),
       );
 
@@ -700,7 +751,10 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
 
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 4.0,
+              ),
               child: ListTile(
                 leading: Icon(Iconsax.coin, color: _availableColor),
                 title: Text(
@@ -776,14 +830,20 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     if (platformIds.isEmpty || _allPlatforms.isEmpty) {
       return const SizedBox.shrink();
     }
-    
-    final List<String> platformNames = platformIds.map((id) {
-      final platform = _allPlatforms.firstWhere(
-        (p) => (p['platform_id'] as num?)?.toInt() == (id as num?)?.toInt(),
-        orElse: () => null,
-      );
-      return platform != null ? platform['name'].toString() : null;
-    }).whereType<String>().toList();
+
+    final List<String> platformNames =
+        platformIds
+            .map((id) {
+              final platform = _allPlatforms.firstWhere(
+                (p) =>
+                    (p['platform_id'] as num?)?.toInt() ==
+                    (id as num?)?.toInt(),
+                orElse: () => null,
+              );
+              return platform != null ? platform['name'].toString() : null;
+            })
+            .whereType<String>()
+            .toList();
 
     if (platformNames.isEmpty) {
       return const SizedBox.shrink();
@@ -800,10 +860,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 color: Colors.grey[850],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                name,
-                style: const TextStyle(color: Colors.white70),
-              ),
+              child: Text(name, style: const TextStyle(color: Colors.white70)),
             );
           }).toList(),
     );
@@ -812,7 +869,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   // --- WIDGET VARIANTE ---
   Widget _buildVariantsSection() {
     final Color _soldColor = Colors.red[500]!;
-    final Color _availableColor = Colors.green[500]!; // FIX 4: Colore verde per disponibile
+    final Color _availableColor =
+        Colors.green[500]!; // FIX 4: Colore verde per disponibile
 
     if (_isVariantsLoading)
       return const Center(
@@ -857,7 +915,10 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                     Text(
                       'Pezzi: ${(variant['quantity'] as num?)?.toInt() ?? 0} | Prezzo Acq: € ${variant['purchase_price']}',
                       style: TextStyle(
-                        color: isVariantSold ? Colors.grey[400] : Colors.grey[300], // Colore del sottotitolo
+                        color:
+                            isVariantSold
+                                ? Colors.grey[400]
+                                : Colors.grey[300], // Colore del sottotitolo
                       ),
                     ),
                     // FIX 3: RIMOSSO _buildVariantPlatformsList(variant['platforms'] ?? []),
@@ -909,7 +970,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 onPressed: _pickAndUploadImage,
                 icon: const Icon(Iconsax.image),
                 label: const Text('Aggiungi foto'),
-              )
+              ),
           ],
         ),
       );
@@ -1022,9 +1083,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               onPressed: _pickAndUploadImage,
               icon: const Icon(Iconsax.add_square),
               label: const Text('Aggiungi foto'),
-              style: TextButton.styleFrom(
-                foregroundColor: accentColor,
-              ),
+              style: TextButton.styleFrom(foregroundColor: accentColor),
             ),
           ),
       ],
