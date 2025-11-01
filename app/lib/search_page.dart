@@ -183,7 +183,7 @@ class _SearchPageState extends State<SearchPage> {
                           value: category['category_id'],
                           child: Text(category['name']),
                         );
-                      }).toList(),
+                      }),
                     ],
                     onChanged: (value) {
                       setSheetState(() {
@@ -206,7 +206,7 @@ class _SearchPageState extends State<SearchPage> {
                           value: brand,
                           child: Text(brand),
                         );
-                      }).toList(),
+                      }),
                     ],
                     onChanged: (value) {
                       setSheetState(() {

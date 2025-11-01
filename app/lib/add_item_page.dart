@@ -63,18 +63,20 @@ class _AddItemPageState extends State<AddItemPage> {
       const url = '$kBaseUrl/api/categories';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _categories = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       _showError('Errore caricamento categorie');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _categoriesLoading = false;
         });
+      }
     }
   }
 
@@ -83,18 +85,20 @@ class _AddItemPageState extends State<AddItemPage> {
       const url = '$kBaseUrl/api/platforms';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _platforms = jsonDecode(response.body);
           });
+        }
       }
     } catch (e) {
       _showError('Errore caricamento piattaforme');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _platformsLoading = false;
         });
+      }
     }
   }
 
@@ -130,10 +134,11 @@ class _AddItemPageState extends State<AddItemPage> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isPageLoading = false;
         });
+      }
     }
   }
 
@@ -202,10 +207,11 @@ class _AddItemPageState extends State<AddItemPage> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
   

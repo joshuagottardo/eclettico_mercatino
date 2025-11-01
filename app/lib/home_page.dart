@@ -11,7 +11,7 @@ import 'package:app/add_item_page.dart';
 import 'package:app/item_list_page.dart';
 import 'package:app/item_detail_page.dart';
 import 'package:app/library_page.dart';
-import 'package:app/api_config.dart';
+import 'package:app/api_config.dart'; // Importato l'URL base
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -42,7 +42,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final responses = await Future.wait([
-        // (2 - MODIFICA) Usiamo kBaseUrl
+        // Usiamo kBaseUrl
         http.get(Uri.parse('$kBaseUrl/api/dashboard/latest-sale')),
         http.get(Uri.parse('$kBaseUrl/api/dashboard/latest-item')),
       ]);
@@ -83,6 +83,7 @@ class _HomePageState extends State<HomePage> {
   // Funzione per navigare al dettaglio dopo aver preso i dati
   void _navigateToDetail(int itemId) async {
     try {
+      // Usiamo kBaseUrl
       final url = '$kBaseUrl/api/items/$itemId';
       final response = await http.get(Uri.parse(url));
 
@@ -169,19 +170,31 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 32),
 
-                  // --- Blocco ULTIME VENDITE ---
-                  _buildSalesList(),
+                  // FIX 2: Avvolgiamo la lista delle vendite in un Card
+                  Card(
+                    color: Colors.black, // <-- Cambiato a nero
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildSalesList(),
+                    ),
+                  ),
 
                   const SizedBox(height: 32),
 
-                  // --- Blocco ULTIMI ARRIVI ---
-                  _buildArrivalsList(),
+                  // FIX 2: Impostiamo il colore del Card su nero per gli ULTIMI ARRIVI
+                  Card(
+                    color: Colors.black, // <-- Cambiato a nero
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildArrivalsList(),
+                    ),
+                  ),
                 ],
               ),
     );
   }
 
-  // Widget Helper per i "Tastoni"
+  // Widget Helper per i "Tastoni" (Invariato)
   Widget _buildDashboardButton(
     BuildContext context, {
     required IconData icon,
@@ -214,16 +227,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la lista delle Vendite
+  // Widget per la lista delle Vendite (AGGIORNATO)
   Widget _buildSalesList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // FIX 1 e 3: Nuovo Titolo e stile più marcato
         Text(
-          'ULTERIORI VENDITE'.toUpperCase(),
-          style: Theme.of(context).textTheme.titleMedium,
+          'ULTIME VENDITE',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (_latestSales.isEmpty)
           const Text('Nessuna vendita recente.')
         else
@@ -236,21 +253,21 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la singola riga di vendita
   Widget _buildSaleTile(Map<String, dynamic> sale) {
     String title =
         '${sale['item_name']} ${sale['variant_name'] != null ? '(${sale['variant_name']})' : ''}';
 
     // CORREZIONE: Gestione sicura del prezzo
-    String price = '+€ 0.00';
+    String price = '€ 0.00';
     if (sale['total_price'] != null) {
-      // Usiamo toString() sulla stringa o sul numero per il parsing
       final num? total_price = num.tryParse(sale['total_price'].toString());
       if (total_price != null) {
         if (total_price == total_price.toInt()) {
-          price = '+€ ${total_price.toInt()}';
+          // FIX CHIAVE: Rimosso il '+'
+          price = '€ ${total_price.toInt()}';
         } else {
-          price = '+€ ${total_price.toStringAsFixed(2)}';
+          // FIX CHIAVE: Rimosso il '+'
+          price = '€ ${total_price.toStringAsFixed(2)}';
         }
       }
     }
@@ -286,16 +303,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la lista dei Nuovi Arrivi
+  // Widget per la lista dei Nuovi Arrivi (AGGIORNATO)
   Widget _buildArrivalsList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // FIX 3: Nuovo Titolo e stile più marcato
         Text(
-          'ULTIMI ARRIVI'.toUpperCase(),
-          style: Theme.of(context).textTheme.titleMedium,
+          'ULTIMI ARRIVI',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (_latestItems.isEmpty)
           const Text('Nessun articolo aggiunto di recente.')
         else
@@ -315,7 +336,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la singola riga di arrivo
+  // Widget per la singola riga di arrivo (Invariato)
   Widget _buildArrivalTile(Map<String, dynamic> item) {
     return InkWell(
       onTap: () {

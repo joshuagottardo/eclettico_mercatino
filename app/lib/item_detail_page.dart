@@ -70,8 +70,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            (_currentItem['is_sold'] == 1 ? 'Venduto · ' : '') +
-                'Dettaglio articolo',
+            '${_currentItem['is_sold'] == 1 ? 'Venduto · ' : ''}Dettaglio articolo',
           ),
           actions: [
             // FIX 1: Tasto Copia (Codice Univoco)
@@ -250,10 +249,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isVariantsLoading = false;
         });
+      }
     }
   }
 
@@ -271,10 +271,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLogLoading = false;
         });
+      }
     }
   }
 
@@ -292,10 +293,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print(e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isPhotosLoading = false;
         });
+      }
     }
   }
 
@@ -312,10 +314,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     } catch (e) {
       print('Errore caricamento piattaforme: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _platformsLoading = false;
         });
+      }
     }
   }
 
@@ -327,7 +330,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     if (photoTarget == 'cancel') return;
 
     // (FIX 1) Usa pickMultiImage per selezionare più file
-    final List<XFile>? pickedFiles = await _picker.pickMultiImage();
+    final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
     // Controlla se almeno un file è stato selezionato
     if (pickedFiles == null || pickedFiles.isEmpty) return;
@@ -359,10 +362,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       print('Errore (catch) durante l\'upload multiplo: $e');
       // La gestione dell'errore per il singolo file è spostata in _uploadSingleImage
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isUploading = false;
         });
+      }
     }
   }
 
@@ -397,7 +401,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<dynamic> _showPhotoTargetDialog() {
-    dynamic selectedTarget = null;
+    dynamic selectedTarget;
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -432,7 +436,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                             }),
                         activeColor: Theme.of(context).colorScheme.primary,
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),
@@ -721,14 +725,15 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   // Widget _buildSalesLogSection() { ... } (Invariato)
   Widget _buildSalesLogSection() {
-    if (_isLogLoading)
+    if (_isLogLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_salesLog.isEmpty)
+    }
+    if (_salesLog.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
@@ -738,6 +743,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           ),
         ),
       );
+    }
 
     return Column(
       children:
@@ -868,36 +874,38 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   // --- WIDGET VARIANTE ---
   Widget _buildVariantsSection() {
-    final Color _soldColor = Colors.red[500]!;
-    final Color _availableColor =
+    final Color soldColor = Colors.red[500]!;
+    final Color availableColor =
         Colors.green[500]!; // FIX 4: Colore verde per disponibile
 
-    if (_isVariantsLoading)
+    if (_isVariantsLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_variants.isEmpty)
+    }
+    if (_variants.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: Text('Nessuna variante trovata.'),
         ),
       );
+    }
 
     return Column(
       children:
           _variants.map((variant) {
             final bool isVariantSold = variant['is_sold'] == 1;
             final Color statusColor =
-                isVariantSold ? _soldColor : _availableColor;
+                isVariantSold ? soldColor : availableColor;
 
             return Card(
               color:
                   isVariantSold
-                      ? _soldColor.withOpacity(0.2)
+                      ? soldColor.withOpacity(0.2)
                       : Theme.of(context).cardColor,
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
@@ -950,14 +958,15 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   // Widget _buildPhotoGallery() { ... } (Invariato)
   Widget _buildPhotoGallery() {
     final Color accentColor = Theme.of(context).colorScheme.primary;
-    if (_isPhotosLoading)
+    if (_isPhotosLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
           child: CircularProgressIndicator(),
         ),
       );
-    if (_photos.isEmpty)
+    }
+    if (_photos.isEmpty) {
       return Center(
         child: Column(
           children: [
@@ -974,6 +983,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           ],
         ),
       );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
