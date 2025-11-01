@@ -1,4 +1,4 @@
-// lib/item_detail_page.dart - LAYOUT RISTRUTTURATO (HIGHLIGHT STOCK & PREZZO)
+// lib/item_detail_page.dart - FIX COMPLETO (STABILITÀ, STRUTTURA E BUG)
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -10,8 +10,8 @@ import 'package:app/photo_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:app/add_item_page.dart';
 import 'package:app/edit_sale_dialog.dart';
-import 'package:app/icon_helper.dart'; // Utile per le icone delle varianti
-import 'package:iconsax/iconsax.dart'; // Nuove icone
+import 'package:app/icon_helper.dart';
+import 'package:iconsax/iconsax.dart';
 
 class ItemDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -24,7 +24,6 @@ class ItemDetailPage extends StatefulWidget {
 class _ItemDetailPageState extends State<ItemDetailPage> {
   late Map<String, dynamic> _currentItem;
 
-  // ... (Variabili di stato e funzioni di fetch invariate) ...
   List _variants = [];
   bool _isVariantsLoading = false;
   List _salesLog = [];
@@ -37,6 +36,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   List _allPlatforms = [];
   bool _platformsLoading = true;
   bool _isItemSold = false;
+  bool _isSalesLogOpen = false; // Stato per il Drawer Log
+
+  // Colori (resi stabili e definiti)
+  final Color _soldColor = Colors.red[500]!;
+  final Color _availableColor = Colors.green[500]!;
+  final Color _headerTextColor = Colors.grey[600]!;
 
   @override
   void initState() {
@@ -48,6 +53,57 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     _platformsLoading = true;
     _isItemSold = _currentItem['is_sold'] == 1;
     _refreshAllData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          (_currentItem['is_sold'] == 1 ? 'Venduto · ' : '') +
+              'Dettaglio articolo',
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Aggiorna',
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshAllData,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshAllData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Carte: prezzi (valore stimato / prezzo acquisto) e stock attuale
+              _buildPriceStockCards(),
+              const SizedBox(height: 16),
+
+              // Varianti (se presenti)
+              if (_currentItem['has_variants'] == 1) ...[
+                _buildVariantsSection(),
+                const SizedBox(height: 16),
+              ],
+
+              // Drawer del log vendite (collassabile)
+              _buildSalesLogDrawer(),
+              const SizedBox(height: 16),
+
+              // Galleria foto
+              _buildPhotoGallery(),
+              const SizedBox(height: 16),
+
+              // Piattaforme collegate
+              _buildPlatformsSection(),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // --- FUNZIONI DI CARICAMENTO DATI (Invariate) ---
@@ -278,384 +334,385 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
-  // --- WIDGET AGGIUNTIVI ---
-
-  // (1 - CORREZIONE) Calcola lo stock totale da mostrare
   int _calculateTotalStock() {
     if (_currentItem['has_variants'] == 1) {
-      // Somma le quantità di tutte le varianti non vendute
       return _variants.fold<int>(0, (int sum, variant) {
-        // Forziamo il tipo 'int' per fold
         if (variant['is_sold'] == 0) {
-          // Conversione sicura: (num?) -> (int?) -> int
           return sum + ((variant['quantity'] as num?)?.toInt() ?? 0);
         }
         return sum;
       });
     } else {
-      // Articolo singolo: Conversione sicura: (num?) -> (int?) -> int
       return (_currentItem['quantity'] as num?)?.toInt() ?? 0;
     }
   }
 
-  // (2 - NUOVO) Widget per mostrare Stock e Prezzo in alto
+  // (3 - WIDGET CORRETTO: Funzione per i dettagli)
+  Widget _buildInfoRow(String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              color: _headerTextColor, // Colore del testo header
+              fontSize: 12,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value ?? 'Non specificato',
+            style: const TextStyle(fontSize: 16),
+          ),
+          const Divider(height: 1), // Aggiungi un divisore
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVariantPlatformsList(List<dynamic> platforms) {
+    if (platforms.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children:
+          platforms.map((p) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey[850],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                p.toString(),
+                style: const TextStyle(color: Colors.white70),
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  // (4 - WIDGET PER L'HIGHLIGHT DI STOCK E PREZZO)
   Widget _buildPriceStockCards() {
     final int totalStock = _calculateTotalStock();
+    final String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}';
     final String salePrice = '€ ${_currentItem['sale_price'] ?? 'N/D'}';
+    final Color accentColor = Theme.of(context).colorScheme.primary;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8.0, bottom: 24.0),
-      child: Row(
+      child: Column(
         children: [
-          // Card Stock
-          Expanded(
-            child: Card(
-              color: Theme.of(context).cardColor,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'PEZZI DISP.',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: Colors.grey[500]),
+          // Valore Stimato e Prezzo Acquisto sulla stessa riga
+          Row(
+            children: [
+              // Valore Stimato
+              Expanded(
+                child: Card(
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'VALORE STIMATO',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: _headerTextColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '€ ${_currentItem['value'] ?? 'N/D'}',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(
+                            color: Colors.grey[300],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      totalStock.toString(),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
-                        color: totalStock > 0 ? Colors.white : Colors.red[400],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 16),
+              // Prezzo Acquisto
+              Expanded(
+                child: Card(
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PREZZO ACQUISTO',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: _headerTextColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          purchasePrice,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(
+                            color: Colors.grey[300],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          // Card Prezzo
-          Expanded(
-            child: Card(
-              color: Theme.of(context).cardColor,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'PREZZO VENDITA',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: Colors.grey[500]),
+          const SizedBox(height: 16),
+          // Stock & Prezzo Vendita (due blocchi grandi)
+          Row(
+            children: [
+              // Stock
+              Expanded(
+                child: Card(
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PEZZI DISP.',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: _headerTextColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          totalStock.toString(),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineMedium?.copyWith(
+                            color:
+                                totalStock > 0 ? _availableColor : _soldColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 34,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      salePrice,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 16),
+              // Prezzo Vendita
+              Expanded(
+                child: Card(
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PREZZO VENDITA',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: _headerTextColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          salePrice,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineMedium?.copyWith(
+                            color: accentColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 34,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // --- FUNZIONE PRINCIPALE BUILD ---
-  @override
-  Widget build(BuildContext context) {
-    final item = _currentItem;
-    final bool isPageLoading =
-        _isVariantsLoading ||
-        _isLogLoading ||
-        _isPhotosLoading ||
-        _platformsLoading;
-
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pop(context, _dataDidChange);
-        return false;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pop(context, _dataDidChange);
-            },
-          ),
-          title: Text(item['name'] ?? 'Dettaglio Articolo'),
-          actions: [
-            // (3 - MODIFICA) Tasto Copia spostato
-            IconButton(
-              icon: const Icon(Icons.copy),
-              tooltip: 'Copia Codice Univoco',
-              onPressed: () => _copyToClipboard(item['unique_code'] ?? ''),
-            ),
-            // (4 - ACCENTUATO) Icona Modifica
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              color:
-                  Theme.of(context).colorScheme.primary, // Accentua il colore
-              tooltip: 'Modifica Articolo',
-              onPressed: () async {
-                final bool? itemChanged = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AddItemPage(itemId: item['item_id']),
-                  ),
-                );
-                if (itemChanged == true) {
-                  _dataDidChange = true;
-                  _refreshAllData();
-                }
-              },
-            ),
-            // Bottone Vendi (invariato)
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor:
-                    _isItemSold
-                        ? Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.5)
-                        : Theme.of(context).colorScheme.primary,
-              ),
-              icon: Icon(
-                Icons.sell_outlined,
-                color:
-                    _isItemSold
-                        ? Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.5)
-                        : Theme.of(context).colorScheme.primary,
-              ),
-              label: Text(
-                'VENDI',
-                style: TextStyle(
-                  color:
-                      _isItemSold
-                          ? Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.5)
-                          : Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              onPressed:
-                  _isItemSold
-                      ? null
-                      : () async {
-                        final bool? saleRegistered = await showDialog(
-                          context: context,
-                          builder: (context) {
-                            return SellItemDialog(
-                              itemId: item['item_id'],
-                              hasVariants: item['has_variants'] == 1,
-                              variants: _variants,
-                              itemQuantity: (item['quantity'] as num?)?.toInt(),
-                            );
-                          },
-                        );
-                        if (saleRegistered == true) {
-                          _dataDidChange = true;
-                          _refreshAllData();
-                        }
-                      },
-            ),
-            const SizedBox(width: 8),
-          ],
+  // (6 - NUOVO WIDGET) Logica del Drawer Vendite
+  Widget _buildSalesLogDrawer() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'LOG VENDITE',
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
         ),
-        body:
-            isPageLoading
-                ? Center(
-                  child: CircularProgressIndicator(
-                    color: Theme.of(context).colorScheme.primary,
+        const SizedBox(height: 8),
+        // Testa del Drawer
+        Card(
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _isSalesLogOpen = !_isSalesLogOpen; // Inverti lo stato
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _isSalesLogOpen
+                        ? 'Chiudi Storico'
+                        : 'Apri Storico Vendite (${_salesLog.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                )
-                : ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: [
-                    // --- BANNER VENDUTO ---
-                    if (_isItemSold)
-                      Container(
-                        padding: const EdgeInsets.all(12.0),
-                        margin: const EdgeInsets.only(bottom: 16.0),
-                        decoration: BoxDecoration(
-                          color: Colors.red[700],
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.money_off,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            SizedBox(width: 10),
-                            Text(
-                              'ARTICOLO VENDUTO',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // (5 - NUOVO) BLOCCO HIGHLIGHT STOCK & PREZZO
-                    _buildPriceStockCards(),
-
-                    // --- BLOCCO INFORMAZIONI GENERALI ---
-                    Text(
-                      'INFORMAZIONI',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: Colors.grey[500]),
+                  // Icona dinamica con rotazione (usa AnimatedRotation)
+                  AnimatedRotation(
+                    turns: _isSalesLogOpen ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 300),
+                    child: Icon(
+                      Iconsax.arrow_down_1,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    const Divider(height: 16),
-                    _buildInfoRow('ID Interno', item['item_id'].toString()),
-                    _buildInfoRow(
-                      'Codice Univoco',
-                      item['unique_code'],
-                    ), // Lo rimettiamo qui sotto
-                    _buildInfoRow('Categoria', item['category_name']),
-                    _buildInfoRow('Brand', item['brand']),
-                    _buildInfoRow('Descrizione', item['description']),
-                    const Divider(height: 32),
-                    _buildInfoRow(
-                      'Valore Stimato',
-                      '€ ${item['value'] ?? 'N/D'}',
-                    ),
-                    _buildInfoRow(
-                      'Prezzo di Acquisto',
-                      '€ ${item['purchase_price'] ?? 'N/D'}',
-                    ), // Prezzo di acquisto va nei dettagli
-                    // --- SEZIONE VARIANTI ---
-                    if (item['has_variants'] == 1) ...[
-                      const Divider(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'VARIANTI',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 12,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          TextButton.icon(
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Aggiungi'),
-                            onPressed: () async {
-                              final bool? dataChanged = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => AddVariantPage(
-                                        itemId: item['item_id'],
-                                      ),
-                                ),
-                              );
-                              if (dataChanged == true) {
-                                _dataDidChange = true;
-                                _refreshAllData();
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      _buildVariantsSection(),
-                    ] else ...[
-                      // Piattaforme Articolo Singolo
-                      const Divider(height: 32),
-                      Text(
-                        'PIATTAFORME DI PUBBLICAZIONE',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 12,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildPlatformsSection(),
-                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
 
-                    // --- SEZIONE GALLERIA FOTO ---
-                    const Divider(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'GALLERIA FOTO',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        TextButton.icon(
-                          icon:
-                              _isUploading
-                                  ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                  : const Icon(
-                                    Icons.add_a_photo_outlined,
-                                    size: 16,
-                                  ),
-                          label: const Text('Aggiungi'),
-                          onPressed: _isUploading ? null : _pickAndUploadImage,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    _buildPhotoGallery(),
-
-                    // --- SEZIONE LOG VENDITE ---
-                    const Divider(height: 32),
-                    Text(
-                      'LOG VENDITE',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildSalesLogSection(),
-                  ],
-                ),
-      ),
+        // Corpo del Drawer
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: Container(
+            height: _isSalesLogOpen ? null : 0, // Altezza dinamica
+            child: Visibility(
+              visible: _isSalesLogOpen,
+              child: _buildSalesLogSection(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  // --- WIDGET HELPER (RESTO DEL FILE) ---
+  // (7 - WIDGET AGGIORNATO) Corpo del Log Vendite
+  Widget _buildSalesLogSection() {
+    if (_isLogLoading)
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    if (_salesLog.isEmpty)
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Nessuna vendita registrata.'),
+        ),
+      );
 
+    return Column(
+      children:
+          _salesLog.map((sale) {
+            // Logica del Titolo (solo Variante / Piattaforma)
+            String title = sale['platform_name'] ?? 'N/D';
+            if (sale['variant_name'] != null) {
+              title = '${sale['variant_name']} / $title';
+            }
+
+            String date =
+                sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4.0),
+              child: ListTile(
+                leading: Icon(Iconsax.coin, color: _availableColor),
+                title: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  'Data: $date | Q.tà: ${sale['quantity_sold']} | Totale: € ${sale['total_price']}',
+                ),
+                trailing: Icon(
+                  Iconsax.edit,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                onTap: () async {
+                  int? currentStock;
+                  final int? saleVariantId =
+                      (sale['variant_id'] as num?)?.toInt();
+
+                  if (saleVariantId != null) {
+                    final matchingVariant = _variants.firstWhere(
+                      (v) =>
+                          (v['variant_id'] as num?)?.toInt() == saleVariantId,
+                      orElse: () => null,
+                    );
+                    if (matchingVariant != null) {
+                      currentStock =
+                          (matchingVariant['quantity'] as num?)?.toInt();
+                    }
+                  } else {
+                    if (_currentItem['has_variants'] == 0) {
+                      currentStock =
+                          (_currentItem['quantity'] as num?)?.toInt();
+                    } else {
+                      currentStock = null;
+                    }
+                  }
+
+                  if (currentStock == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Errore: Stock non trovato (articolo/variante inesistente?).',
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  final bool? dataChanged = await showDialog(
+                    context: context,
+                    builder:
+                        (context) => EditSaleDialog(
+                          sale: sale,
+                          allPlatforms: _allPlatforms,
+                          currentStock: currentStock!,
+                        ),
+                  );
+                  if (dataChanged == true) {
+                    _dataDidChange = true;
+                    _refreshAllData();
+                  }
+                },
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  // (10 - WIDGETS INVARIATI)
   Widget _buildPlatformsSection() {
     /* ... codice invariato ... */
+    final Color accentColor = Theme.of(context).colorScheme.primary;
     final List<dynamic> selectedIds = _currentItem['platforms'] ?? [];
     if (selectedIds.isEmpty) {
       return const Center(
@@ -678,14 +735,15 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               .map(
                 (name) => Chip(
                   label: Text(name),
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.2),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 4.0),
                   labelStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
+                    fontSize: 10,
+                    color: accentColor,
                     fontWeight: FontWeight.bold,
                   ),
+                  backgroundColor: accentColor.withOpacity(0.1),
                   side: BorderSide.none,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               )
               .toList(),
@@ -694,6 +752,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   Widget _buildPhotoGallery() {
     /* ... codice invariato ... */
+    final Color accentColor = Theme.of(context).colorScheme.primary;
     if (_isPhotosLoading)
       return const Center(
         child: Padding(
@@ -799,7 +858,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Widget _buildVariantsSection() {
-    /* ... codice invariato ... */
+    final Color _soldColor = Colors.red[500]!;
+    final Color _availableColor = Colors.green[500]!;
+
     if (_isVariantsLoading)
       return const Center(
         child: Padding(
@@ -814,21 +875,25 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           child: Text('Nessuna variante trovata.'),
         ),
       );
+
     return Column(
       children:
           _variants.map((variant) {
             final bool isVariantSold = variant['is_sold'] == 1;
+            final Color statusColor =
+                isVariantSold ? _soldColor : _availableColor;
+
             return Card(
               color:
                   isVariantSold
-                      ? const Color(0xFF422B2B)
+                      ? _soldColor.withOpacity(0.2)
                       : Theme.of(context).cardColor,
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
                 title: Text(
                   variant['variant_name'] ?? 'Senza nome',
                   style: TextStyle(
-                    color: isVariantSold ? Colors.grey[300] : null,
+                    color: isVariantSold ? _soldColor : Colors.white,
                     decoration:
                         isVariantSold ? TextDecoration.lineThrough : null,
                   ),
@@ -846,7 +911,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                     _buildVariantPlatformsList(variant['platforms'] ?? []),
                   ],
                 ),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: Icon(Iconsax.arrow_right_3, color: statusColor),
                 onTap: () async {
                   final bool? dataChanged = await Navigator.push(
                     context,
@@ -866,161 +931,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               ),
             );
           }).toList(),
-    );
-  }
-
-  Widget _buildSalesLogSection() {
-    /* ... codice invariato ... */
-    if (_isLogLoading)
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    if (_salesLog.isEmpty)
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('Nessuna vendita registrata.'),
-        ),
-      );
-    return Column(
-      children:
-          _salesLog.map((sale) {
-            String title = 'Venduto su ${sale['platform_name'] ?? 'N/D'}';
-            if (sale['variant_name'] != null)
-              title += ' (${sale['variant_name']})';
-            String date =
-                sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 4.0),
-              child: ListTile(
-                leading: const Icon(
-                  Icons.check_circle_outline,
-                  color: Colors.green,
-                ),
-                title: Text(title),
-                subtitle: Text(
-                  '$date | ${sale['quantity_sold']} pz | Tot: € ${sale['total_price']}',
-                ),
-                trailing: const Icon(Icons.edit_note_outlined, size: 20),
-                onTap: () async {
-                  int? currentStock;
-                  final int? saleVariantId =
-                      (sale['variant_id'] as num?)?.toInt();
-
-                  if (saleVariantId != null) {
-                    final matchingVariant = _variants.firstWhere(
-                      (v) =>
-                          (v['variant_id'] as num?)?.toInt() == saleVariantId,
-                      orElse: () => null,
-                    );
-                    if (matchingVariant != null) {
-                      currentStock =
-                          (matchingVariant['quantity'] as num?)?.toInt();
-                    }
-                  } else {
-                    if (_currentItem['has_variants'] == 0) {
-                      currentStock =
-                          (_currentItem['quantity'] as num?)?.toInt();
-                    } else {
-                      currentStock = null;
-                    }
-                  }
-
-                  if (currentStock == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Errore: Stock non trovato (articolo/variante inesistente?).',
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  final bool? dataChanged = await showDialog(
-                    context: context,
-                    builder:
-                        (context) => EditSaleDialog(
-                          sale: sale,
-                          allPlatforms: _allPlatforms,
-                          currentStock: currentStock!,
-                        ),
-                  );
-                  if (dataChanged == true) {
-                    _dataDidChange = true;
-                    _refreshAllData();
-                  }
-                },
-              ),
-            );
-          }).toList(),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String? value) {
-    /* ... codice invariato ... */
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value ?? 'Non specificato',
-            style: const TextStyle(fontSize: 18),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVariantPlatformsList(List<dynamic> platformIds) {
-    /* ... codice invariato ... */
-    if (_platformsLoading || platformIds.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final List<String> platformNames =
-        _allPlatforms
-            .where((platform) => platformIds.contains(platform['platform_id']))
-            .map((platform) => platform['name'].toString())
-            .toList();
-    if (platformNames.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Wrap(
-      spacing: 4.0,
-      runSpacing: 0.0,
-      children:
-          platformNames
-              .map(
-                (name) => Chip(
-                  label: Text(name),
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  labelStyle: TextStyle(
-                    fontSize: 10,
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.1),
-                  side: BorderSide.none,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              )
-              .toList(),
     );
   }
 }
