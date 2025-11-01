@@ -59,6 +59,22 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     _refreshAllData();
   }
 
+  void _navigateToAddVariant() async {
+    final bool? dataChanged = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddVariantPage(
+          itemId: _currentItem['item_id'],
+          variantId: null, // Passiamo null per indicare la creazione di una nuova variante
+        ),
+      ),
+    );
+    if (dataChanged == true) {
+      _dataDidChange = true;
+      _refreshAllData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -69,9 +85,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            '${_currentItem['is_sold'] == 1 ? 'Venduto · ' : ''}Dettaglio articolo',
-          ),
+          title: Text('Dettagli'),
           actions: [
             // FIX 1: Tasto Copia (Codice Univoco)
             IconButton(
@@ -175,6 +189,19 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                   ),
                   const SizedBox(height: 8),
                   _buildVariantsSection(),
+                  const SizedBox(height: 16), // Spazio prima del bottone
+                  // FIX CHIAVE: Tasto Aggiungi Variante spostato in basso
+                  Align(
+                    alignment: Alignment.center,
+                    child: TextButton.icon(
+                      onPressed: _navigateToAddVariant,
+                      icon: const Icon(Iconsax.add_square),
+                      label: const Text('Aggiungi variante'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
 
