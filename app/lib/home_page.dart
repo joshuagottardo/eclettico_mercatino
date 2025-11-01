@@ -11,6 +11,7 @@ import 'package:app/add_item_page.dart';
 import 'package:app/item_list_page.dart';
 import 'package:app/item_detail_page.dart';
 import 'package:app/library_page.dart';
+import 'package:app/statistics_page.dart'; // NUOVO IMPORT
 import 'package:app/api_config.dart'; // Importato l'URL base
 
 class HomePage extends StatefulWidget {
@@ -169,6 +170,23 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16), // AGGIUNGI SPAZIO
+                  _buildDashboardButton(
+                    // NUOVO PULSANTE A TUTTA LARGHEZZA
+                    context,
+                    icon: Icons.auto_graph,
+                    label: 'Statistiche',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const StatisticsPage(), // NAVIGA
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
                   const SizedBox(height: 32),
 
                   // FIX 2: Avvolgiamo la lista delle vendite in un Card
@@ -195,37 +213,35 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget Helper per i "Tastoni" (Invariato)
+  // Widget Helper per i "Tastoni" (AGGIORNATO)
   Widget _buildDashboardButton(
     BuildContext context, {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12.0),
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 8),
-              Text(label, style: Theme.of(context).textTheme.titleMedium),
-            ],
-          ),
+    // Usiamo Expanded solo se è in una Row
+    final isFullWidth = context.findAncestorWidgetOfExactType<Row>() == null;
+    final buttonContent = InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12.0),
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(label, style: Theme.of(context).textTheme.titleMedium),
+          ],
         ),
       ),
     );
+
+    return isFullWidth ? buttonContent : Expanded(child: buttonContent);
   }
 
   // Widget per la lista delle Vendite (AGGIORNATO)

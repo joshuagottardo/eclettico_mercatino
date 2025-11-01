@@ -5,7 +5,7 @@ const app = express();
 const PORT = 4000; // Scegliamo una porta su cui l'API ascolterà
 const path = require("path"); //Pacchetto per gestire i percorsi
 const multer = require("multer"); //Pacchetto per gestire gli upload
-const fs = require('fs'); // Importa il File System
+const fs = require("fs"); // Importa il File System
 
 app.use(cors()); // Abilita CORS per tutte le richieste
 app.use(express.json()); // Permette al server di capire i dati JSON inviati dall'app (es. quando creiamo un articolo)
@@ -256,180 +256,186 @@ app.get("/api/categories", async (req, res) => {
  * GET /api/variants/:id
  * Recupera i dettagli di una SINGOLA variante
  */
-app.get('/api/variants/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        // Query 1: Prende i dati della variante
-        const [variants] = await pool.query(
-            'SELECT * FROM variants WHERE variant_id = ?', 
-            [id]
-        );
-        
-        if (variants.length === 0) {
-            return res.status(404).json({ error: 'Variante non trovata' });
-        }
-        
-        // Query 2: Prende le piattaforme collegate
-        const [platforms] = await pool.query(
-            'SELECT platform_id FROM variant_platforms WHERE variant_id = ?',
-            [id]
-        );
-        
-        // Aggiungiamo l'array di ID piattaforma all'oggetto variante
-        const variant = variants[0];
-        variant.platforms = platforms.map(p => p.platform_id); // es. [1, 2]
+app.get("/api/variants/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Query 1: Prende i dati della variante
+    const [variants] = await pool.query(
+      "SELECT * FROM variants WHERE variant_id = ?",
+      [id]
+    );
 
-        res.json(variant);
-
-    } catch (error) {
-        console.error(`Errore in GET /api/variants/${id}:`, error);
-        res.status(500).json({ error: 'Errore nel recupero della variante' });
+    if (variants.length === 0) {
+      return res.status(404).json({ error: "Variante non trovata" });
     }
+
+    // Query 2: Prende le piattaforme collegate
+    const [platforms] = await pool.query(
+      "SELECT platform_id FROM variant_platforms WHERE variant_id = ?",
+      [id]
+    );
+
+    // Aggiungiamo l'array di ID piattaforma all'oggetto variante
+    const variant = variants[0];
+    variant.platforms = platforms.map((p) => p.platform_id); // es. [1, 2]
+
+    res.json(variant);
+  } catch (error) {
+    console.error(`Errore in GET /api/variants/${id}:`, error);
+    res.status(500).json({ error: "Errore nel recupero della variante" });
+  }
 });
 
 /*
  * PUT /api/variants/:id
  * Aggiorna una variante esistente
  */
-app.put('/api/variants/:id', async (req, res) => {
-    const { id } = req.params;
-    
-    // Prendiamo i dati dal corpo
-    const {
-        variant_name,
-        purchase_price,
-        quantity,
-        description,
-        platforms // Array di ID [1, 3]
-    } = req.body;
+app.put("/api/variants/:id", async (req, res) => {
+  const { id } = req.params;
 
-    // Validazione
-    if (!variant_name || purchase_price === undefined || quantity === undefined) {
-        return res.status(400).json({ error: 'Nome, prezzo acquisto e quantità sono obbligatori' });
-    }
+  // Prendiamo i dati dal corpo
+  const {
+    variant_name,
+    purchase_price,
+    quantity,
+    description,
+    platforms, // Array di ID [1, 3]
+  } = req.body;
 
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
+  // Validazione
+  if (!variant_name || purchase_price === undefined || quantity === undefined) {
+    return res
+      .status(400)
+      .json({ error: "Nome, prezzo acquisto e quantità sono obbligatori" });
+  }
 
-        // Query 1: Aggiorna i dati principali della variante
-        const variantSql = `
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Query 1: Aggiorna i dati principali della variante
+    const variantSql = `
             UPDATE variants SET 
                 variant_name = ?, purchase_price = ?, quantity = ?, description = ?
             WHERE variant_id = ?
         `;
-        await connection.query(variantSql, [
-            variant_name,
-            purchase_price,
-            quantity,
-            description,
-            id
-        ]);
-        
-        // Query 2: Aggiorna le piattaforme (Resetta e Inserisci)
-        
-        // (A) Cancella le vecchie piattaforme
-        await connection.query('DELETE FROM variant_platforms WHERE variant_id = ?', [id]);
+    await connection.query(variantSql, [
+      variant_name,
+      purchase_price,
+      quantity,
+      description,
+      id,
+    ]);
 
-        // (B) Inserisci le nuove (se l'array non è vuoto)
-        if (platforms && platforms.length > 0) {
-            const platformSql = 'INSERT INTO variant_platforms (variant_id, platform_id) VALUES ?';
-            const platformValues = platforms.map(platformId => [id, platformId]);
-            await connection.query(platformSql, [platformValues]);
-        }
+    // Query 2: Aggiorna le piattaforme (Resetta e Inserisci)
 
-        await connection.commit();
-        res.status(200).json({ message: 'Variante aggiornata con successo!' });
+    // (A) Cancella le vecchie piattaforme
+    await connection.query(
+      "DELETE FROM variant_platforms WHERE variant_id = ?",
+      [id]
+    );
 
-    } catch (error) {
-        if (connection) await connection.rollback();
-        console.error(`Errore in PUT /api/variants/${id}:`, error);
-        res.status(500).json({ error: 'Errore durante l\'aggiornamento della variante' });
-    } finally {
-        if (connection) connection.release();
+    // (B) Inserisci le nuove (se l'array non è vuoto)
+    if (platforms && platforms.length > 0) {
+      const platformSql =
+        "INSERT INTO variant_platforms (variant_id, platform_id) VALUES ?";
+      const platformValues = platforms.map((platformId) => [id, platformId]);
+      await connection.query(platformSql, [platformValues]);
     }
+
+    await connection.commit();
+    res.status(200).json({ message: "Variante aggiornata con successo!" });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error(`Errore in PUT /api/variants/${id}:`, error);
+    res
+      .status(500)
+      .json({ error: "Errore durante l'aggiornamento della variante" });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 /*
  * DELETE /api/variants/:id
  * Elimina una variante (solo se non ha vendite associate)
  */
-app.delete('/api/variants/:id', async (req, res) => {
-    const { id } = req.params;
+app.delete("/api/variants/:id", async (req, res) => {
+  const { id } = req.params;
 
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
 
-        // Query 1: Controlla se esistono vendite per questa variante
-        const [sales] = await pool.query(
-            'SELECT COUNT(*) as salesCount FROM sales_log WHERE variant_id = ?',
-            [id]
-        );
+    // Query 1: Controlla se esistono vendite per questa variante
+    const [sales] = await pool.query(
+      "SELECT COUNT(*) as salesCount FROM sales_log WHERE variant_id = ?",
+      [id]
+    );
 
-        if (sales[0].salesCount > 0) {
-            // Impedisci l'eliminazione
-            await connection.rollback(); // Non serve, ma è pulito
-            return res.status(400).json({ 
-                error: 'Impossibile eliminare: la variante ha uno storico vendite.' 
-            });
-        }
-        
-        // Query 2: Elimina la variante
-        // Le piattaforme (variant_platforms) verranno cancellate in automatico (ON DELETE CASCADE)
-        // Le foto (photos) verranno scollegate in automatico (ON DELETE SET NULL)
-        await connection.query('DELETE FROM variants WHERE variant_id = ?', [id]);
-
-        await connection.commit();
-        res.status(200).json({ message: 'Variante eliminata con successo.' });
-
-    } catch (error) {
-        if (connection) await connection.rollback();
-        console.error(`Errore in DELETE /api/variants/${id}:`, error);
-        res.status(500).json({ error: 'Errore durante l\'eliminazione della variante' });
-    } finally {
-        if (connection) connection.release();
+    if (sales[0].salesCount > 0) {
+      // Impedisci l'eliminazione
+      await connection.rollback(); // Non serve, ma è pulito
+      return res.status(400).json({
+        error: "Impossibile eliminare: la variante ha uno storico vendite.",
+      });
     }
+
+    // Query 2: Elimina la variante
+    // Le piattaforme (variant_platforms) verranno cancellate in automatico (ON DELETE CASCADE)
+    // Le foto (photos) verranno scollegate in automatico (ON DELETE SET NULL)
+    await connection.query("DELETE FROM variants WHERE variant_id = ?", [id]);
+
+    await connection.commit();
+    res.status(200).json({ message: "Variante eliminata con successo." });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error(`Errore in DELETE /api/variants/${id}:`, error);
+    res
+      .status(500)
+      .json({ error: "Errore durante l'eliminazione della variante" });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 /*
  * GET /api/items/:id/variants
  * (MODIFICATO per includere le piattaforme di ogni variante)
  */
-app.get('/api/items/:id/variants', async (req, res) => {
-    const { id } = req.params;
-    try {
-        // (A) Query 1: Prende tutte le varianti
-        const [variants] = await pool.query(
-            'SELECT * FROM variants WHERE item_id = ? ORDER BY variant_name ASC',
-            [id]
+app.get("/api/items/:id/variants", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // (A) Query 1: Prende tutte le varianti
+    const [variants] = await pool.query(
+      "SELECT * FROM variants WHERE item_id = ? ORDER BY variant_name ASC",
+      [id]
+    );
+
+    // (B) NUOVO: Usiamo Promise.all per caricare le piattaforme
+    //     di ogni variante in parallelo
+    const variantsWithPlatforms = await Promise.all(
+      variants.map(async (variant) => {
+        // (C) Query 2: Prende le piattaforme per QUESTA variante
+        const [platforms] = await pool.query(
+          "SELECT platform_id FROM variant_platforms WHERE variant_id = ?",
+          [variant.variant_id]
         );
 
-        // (B) NUOVO: Usiamo Promise.all per caricare le piattaforme
-        //     di ogni variante in parallelo
-        const variantsWithPlatforms = await Promise.all(
-            variants.map(async (variant) => {
-                // (C) Query 2: Prende le piattaforme per QUESTA variante
-                const [platforms] = await pool.query(
-                    'SELECT platform_id FROM variant_platforms WHERE variant_id = ?',
-                    [variant.variant_id]
-                );
-                
-                // (D) Aggiunge l'array di ID all'oggetto variante
-                variant.platforms = platforms.map(p => p.platform_id); // es. [1, 2]
-                return variant;
-            })
-        );
-        
-        // (E) Invia la lista completa
-        res.json(variantsWithPlatforms);
+        // (D) Aggiunge l'array di ID all'oggetto variante
+        variant.platforms = platforms.map((p) => p.platform_id); // es. [1, 2]
+        return variant;
+      })
+    );
 
-    } catch (error) {
-        console.error(`Errore in GET /api/items/${id}/variants:`, error);
-        res.status(500).json({ error: 'Errore nel recupero delle varianti' });
-    }
+    // (E) Invia la lista completa
+    res.json(variantsWithPlatforms);
+  } catch (error) {
+    console.error(`Errore in GET /api/items/${id}/variants:`, error);
+    res.status(500).json({ error: "Errore nel recupero delle varianti" });
+  }
 });
 
 /*
@@ -562,11 +568,12 @@ app.get("/api/items/:id/sales", async (req, res) => {
  * GET /api/items/category/:id
  * Recupera tutti gli articoli per una specifica categoria
  */
-app.get('/api/items/category/:id', async (req, res) => {
-    const { id } = req.params; // Questo è il category_id
+app.get("/api/items/category/:id", async (req, res) => {
+  const { id } = req.params; // Questo è il category_id
 
-    try {
-        const [items] = await pool.query(`
+  try {
+    const [items] = await pool.query(
+      `
             SELECT 
                 i.*, 
                 c.name as category_name,
@@ -581,14 +588,15 @@ app.get('/api/items/category/:id', async (req, res) => {
             LEFT JOIN categories c ON i.category_id = c.category_id
             WHERE i.category_id = ?  -- La nuova condizione!
             ORDER BY i.created_at DESC
-        `, [id]); // Passa l'ID di categoria
-        
-        res.json(items);
+        `,
+      [id]
+    ); // Passa l'ID di categoria
 
-    } catch (error) {
-        console.error(`Errore in GET /api/items/category/${id}:`, error);
-        res.status(500).json({ error: 'Errore nel recupero degli articoli' });
-    }
+    res.json(items);
+  } catch (error) {
+    console.error(`Errore in GET /api/items/category/${id}:`, error);
+    res.status(500).json({ error: "Errore nel recupero degli articoli" });
+  }
 });
 
 /*
@@ -620,15 +628,48 @@ app.post("/api/sales", async (req, res) => {
 
   let connection;
   try {
-    // (C) Iniziamo la transazione
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // (D) Query 1: Inseriamo la vendita nel log
+    // 1. RECUPERA IL PREZZO DI ACQUISTO, BRAND E CATEGORIA
+    let purchasePriceSnapshot = 0;
+    let itemBrand = "";
+    let itemCategoryId = null;
+
+    if (variant_id) {
+      // Se variante: prendi dati da variants + items
+      const [variantData] = await connection.query(
+        `SELECT v.purchase_price, i.brand, i.category_id 
+                 FROM variants v 
+                 JOIN items i ON v.item_id = i.item_id 
+                 WHERE v.variant_id = ?`,
+        [variant_id]
+      );
+      if (variantData.length === 0) throw new Error("Variante non trovata.");
+      purchasePriceSnapshot = variantData[0].purchase_price;
+      itemBrand = variantData[0].brand;
+      itemCategoryId = variantData[0].category_id;
+    } else {
+      // Se articolo singolo: prendi dati da items
+      const [itemData] = await connection.query(
+        `SELECT purchase_price, brand, category_id FROM items WHERE item_id = ?`,
+        [item_id]
+      );
+      if (itemData.length === 0) throw new Error("Articolo non trovato.");
+      purchasePriceSnapshot = itemData[0].purchase_price;
+      itemBrand = itemData[0].brand;
+      itemCategoryId = itemData[0].category_id;
+    }
+
+    // 2. Calcola i valori per le statistiche
+    const soldCost = purchasePriceSnapshot * quantity_sold;
+    const netGain = total_price - soldCost; // total_price è il lordo
+
+    // 3. Inseriamo la vendita nel log (INCLUSO IL NUOVO CAMPO)
     const saleSql = `
             INSERT INTO sales_log 
-            (item_id, variant_id, platform_id, sale_date, quantity_sold, total_price, sold_by_user)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (item_id, variant_id, platform_id, sale_date, quantity_sold, total_price, sold_by_user, purchase_price_snapshot)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
     await connection.query(saleSql, [
       item_id,
@@ -638,91 +679,101 @@ app.post("/api/sales", async (req, res) => {
       quantity_sold,
       total_price,
       sold_by_user,
+      purchasePriceSnapshot, // NUOVO VALORE
     ]);
-    console.log(`Vendita registrata per item_id: ${item_id}`);
 
-    // (E) Query 2: Aggiorniamo la quantità e lo stato "is_sold"
-    let newQuantity = 0;
+    // 4. AGGIORNA LE STATISTICHE TOTALI (statistics)
+    await connection.query(
+      `
+            UPDATE statistics SET 
+                gross_profit_total = gross_profit_total + ?,
+                net_profit_total = net_profit_total + ?,
+                total_spent = total_spent + ?
+            WHERE stats_id = 1 
+        `,
+      [total_price, netGain, soldCost]
+    );
+
+    // (Assicurati che la riga 1 esista, potresti volerla inserire se non c'è)
+
+    // 5. AGGIORNA I CONTATORI (sales_counter)
+    // Aggiorna Categoria
+    if (itemCategoryId) {
+      await connection.query(
+        `INSERT INTO sales_counter (category_id, sales_count) 
+                 VALUES (?, 1) 
+                 ON DUPLICATE KEY UPDATE sales_count = sales_count + 1`,
+        [itemCategoryId]
+      );
+    }
+
+    // Aggiorna Brand
+    if (itemBrand) {
+      await connection.query(
+        `INSERT INTO sales_counter (brand, sales_count) 
+                 VALUES (?, 1) 
+                 ON DUPLICATE KEY UPDATE sales_count = sales_count + 1`,
+        [itemBrand]
+      );
+    }
+
+    // Decremento stock in transazione, con guardia anti-negativo
+    const qty = Number(quantity_sold) || 0;
+    if (!Number.isFinite(qty) || qty <= 0) {
+      await connection.rollback();
+      return res.status(400).json({ error: "quantity_sold non valido" });
+    }
 
     if (variant_id) {
-      // --- Caso 1: È stata venduta una VARIANTE ---
-      await connection.query(
-        "UPDATE variants SET quantity = quantity - ? WHERE variant_id = ?",
-        [quantity_sold, variant_id]
+      // Variante
+      const [resUpd] = await connection.query(
+        `
+    UPDATE variants 
+    SET quantity = COALESCE(quantity,0) - ?,
+        is_sold  = CASE WHEN COALESCE(quantity,0) - ? <= 0 THEN 1 ELSE 0 END
+    WHERE variant_id = ? AND COALESCE(quantity,0) >= ?
+    `,
+        [qty, qty, variant_id, qty]
       );
-
-      // Controlliamo la nuova quantità della variante
-      const [variantRows] = await connection.query(
-        "SELECT quantity FROM variants WHERE variant_id = ?",
-        [variant_id]
-      );
-      newQuantity = variantRows[0].quantity;
-
-      if (newQuantity <= 0) {
-        // Segna la variante come venduta
-        await connection.query(
-          "UPDATE variants SET is_sold = 1 WHERE variant_id = ?",
-          [variant_id]
-        );
-        console.log(`Variante ${variant_id} segnata come venduta.`);
-
-        // Controlliamo se TUTTE le varianti di questo articolo sono vendute
-        const [remainingVariants] = await connection.query(
-          "SELECT COUNT(*) as remaining FROM variants WHERE item_id = ? AND is_sold = 0",
-          [item_id]
-        );
-
-        if (remainingVariants[0].remaining == 0) {
-          // Se non ci sono varianti rimaste, segna l'articolo come venduto
-          await connection.query(
-            "UPDATE items SET is_sold = 1 WHERE item_id = ?",
-            [item_id]
-          );
-          console.log(
-            `Articolo ${item_id} segnato come venduto (tutte le varianti vendute).`
-          );
-        }
+      if (resUpd.affectedRows === 0) {
+        await connection.rollback();
+        return res
+          .status(400)
+          .json({
+            error: "Stock variante insufficiente o variante non trovata",
+          });
       }
     } else {
-      // --- Caso 2: È stato venduto un ARTICOLO (senza varianti) ---
-      await connection.query(
-        "UPDATE items SET quantity = quantity - ? WHERE item_id = ?",
-        [quantity_sold, item_id]
+      // Articolo senza varianti
+      const [resUpd] = await connection.query(
+        `
+    UPDATE items 
+    SET quantity = COALESCE(quantity,0) - ?,
+        is_sold  = CASE WHEN COALESCE(quantity,0) - ? <= 0 THEN 1 ELSE 0 END
+    WHERE item_id = ? AND COALESCE(quantity,0) >= ?
+    `,
+        [qty, qty, item_id, qty]
       );
-
-      // Controlliamo la nuova quantità dell'articolo
-      const [itemRows] = await connection.query(
-        "SELECT quantity FROM items WHERE item_id = ?",
-        [item_id]
-      );
-      newQuantity = itemRows[0].quantity;
-
-      if (newQuantity <= 0) {
-        // Segna l'articolo come venduto
-        await connection.query(
-          "UPDATE items SET is_sold = 1 WHERE item_id = ?",
-          [item_id]
-        );
-        console.log(`Articolo ${item_id} segnato come venduto.`);
+      if (resUpd.affectedRows === 0) {
+        await connection.rollback();
+        return res
+          .status(400)
+          .json({
+            error: "Stock articolo insufficiente o articolo non trovato",
+          });
       }
     }
 
-    // (F) Tutto è andato bene! Salviamo le modifiche.
+    // 7. Commit
     await connection.commit();
-
-    res.status(201).json({
-      message: "Vendita registrata con successo!",
-      newQuantity: newQuantity,
-    });
+    res.status(201).json({ message: "Vendita registrata con successo!" });
   } catch (error) {
-    // (G) Qualcosa è andato storto. Annulliamo tutto.
     if (connection) await connection.rollback();
     console.error(`Errore in POST /api/sales:`, error);
     res
       .status(500)
       .json({ error: "Errore durante la registrazione della vendita" });
   } finally {
-    // (H) In ogni caso, rilasciamo la connessione
     if (connection) connection.release();
   }
 });
@@ -731,267 +782,474 @@ app.post("/api/sales", async (req, res) => {
  * DELETE /api/sales/:id
  * Elimina una vendita e ripristina lo stock
  */
-app.delete('/api/sales/:id', async (req, res) => {
-    const { id: sale_id } = req.params;
+app.delete("/api/sales/:id", async (req, res) => {
+  const { id: sale_id } = req.params;
+  let connection;
 
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
 
-        // (A) Query 1: Trova la vendita che stiamo per eliminare
-        const [sales] = await connection.query(
-            'SELECT * FROM sales_log WHERE sale_id = ?',
-            [sale_id]
-        );
+    // 1) Carica vendita + info item (usa i.quantity, non i.stock_quantity!)
+    const [rows] = await connection.query(
+      `
+      SELECT 
+        s.sale_id, s.item_id, s.variant_id, s.platform_id,
+        s.sale_date, s.quantity_sold, s.total_price,
+        s.purchase_price_snapshot,                  -- può essere NULL
+        i.quantity              AS item_quantity,    -- stock item (no varianti)
+        i.has_variants,
+        i.purchase_price        AS item_purchase_price,  -- fallback per costo
+        i.category_id, i.brand
+      FROM sales_log s
+      JOIN items i ON i.item_id = s.item_id
+      WHERE s.sale_id = ?
+      `,
+      [sale_id]
+    );
 
-        if (sales.length === 0) {
-            await connection.rollback();
-            return res.status(404).json({ error: 'Vendita non trovata.' });
-        }
-
-        const sale = sales[0];
-        const { item_id, variant_id, quantity_sold } = sale;
-
-        // (B) Query 2: Ripristina lo stock (aggiungi la quantità)
-        if (variant_id) {
-            // --- Caso 1: Ripristina una VARIANTE ---
-            await connection.query(
-                // Aggiungiamo la quantità e impostiamo is_sold = 0 (false)
-                'UPDATE variants SET quantity = quantity + ?, is_sold = 0 WHERE variant_id = ?',
-                [quantity_sold, variant_id]
-            );
-            
-            // Dobbiamo anche assicurarci che l'articolo "padre" sia segnato come NON venduto
-            await connection.query('UPDATE items SET is_sold = 0 WHERE item_id = ?', [item_id]);
-            console.log(`Stock ripristinato per variante ${variant_id}.`);
-
-        } else {
-            // --- Caso 2: Ripristina un ARTICOLO (senza varianti) ---
-            await connection.query(
-                'UPDATE items SET quantity = quantity + ?, is_sold = 0 WHERE item_id = ?',
-                [quantity_sold, item_id]
-            );
-            console.log(`Stock ripristinato per articolo ${item_id}.`);
-        }
-
-        // (C) Query 3: Ora elimina la vendita dal log
-        await connection.query('DELETE FROM sales_log WHERE sale_id = ?', [sale_id]);
-
-        // (D) Tutto a posto, salva
-        await connection.commit();
-        res.status(200).json({ message: 'Vendita eliminata e stock ripristinato.' });
-
-    } catch (error) {
-        if (connection) await connection.rollback();
-        console.error(`Errore in DELETE /api/sales/${sale_id}:`, error);
-        res.status(500).json({ error: 'Errore durante l\'eliminazione della vendita.' });
-    } finally {
-        if (connection) connection.release();
+    if (!rows.length) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Vendita non trovata" });
     }
+
+    const sale = rows[0];
+
+    // 2) Normalizza numeri
+    const qty = Number(sale.quantity_sold) || 0;
+    const oldTotal = Number(sale.total_price) || 0;
+    const purchasePriceForCostRaw =
+      sale.purchase_price_snapshot ?? sale.item_purchase_price ?? 0;
+    const purchasePriceForCost = Number(purchasePriceForCostRaw) || 0;
+
+    const soldCost = purchasePriceForCost * qty;
+    const netGain = oldTotal - soldCost;
+
+    for (const [k, v] of Object.entries({
+      qty,
+      oldTotal,
+      purchasePriceForCost,
+      soldCost,
+      netGain,
+    })) {
+      if (!Number.isFinite(v)) {
+        throw new Error(`Valore numerico non valido per ${k}: ${v}`);
+      }
+    }
+
+    // 3) Ripristina lo stock:
+    // - se la vendita ha variant_id -> aggiorno variants.quantity
+    // - altrimenti aggiorno items.quantity
+    if (sale.variant_id) {
+      await connection.query(
+        `UPDATE variants SET quantity = COALESCE(quantity,0) + ? WHERE variant_id = ?`,
+        [qty, sale.variant_id]
+      );
+    } else {
+      await connection.query(
+        `UPDATE items SET quantity = COALESCE(quantity,0) + ? WHERE item_id = ?`,
+        [qty, sale.item_id]
+      );
+    }
+
+    // 4) Aggiorna statistiche (sottraggo i valori della vendita eliminata)
+    await connection.query(
+      `
+      UPDATE statistics SET
+        gross_profit_total = COALESCE(gross_profit_total,0) - ?,
+        net_profit_total   = COALESCE(net_profit_total,0)   - ?,
+        total_spent        = COALESCE(total_spent,0)        - ?
+      WHERE stats_id = 1
+      `,
+      [oldTotal, netGain, soldCost]
+    );
+
+    // 5) Aggiorna contatori (se li usi)
+    if (sale.category_id) {
+      await connection.query(
+        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - 1 WHERE category_id = ?`,
+        [sale.category_id]
+      );
+    }
+    if (sale.brand) {
+      await connection.query(
+        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - 1 WHERE brand = ?`,
+        [sale.brand]
+      );
+    }
+
+    // 6) Elimina la vendita dal log
+    await connection.query(`DELETE FROM sales_log WHERE sale_id = ?`, [
+      sale_id,
+    ]);
+
+    await connection.commit();
+    res.json({ message: "Vendita eliminata e statistiche aggiornate" });
+  } catch (err) {
+    if (connection) await connection.rollback();
+    console.error("Errore in DELETE /api/sales/:id:", err);
+    res
+      .status(500)
+      .json({ error: "Errore durante l'eliminazione della vendita" });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 /*
  * PUT /api/sales/:id
- * Modifica una vendita (AGGIORNATO CON VALIDAZIONE STOCK)
+ * Modifica una vendita (AGGIORNATO CON VALIDAZIONE STOCK E STATISTICHE)
  */
-app.put('/api/sales/:id', async (req, res) => {
-    const { id: sale_id } = req.params;
+app.put("/api/sales/:id", async (req, res) => {
+  const { id: sale_id } = req.params;
 
-    const {
-        platform_id,
-        sale_date,
-        quantity_sold: new_quantity,
-        total_price,
-        sold_by_user
-    } = req.body;
+  const {
+    platform_id,
+    sale_date,
+    quantity_sold: new_quantity,
+    total_price,
+    sold_by_user,
+  } = req.body;
 
-    if (!platform_id || !sale_date || !new_quantity || !total_price) {
-        return res.status(400).json({ error: 'Campi obbligatori mancanti' });
+  if (!platform_id || !sale_date || !new_quantity || !total_price) {
+    return res.status(400).json({ error: "Campi obbligatori mancanti" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // (A) Query 1: Trova la vendita originale e i dati dell'articolo padre
+    const [sales] = await connection.query(
+      `SELECT s.*, i.brand, i.category_id 
+             FROM sales_log s 
+             JOIN items i ON s.item_id = i.item_id 
+             WHERE s.sale_id = ?`,
+      [sale_id]
+    );
+
+    if (sales.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Vendita non trovata." });
     }
 
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
+    const old_sale = sales[0];
+    const {
+      item_id,
+      variant_id,
+      quantity_sold: old_quantity,
+      total_price: old_total_price,
+      purchase_price_snapshot: old_purchase_price_snapshot,
+    } = old_sale;
 
-        // (A) Query 1: Trova la vendita originale
-        const [sales] = await connection.query(
-            'SELECT * FROM sales_log WHERE sale_id = ?',
-            [sale_id]
-        );
+    const itemBrand = old_sale.brand;
+    const itemCategoryId = old_sale.category_id;
 
-        if (sales.length === 0) {
-            await connection.rollback();
-            return res.status(404).json({ error: 'Vendita non trovata.' });
-        }
+    // 1. ANNULLA E APPLICA LE STATISTICHE
 
-        const old_sale = sales[0];
-        const old_quantity = old_sale.quantity_sold;
-        const { item_id, variant_id } = old_sale;
+    // Calcola i valori VECCHI da SOTTRARRE
+    const old_soldCost = old_purchase_price_snapshot * old_quantity;
+    const old_netGain = old_total_price - old_soldCost;
 
-        // (B) Calcola la differenza (es. Vecchia=5, Nuova=7 -> Diff = -2)
-        const quantity_diff = old_quantity - new_quantity;
+    // Query 2a: Sottrai i vecchi valori dalle statistiche totali
+    await connection.query(
+      `
+            UPDATE statistics SET 
+                gross_profit_total = gross_profit_total - ?,
+                net_profit_total = net_profit_total - ?,
+                total_spent = total_spent - ?
+            WHERE stats_id = 1 
+        `,
+      [old_total_price, old_netGain, old_soldCost]
+    );
 
-        // (C - NUOVA VALIDAZIONE) Query 2: Controlla lo stock ATTUALE
-        let current_stock = 0;
-        if (variant_id) {
-            const [rows] = await connection.query('SELECT quantity FROM variants WHERE variant_id = ?', [variant_id]);
-            current_stock = rows[0].quantity;
-        } else {
-            const [rows] = await connection.query('SELECT quantity FROM items WHERE item_id = ?', [item_id]);
-            current_stock = rows[0].quantity;
-        }
+    // Aggiorna brand/categoria (Decremento VECCHIO)
+    if (itemCategoryId) {
+      await connection.query(
+        `UPDATE sales_counter SET sales_count = sales_count - ? WHERE category_id = ?`,
+        [old_quantity, itemCategoryId]
+      );
+    }
+    if (itemBrand) {
+      await connection.query(
+        `UPDATE sales_counter SET sales_count = sales_count - ? WHERE brand = ?`,
+        [old_quantity, itemBrand]
+      );
+    }
 
-        // (D - NUOVA VALIDAZIONE) Calcola il nuovo stock e controlla
-        const new_stock_level = current_stock + quantity_diff;
+    // 2. STOCK CHECK & AGGIORNAMENTO
 
-        if (new_stock_level < 0) {
-            // Errore! Quantità non valida
-            await connection.rollback();
-            return res.status(400).json({ 
-                error: `Quantità non valida. Stock disponibile (prima di questa vendita): ${current_stock + old_quantity}` 
-            });
-        }
+    // (B) Calcola la differenza per lo stock: Vecchio stock da rimettere + Nuovo stock da togliere
+    // stock_to_change è positivo se devo rimettere stock, negativo se devo togliere
+    const stock_to_change = old_quantity - new_quantity;
 
-        // (E) Query 3: Aggiorna lo stock (Ora sappiamo che è sicuro)
-        if (variant_id) {
-            await connection.query(
-                'UPDATE variants SET quantity = ?, is_sold = 0 WHERE variant_id = ?',
-                [new_stock_level, variant_id] // Usa il nuovo stock calcolato
-            );
-            await connection.query('UPDATE items SET is_sold = 0 WHERE item_id = ?', [item_id]);
-        } else {
-            await connection.query(
-                'UPDATE items SET quantity = ?, is_sold = 0 WHERE item_id = ?',
-                [new_stock_level, item_id]
-            );
-        }
-        
-        // (F) Query 4: Aggiorna la vendita nel log
-        const updateSql = `
+    // (C) Query 3: Controlla lo stock ATTUALE
+    let current_stock = 0;
+    let purchase_price_current = old_purchase_price_snapshot; // Useremo questo per la nuova riga
+
+    if (variant_id) {
+      const [rows] = await connection.query(
+        "SELECT quantity, purchase_price FROM variants WHERE variant_id = ?",
+        [variant_id]
+      );
+      if (rows.length === 0)
+        throw new Error("Variante non trovata in stock check.");
+      current_stock = rows[0].quantity;
+      purchase_price_current = rows[0].purchase_price;
+    } else {
+      const [rows] = await connection.query(
+        "SELECT quantity, purchase_price FROM items WHERE item_id = ?",
+        [item_id]
+      );
+      if (rows.length === 0)
+        throw new Error("Articolo non trovato in stock check.");
+      current_stock = rows[0].quantity;
+      purchase_price_current = rows[0].purchase_price;
+    }
+
+    // (D) Calcola il nuovo stock e controlla
+    const new_stock_level = current_stock + stock_to_change;
+
+    if (new_stock_level < 0) {
+      // Rollback e messaggio di errore (include lo stock massimo disponibile)
+      await connection.rollback();
+      return res.status(400).json({
+        error: `Quantità non valida. Max vendibile: ${
+          current_stock + old_quantity
+        }`,
+      });
+    }
+
+    // (E) Query 4: Aggiorna lo stock
+    if (variant_id) {
+      await connection.query(
+        "UPDATE variants SET quantity = ?, is_sold = 0 WHERE variant_id = ?",
+        [new_stock_level, variant_id] // Usa il nuovo stock calcolato
+      );
+      await connection.query("UPDATE items SET is_sold = 0 WHERE item_id = ?", [
+        item_id,
+      ]);
+    } else {
+      await connection.query(
+        "UPDATE items SET quantity = ?, is_sold = 0 WHERE item_id = ?",
+        [new_stock_level, item_id]
+      );
+    }
+
+    // 3. APPLICA NUOVI VALORI & LOG UPDATE
+
+    // Calcola i valori NUOVI da AGGIUNGERE
+    const new_soldCost = purchase_price_current * new_quantity;
+    const new_netGain = total_price - new_soldCost;
+
+    // Query 5: Aggiorna la vendita nel log (incluso il nuovo snapshot)
+    const updateSql = `
             UPDATE sales_log SET
                 platform_id = ?, sale_date = ?, quantity_sold = ?, 
-                total_price = ?, sold_by_user = ?
+                total_price = ?, sold_by_user = ?, purchase_price_snapshot = ?
             WHERE sale_id = ?
         `;
-        await connection.query(updateSql, [
-            platform_id,
-            sale_date,
-            new_quantity,
-            total_price,
-            sold_by_user,
-            sale_id
-        ]);
-        
-        // (G) Query 5: Ricontrolla e imposta is_sold = 1 se il nuovo stock è <= 0
-        if (variant_id) {
-            await connection.query(
-                'UPDATE variants SET is_sold = 1 WHERE quantity <= 0 AND variant_id = ?',
-                [variant_id]
-            );
-        } else {
-            await connection.query(
-                'UPDATE items SET is_sold = 1 WHERE quantity <= 0 AND item_id = ?',
-                [item_id]
-            );
-        }
+    await connection.query(updateSql, [
+      platform_id,
+      sale_date,
+      new_quantity,
+      total_price,
+      sold_by_user,
+      purchase_price_current, // NUOVO SNAPSHOT!
+      sale_id,
+    ]);
 
-        await connection.commit();
-        res.status(200).json({ message: 'Vendita aggiornata con successo.' });
+    // Query 6: Aggiorna le statistiche totali (Aggiunge i nuovi valori)
+    await connection.query(
+      `
+            UPDATE statistics SET 
+                gross_profit_total = gross_profit_total + ?,
+                net_profit_total = net_profit_total + ?,
+                total_spent = total_spent + ?
+            WHERE stats_id = 1 
+        `,
+      [total_price, new_netGain, new_soldCost]
+    );
 
-    } catch (error) {
-        if (connection) await connection.rollback();
-        console.error(`Errore in PUT /api/sales/${sale_id}:`, error);
-        res.status(500).json({ error: 'Errore durante l\'aggiornamento della vendita.' });
-    } finally {
-        if (connection) connection.release();
+    // Aggiorna brand/categoria (Incremento NUOVO)
+    if (itemCategoryId) {
+      await connection.query(
+        `UPDATE sales_counter SET sales_count = sales_count + ? WHERE category_id = ?`,
+        [new_quantity, itemCategoryId]
+      );
     }
+    if (itemBrand) {
+      await connection.query(
+        `UPDATE sales_counter SET sales_count = sales_count + ? WHERE brand = ?`,
+        [new_quantity, itemBrand]
+      );
+    }
+
+    // Query 7: Ricontrolla e imposta is_sold = 1 se il nuovo stock è <= 0
+    if (variant_id) {
+      await connection.query(
+        "UPDATE variants SET is_sold = 1 WHERE quantity <= 0 AND variant_id = ?",
+        [variant_id]
+      );
+    } else {
+      await connection.query(
+        "UPDATE items SET is_sold = 1 WHERE quantity <= 0 AND item_id = ?",
+        [item_id]
+      );
+    }
+
+    await connection.commit();
+    res.status(200).json({ message: "Vendita aggiornata con successo." });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error(`Errore in PUT /api/sales/${sale_id}:`, error);
+    // Se è un errore del server/DB non previsto, usa 500
+    const errorMessage =
+      error.message || "Errore durante l'aggiornamento della vendita.";
+    res.status(500).json({ error: errorMessage });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+/*
+ * GET /api/statistics/summary
+ * Recupera tutte le statistiche chiave
+ */
+app.get("/api/statistics/summary", async (req, res) => {
+  try {
+    // 1. Statistiche Totali (Single row)
+    const [totals] = await pool.query(
+      "SELECT * FROM statistics WHERE stats_id = 1"
+    );
+
+    // 2. Categoria Più Venduta (Top 1)
+    const [topCategory] = await pool.query(`
+            SELECT sc.sales_count, c.name as category_name
+            FROM sales_counter sc
+            JOIN categories c ON sc.category_id = c.category_id
+            WHERE sc.category_id IS NOT NULL 
+            ORDER BY sc.sales_count DESC
+            LIMIT 1
+        `);
+
+    // 3. Brand Più Venduto (Top 1)
+    const [topBrand] = await pool.query(`
+            SELECT brand, sales_count
+            FROM sales_counter
+            WHERE brand IS NOT NULL 
+            ORDER BY sales_count DESC
+            LIMIT 1
+        `);
+
+    // 4. Assembla la risposta
+    res.json({
+      totals: totals[0] || {
+        gross_profit_total: 0,
+        net_profit_total: 0,
+        total_spent: 0,
+      },
+      topCategory: topCategory[0] || null,
+      topBrand: topBrand[0] || null,
+    });
+  } catch (error) {
+    console.error("Errore in GET /api/statistics/summary:", error);
+    res.status(500).json({ error: "Errore nel recupero delle statistiche" });
+  }
 });
 
 /*
  * PUT /api/items/:id
  * Aggiorna un articolo esistente (MODIFICATO per gestire le piattaforme)
  */
-app.put('/api/items/:id', async (req, res) => {
-    const { id } = req.params;
-    const {
-        name,
-        category_id, // Già aggiornato
-        description,
-        brand,
-        value,
-        sale_price,
-        has_variants,
-        quantity,
-        purchase_price,
-        platforms // (1 - NUOVO) Riceviamo l'array di piattaforme [1, 2]
-    } = req.body;
+app.put("/api/items/:id", async (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    category_id, // Già aggiornato
+    description,
+    brand,
+    value,
+    sale_price,
+    has_variants,
+    quantity,
+    purchase_price,
+    platforms, // (1 - NUOVO) Riceviamo l'array di piattaforme [1, 2]
+  } = req.body;
 
-    if (!name || has_variants === undefined) {
-        return res.status(400).json({ error: 'Campi "name" e "has_variants" sono obbligatori' });
-    }
-    
-    const itemValues = [
-        name,
-        category_id,
-        description,
-        brand,
-        value,
-        sale_price,
-        has_variants,
-        has_variants ? null : quantity,
-        has_variants ? null : purchase_price,
-        id 
-    ];
+  if (!name || has_variants === undefined) {
+    return res
+      .status(400)
+      .json({ error: 'Campi "name" e "has_variants" sono obbligatori' });
+  }
 
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
+  const itemValues = [
+    name,
+    category_id,
+    description,
+    brand,
+    value,
+    sale_price,
+    has_variants,
+    has_variants ? null : quantity,
+    has_variants ? null : purchase_price,
+    id,
+  ];
 
-        // Query 1: Aggiorniamo l'articolo (invariata)
-        const updateSql = `
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Query 1: Aggiorniamo l'articolo (invariata)
+    const updateSql = `
             UPDATE items SET 
                 name = ?, category_id = ?, description = ?, brand = ?, 
                 \`value\` = ?, sale_price = ?, has_variants = ?, 
                 quantity = ?, purchase_price = ?
             WHERE item_id = ?
         `;
-        await connection.query(updateSql, itemValues);
+    await connection.query(updateSql, itemValues);
 
-        // Query 2: Aggiorniamo le piattaforme
-        if (has_variants) {
-             // (2 - MODIFICA) Se ha varianti, le piattaforme sono gestite altrove
-             // Cancelliamo qualsiasi piattaforma rimasta sull'articolo
-             await connection.query('DELETE FROM item_platforms WHERE item_id = ?', [id]);
-        } else {
-            // (3 - NUOVO) Se NON ha varianti, aggiorniamo le sue piattaforme
-            
-            // (A) Cancelliamo le vecchie piattaforme per "resettare"
-            await connection.query('DELETE FROM item_platforms WHERE item_id = ?', [id]);
+    // Query 2: Aggiorniamo le piattaforme
+    if (has_variants) {
+      // (2 - MODIFICA) Se ha varianti, le piattaforme sono gestite altrove
+      // Cancelliamo qualsiasi piattaforma rimasta sull'articolo
+      await connection.query("DELETE FROM item_platforms WHERE item_id = ?", [
+        id,
+      ]);
+    } else {
+      // (3 - NUOVO) Se NON ha varianti, aggiorniamo le sue piattaforme
 
-            // (B) Inseriamo le nuove (se l'array non è vuoto)
-            if (platforms && platforms.length > 0) {
-                const platformSql = 'INSERT INTO item_platforms (item_id, platform_id) VALUES ?';
-                const platformValues = platforms.map(platformId => [id, platformId]);
-                await connection.query(platformSql, [platformValues]);
-            }
-        }
-        
-        await connection.commit();
-        
-        res.status(200).json({ 
-            message: 'Articolo aggiornato con successo!'
-        });
+      // (A) Cancelliamo le vecchie piattaforme per "resettare"
+      await connection.query("DELETE FROM item_platforms WHERE item_id = ?", [
+        id,
+      ]);
 
-    } catch (error) {
-        if (connection) await connection.rollback();
-        console.error(`Errore in PUT /api/items/${id}:`, error);
-        res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'articolo' });
-    } finally {
-        if (connection) connection.release();
+      // (B) Inseriamo le nuove (se l'array non è vuoto)
+      if (platforms && platforms.length > 0) {
+        const platformSql =
+          "INSERT INTO item_platforms (item_id, platform_id) VALUES ?";
+        const platformValues = platforms.map((platformId) => [id, platformId]);
+        await connection.query(platformSql, [platformValues]);
+      }
     }
+
+    await connection.commit();
+
+    res.status(200).json({
+      message: "Articolo aggiornato con successo!",
+    });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error(`Errore in PUT /api/items/${id}:`, error);
+    res
+      .status(500)
+      .json({ error: "Errore durante l'aggiornamento dell'articolo" });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 /*
@@ -1085,63 +1343,64 @@ app.post("/api/photos/upload", upload.single("photo"), async (req, res) => {
  * DELETE /api/photos/:id
  * Elimina una foto (sia dal DB che dal disco)
  */
-app.delete('/api/photos/:id', async (req, res) => {
-    const { id: photo_id } = req.params;
+app.delete("/api/photos/:id", async (req, res) => {
+  const { id: photo_id } = req.params;
 
-    let connection;
-    try {
-        connection = await pool.getConnection();
+  let connection;
+  try {
+    connection = await pool.getConnection();
 
-        // (A) Query 1: Trova il percorso del file nel database
-        const [photos] = await connection.query(
-            'SELECT file_path FROM photos WHERE photo_id = ?',
-            [photo_id]
-        );
+    // (A) Query 1: Trova il percorso del file nel database
+    const [photos] = await connection.query(
+      "SELECT file_path FROM photos WHERE photo_id = ?",
+      [photo_id]
+    );
 
-        if (photos.length === 0) {
-            return res.status(404).json({ error: 'Foto non trovata.' });
-        }
-
-        const filePath = photos[0].file_path;
-
-        // (B) Query 2: Elimina la riga dal database
-        // (Le tabelle collegate, come le varianti, si aggiorneranno
-        // in automatico grazie a "ON DELETE SET NULL" che abbiamo impostato)
-        await connection.query('DELETE FROM photos WHERE photo_id = ?', [photo_id]);
-
-        // (C) Azione 3: Elimina il file fisico dal disco
-        // (Usiamo path.join per assicurarci che il percorso sia corretto)
-        const physicalPath = path.join(__dirname, filePath);
-
-        fs.unlink(physicalPath, (err) => {
-            if (err) {
-                // Logga l'errore, ma non bloccare la risposta
-                // (potremmo aver cancellato il file ma non il DB, o viceversa)
-                // In un'app più grande, gestiremmo meglio questa transazione
-                console.error("Errore nell'eliminare il file fisico:", err);
-            } else {
-                console.log(`File fisico eliminato: ${physicalPath}`);
-            }
-        });
-
-        // (D) Rispondi subito con successo (non aspettiamo fs.unlink)
-        res.status(200).json({ message: 'Foto eliminata con successo.' });
-
-    } catch (error) {
-        console.error(`Errore in DELETE /api/photos/${photo_id}:`, error);
-        res.status(500).json({ error: 'Errore durante l\'eliminazione della foto.' });
-    } finally {
-        if (connection) connection.release();
+    if (photos.length === 0) {
+      return res.status(404).json({ error: "Foto non trovata." });
     }
+
+    const filePath = photos[0].file_path;
+
+    // (B) Query 2: Elimina la riga dal database
+    // (Le tabelle collegate, come le varianti, si aggiorneranno
+    // in automatico grazie a "ON DELETE SET NULL" che abbiamo impostato)
+    await connection.query("DELETE FROM photos WHERE photo_id = ?", [photo_id]);
+
+    // (C) Azione 3: Elimina il file fisico dal disco
+    // (Usiamo path.join per assicurarci che il percorso sia corretto)
+    const physicalPath = path.join(__dirname, filePath);
+
+    fs.unlink(physicalPath, (err) => {
+      if (err) {
+        // Logga l'errore, ma non bloccare la risposta
+        // (potremmo aver cancellato il file ma non il DB, o viceversa)
+        // In un'app più grande, gestiremmo meglio questa transazione
+        console.error("Errore nell'eliminare il file fisico:", err);
+      } else {
+        console.log(`File fisico eliminato: ${physicalPath}`);
+      }
+    });
+
+    // (D) Rispondi subito con successo (non aspettiamo fs.unlink)
+    res.status(200).json({ message: "Foto eliminata con successo." });
+  } catch (error) {
+    console.error(`Errore in DELETE /api/photos/${photo_id}:`, error);
+    res
+      .status(500)
+      .json({ error: "Errore durante l'eliminazione della foto." });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 /*
  * GET /api/dashboard/latest-sale (CORRETTO)
  * Recupera le ULTIME 3 vendite registrate
  */
-app.get('/api/dashboard/latest-sale', async (req, res) => {
-    try {
-        const [sales] = await pool.query(`
+app.get("/api/dashboard/latest-sale", async (req, res) => {
+  try {
+    const [sales] = await pool.query(`
             SELECT 
                 s.sale_id, s.total_price, s.sale_date,
                 p.name AS platform_name, 
@@ -1155,35 +1414,33 @@ app.get('/api/dashboard/latest-sale', async (req, res) => {
             ORDER BY s.sale_id DESC
             LIMIT 3;
         `);
-        // RESTITUISCE SEMPRE UNA LISTA (anche se vuota)
-        res.json(sales); 
-
-    } catch (error) {
-        console.error("Errore in GET /api/dashboard/latest-sale:", error);
-        res.status(500).json({ error: 'Errore nel recupero ultima vendita' });
-    }
+    // RESTITUISCE SEMPRE UNA LISTA (anche se vuota)
+    res.json(sales);
+  } catch (error) {
+    console.error("Errore in GET /api/dashboard/latest-sale:", error);
+    res.status(500).json({ error: "Errore nel recupero ultima vendita" });
+  }
 });
 
 /*
  * GET /api/dashboard/latest-item (CORRETTO)
  * Recupera gli ULTIMI 3 articoli aggiunti
  */
-app.get('/api/dashboard/latest-item', async (req, res) => {
-    try {
-        const [items] = await pool.query(`
+app.get("/api/dashboard/latest-item", async (req, res) => {
+  try {
+    const [items] = await pool.query(`
             SELECT i.item_id, i.name, i.unique_code, c.name as category_name 
             FROM items i
             LEFT JOIN categories c ON i.category_id = c.category_id
             ORDER BY i.item_id DESC
             LIMIT 3;
         `);
-        // RESTITUISCE SEMPRE UNA LISTA (anche se vuota)
-        res.json(items); 
-
-    } catch (error) {
-        console.error("Errore in GET /api/dashboard/latest-item:", error);
-        res.status(500).json({ error: 'Errore nel recupero ultimo articolo' });
-    }
+    // RESTITUISCE SEMPRE UNA LISTA (anche se vuota)
+    res.json(items);
+  } catch (error) {
+    console.error("Errore in GET /api/dashboard/latest-item:", error);
+    res.status(500).json({ error: "Errore nel recupero ultimo articolo" });
+  }
 });
 
 // ---------- AVVIO SERVER ----------
