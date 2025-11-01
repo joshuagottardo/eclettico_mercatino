@@ -360,7 +360,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
     // Controlla se almeno un file è stato selezionato
-    if (pickedFiles == null || pickedFiles.isEmpty) return;
+    if (pickedFiles.isEmpty) return;
 
     // Avvia l'indicatore di caricamento
     setState(() {

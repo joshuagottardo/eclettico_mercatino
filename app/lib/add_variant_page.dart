@@ -266,73 +266,77 @@ class _AddVariantPageState extends State<AddVariantPage> {
         ],
       ),
       // (12 - MODIFICA) Mostra loader
-      body:
-          _isPageLoading || _platformsLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              )
-              : Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: [
-                    // ... (Campi modulo invariati) ...
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome',
+      body: GestureDetector(
+        onTap: () {
+          // Chiude la tastiera forzando la rimozione del focus da qualsiasi campo
+          FocusScope.of(context).unfocus();
+        },
+        child:
+            _isPageLoading || _platformsLoading
+                ? Center(
+                  child: CircularProgressIndicator(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+                : Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      // ... (Campi modulo invariati) ...
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(labelText: 'Nome'),
+                        validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
                       ),
-                      validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _quantityController,
-                            decoration: const InputDecoration(
-                              labelText: 'N° Pezzi',
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _quantityController,
+                              decoration: const InputDecoration(
+                                labelText: 'N° Pezzi',
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                             ),
-                            keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _purchasePriceController,
-                            decoration: const InputDecoration(
-                              labelText: 'Acquisto (€)',
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _purchasePriceController,
+                              decoration: const InputDecoration(
+                                labelText: 'Acquisto (€)',
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                             ),
-                            keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Descrizione',
+                        ],
                       ),
-                      maxLines: 3,
-                    ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Descrizione',
+                        ),
+                        maxLines: 3,
+                      ),
 
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Piattaforme',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    ..._buildPlatformCheckboxes(),
-                  ],
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Piattaforme',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      ..._buildPlatformCheckboxes(),
+                    ],
+                  ),
                 ),
-              ),
+      ),
     );
   }
 

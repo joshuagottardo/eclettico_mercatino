@@ -60,11 +60,12 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
           _errorMessage = 'Errore di rete o conversione: $e';
         });
+      }
       print('Errore caricamento dashboard: $e');
     }
   }
@@ -260,14 +261,14 @@ class _HomePageState extends State<HomePage> {
     // CORREZIONE: Gestione sicura del prezzo
     String price = '€ 0.00';
     if (sale['total_price'] != null) {
-      final num? total_price = num.tryParse(sale['total_price'].toString());
-      if (total_price != null) {
-        if (total_price == total_price.toInt()) {
+      final num? totalPrice = num.tryParse(sale['total_price'].toString());
+      if (totalPrice != null) {
+        if (totalPrice == totalPrice.toInt()) {
           // FIX CHIAVE: Rimosso il '+'
-          price = '€ ${total_price.toInt()}';
+          price = '€ ${totalPrice.toInt()}';
         } else {
           // FIX CHIAVE: Rimosso il '+'
-          price = '€ ${total_price.toStringAsFixed(2)}';
+          price = '€ ${totalPrice.toStringAsFixed(2)}';
         }
       }
     }

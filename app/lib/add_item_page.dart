@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 // Importiamo le pagine necessarie
-import 'package:app/item_detail_page.dart'; 
+import 'package:app/item_detail_page.dart';
 import 'package:app/api_config.dart';
 
 class AddItemPage extends StatefulWidget {
@@ -33,8 +33,8 @@ class _AddItemPageState extends State<AddItemPage> {
   bool _categoriesLoading = true;
 
   // Dati per Piattaforme
-  List _platforms = []; 
-  bool _platformsLoading = true; 
+  List _platforms = [];
+  bool _platformsLoading = true;
   final Set<int> _selectedPlatformIds = {};
 
   // Variabili di stato
@@ -191,14 +191,13 @@ class _AddItemPageState extends State<AddItemPage> {
           // (1 - NUOVA LOGICA) Se l'articolo è stato creato, naviga alla sua pagina
           if (!_isEditMode && response.statusCode == 201) {
             final Map<String, dynamic> responseData = jsonDecode(response.body);
-            final int newItemId = responseData['newItemId']; 
-            
+            final int newItemId = responseData['newItemId'];
+
             // Reperiamo l'articolo appena creato per avere tutti i dati
             _navigateToNewItemDetail(newItemId);
-            
           } else {
             // Se è una MODIFICA, torniamo alla pagina precedente (dettaglio)
-            Navigator.pop(context, true); 
+            Navigator.pop(context, true);
           }
         }
       } else {
@@ -214,34 +213,35 @@ class _AddItemPageState extends State<AddItemPage> {
       }
     }
   }
-  
+
   // (2 - NUOVA FUNZIONE) Prende il nuovo ID e naviga al dettaglio
   void _navigateToNewItemDetail(int itemId) async {
     // Prima, chiudi la pagina di aggiunta
-    Navigator.pop(context, true); 
-    
+    Navigator.pop(context, true);
+
     // Poi, naviga al dettaglio dell'articolo appena creato
     // Usiamo una rotta 'GET /api/items/:id' per prelevare i dati completi
     try {
-        final url = '$kBaseUrl/api/items/$itemId';
-        final response = await http.get(Uri.parse(url));
-        
-        if (response.statusCode == 200) {
-            final itemData = jsonDecode(response.body);
-            
-            // Naviga alla pagina di dettaglio
-            Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ItemDetailPage(item: itemData)),
-            );
-        } else {
-            _showError('Articolo creato, ma errore nel caricare i dettagli.');
-        }
+      final url = '$kBaseUrl/api/items/$itemId';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final itemData = jsonDecode(response.body);
+
+        // Naviga alla pagina di dettaglio
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ItemDetailPage(item: itemData),
+          ),
+        );
+      } else {
+        _showError('Articolo creato, ma errore nel caricare i dettagli.');
+      }
     } catch (e) {
-        _showError('Errore di rete dopo la creazione.');
+      _showError('Errore di rete dopo la creazione.');
     }
   }
-
 
   void _showError(String message) {
     if (mounted) {
@@ -288,114 +288,72 @@ class _AddItemPageState extends State<AddItemPage> {
           ),
         ],
       ),
-      body:
-          _isPageLoading || _categoriesLoading || _platformsLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              )
-              : Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: [
-                    // ... (Campi modulo invariati, solo la logica di navigazione è cambiata)
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome',
+      body: GestureDetector(
+        // Questa funzione viene chiamata quando l'utente tocca un punto
+        // al di fuori di un widget interattivo (come un campo di testo)
+        onTap: () {
+          // Rimuove il focus da qualsiasi elemento, chiudendo la tastiera
+          FocusScope.of(context).unfocus();
+        },
+        child:
+            _isPageLoading || _categoriesLoading || _platformsLoading
+                ? Center(
+                  child: CircularProgressIndicator(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+                : Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      // ... (Campi modulo invariati, solo la logica di navigazione è cambiata)
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(labelText: 'Nome'),
+                        validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
                       ),
-                      validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(labelText: 'Categoria'),
-                      value: _selectedCategoryId,
-                      items:
-                          _categories.map<DropdownMenuItem<int>>((category) {
-                            return DropdownMenuItem<int>(
-                              value: category['category_id'],
-                              child: Text(category['name']),
-                            );
-                          }).toList(),
-                      onChanged:
-                          (value) => setState(() {
-                            _selectedCategoryId = value;
-                          }),
-                      validator:
-                          (value) => value == null ? 'Obbligatoria' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _brandController,
-                      decoration: const InputDecoration(labelText: 'Brand'),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Descrizione',
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _valueController,
-                            decoration: const InputDecoration(
-                              labelText: 'Valore (€)',
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<int>(
+                        decoration: const InputDecoration(
+                          labelText: 'Categoria',
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _salePriceController,
-                            decoration: const InputDecoration(
-                              labelText: 'Vendita (€)',
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    SwitchListTile.adaptive(
-                      title: const Text('L\'articolo ha varianti?'),
-                      subtitle: const Text(
-                        'Se sì, quantità e prezzi saranno gestiti per ogni variante',
+                        value: _selectedCategoryId,
+                        items:
+                            _categories.map<DropdownMenuItem<int>>((category) {
+                              return DropdownMenuItem<int>(
+                                value: category['category_id'],
+                                child: Text(category['name']),
+                              );
+                            }).toList(),
+                        onChanged:
+                            (value) => setState(() {
+                              _selectedCategoryId = value;
+                            }),
+                        validator:
+                            (value) => value == null ? 'Obbligatoria' : null,
                       ),
-                      value: _hasVariants,
-                      onChanged: (bool value) {
-                        if (_isEditMode && !value) {
-                          _showError(
-                            'Non puoi disattivare le varianti su un articolo esistente.',
-                          );
-                          return;
-                        }
-                        setState(() {
-                          _hasVariants = value;
-                        });
-                      },
-                      activeColor: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- CAMPI CONDIZIONALI (Quantità, Prezzo e Piattaforme) ---
-                    if (!_hasVariants) ...[
-                      const Divider(),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _brandController,
+                        decoration: const InputDecoration(labelText: 'Brand'),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Descrizione',
+                        ),
+                        maxLines: 3,
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
                             child: TextFormField(
-                              controller: _quantityController,
+                              controller: _valueController,
                               decoration: const InputDecoration(
-                                labelText: 'N° Pezzi',
+                                labelText: 'Valore (€)',
                               ),
                               keyboardType: TextInputType.number,
                             ),
@@ -403,9 +361,9 @@ class _AddItemPageState extends State<AddItemPage> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: TextFormField(
-                              controller: _purchasePriceController,
+                              controller: _salePriceController,
                               decoration: const InputDecoration(
-                                labelText: 'Acquisto (€)',
+                                labelText: 'Vendita (€)',
                               ),
                               keyboardType: TextInputType.number,
                             ),
@@ -413,17 +371,67 @@ class _AddItemPageState extends State<AddItemPage> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      // (8 - NUOVO) Sezione Checkbox Piattaforme
-                      Text(
-                        'Piattaforme',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      SwitchListTile.adaptive(
+                        title: const Text('L\'articolo ha varianti?'),
+                        subtitle: const Text(
+                          'Se sì, quantità e prezzi saranno gestiti per ogni variante',
+                        ),
+                        value: _hasVariants,
+                        onChanged: (bool value) {
+                          if (_isEditMode && !value) {
+                            _showError(
+                              'Non puoi disattivare le varianti su un articolo esistente.',
+                            );
+                            return;
+                          }
+                          setState(() {
+                            _hasVariants = value;
+                          });
+                        },
+                        activeColor: Theme.of(context).colorScheme.primary,
                       ),
-                      const SizedBox(height: 8),
-                      ..._buildPlatformCheckboxes(),
+                      const SizedBox(height: 16),
+
+                      // --- CAMPI CONDIZIONALI (Quantità, Prezzo e Piattaforme) ---
+                      if (!_hasVariants) ...[
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _quantityController,
+                                decoration: const InputDecoration(
+                                  labelText: 'N° Pezzi',
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _purchasePriceController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Acquisto (€)',
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        // (8 - NUOVO) Sezione Checkbox Piattaforme
+                        Text(
+                          'Piattaforme',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        ..._buildPlatformCheckboxes(),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
+      ),
     );
   }
 
