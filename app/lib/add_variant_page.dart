@@ -282,7 +282,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
-                        labelText: 'Nome Variante (es. Rosso, XL)',
+                        labelText: 'Nome',
                       ),
                       validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
                     ),
@@ -293,7 +293,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                           child: TextFormField(
                             controller: _quantityController,
                             decoration: const InputDecoration(
-                              labelText: 'N. Pezzi',
+                              labelText: 'N° Pezzi',
                             ),
                             keyboardType: TextInputType.number,
                             validator: (v) => v!.isEmpty ? 'Obbl.' : null,
@@ -304,7 +304,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                           child: TextFormField(
                             controller: _purchasePriceController,
                             decoration: const InputDecoration(
-                              labelText: 'Prezzo Acquisto (€)',
+                              labelText: 'Acquisto (€)',
                             ),
                             keyboardType: TextInputType.number,
                             validator: (v) => v!.isEmpty ? 'Obbl.' : null,
@@ -316,7 +316,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                     TextFormField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(
-                        labelText: 'Descrizione (opzionale)',
+                        labelText: 'Descrizione',
                       ),
                       maxLines: 3,
                     ),
@@ -325,7 +325,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                     const Divider(),
                     const SizedBox(height: 16),
                     Text(
-                      'Piattaforme di Pubblicazione',
+                      'Piattaforme',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),

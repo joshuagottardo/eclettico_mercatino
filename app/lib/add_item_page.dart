@@ -304,7 +304,7 @@ class _AddItemPageState extends State<AddItemPage> {
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
-                        labelText: 'Nome Articolo',
+                        labelText: 'Nome',
                       ),
                       validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
                     ),
@@ -356,7 +356,7 @@ class _AddItemPageState extends State<AddItemPage> {
                           child: TextFormField(
                             controller: _salePriceController,
                             decoration: const InputDecoration(
-                              labelText: 'Prezzo Vendita (€)',
+                              labelText: 'Vendita (€)',
                             ),
                             keyboardType: TextInputType.number,
                           ),
@@ -395,7 +395,7 @@ class _AddItemPageState extends State<AddItemPage> {
                             child: TextFormField(
                               controller: _quantityController,
                               decoration: const InputDecoration(
-                                labelText: 'N. Pezzi',
+                                labelText: 'N° Pezzi',
                               ),
                               keyboardType: TextInputType.number,
                             ),
@@ -405,7 +405,7 @@ class _AddItemPageState extends State<AddItemPage> {
                             child: TextFormField(
                               controller: _purchasePriceController,
                               decoration: const InputDecoration(
-                                labelText: 'Prezzo Acquisto (€)',
+                                labelText: 'Acquisto (€)',
                               ),
                               keyboardType: TextInputType.number,
                             ),
@@ -415,7 +415,7 @@ class _AddItemPageState extends State<AddItemPage> {
                       const SizedBox(height: 24),
                       // (8 - NUOVO) Sezione Checkbox Piattaforme
                       Text(
-                        'Piattaforme di Pubblicazione',
+                        'Piattaforme',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
