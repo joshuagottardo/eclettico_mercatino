@@ -779,6 +779,48 @@ app.post("/api/sales", async (req, res) => {
 });
 
 /*
+ * DELETE /api/items/:id
+ * Elimina un articolo (SOLO SE NON HA VENDITE ASSOCIATE)
+ */
+app.delete('/api/items/:id', async (req, res) => {
+    const { id: item_id } = req.params;
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Controlla lo storico vendite
+        const [sales] = await connection.query(
+            'SELECT COUNT(*) as salesCount FROM sales_log WHERE item_id = ?',
+            [item_id]
+        );
+
+        if (sales[0].salesCount > 0) {
+            // Se ci sono vendite, blocca l'eliminazione
+            await connection.rollback();
+            return res.status(400).json({ 
+                error: 'Impossibile eliminare: l\'articolo ha uno storico vendite associato.' 
+            });
+        }
+
+        // 2. Se non ci sono vendite, procedi con l'eliminazione
+        // (Assumendo che il DB usi ON DELETE CASCADE per variants, photos, item_platforms)
+        await connection.query('DELETE FROM items WHERE item_id = ?', [item_id]);
+
+        await connection.commit();
+        res.status(200).json({ message: 'Articolo eliminato con successo.' });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error(`Errore in DELETE /api/items/${item_id}:`, error);
+        res.status(500).json({ error: 'Errore durante l\'eliminazione dell\'articolo.' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+/*
  * DELETE /api/sales/:id
  * Elimina una vendita e ripristina lo stock
  */

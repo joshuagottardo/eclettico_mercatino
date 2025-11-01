@@ -38,6 +38,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   bool _platformsLoading = true;
   bool _isItemSold = false;
   bool _isSalesLogOpen = false; // Stato per il Drawer Log
+  bool _isDeleting = false;
 
   // Colori (resi stabili e definiti)
   final Color _soldColor = Colors.red[500]!;
@@ -63,10 +64,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     final bool? dataChanged = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddVariantPage(
-          itemId: _currentItem['item_id'],
-          variantId: null, // Passiamo null per indicare la creazione di una nuova variante
-        ),
+        builder:
+            (context) => AddVariantPage(
+              itemId: _currentItem['item_id'],
+              variantId:
+                  null, // Passiamo null per indicare la creazione di una nuova variante
+            ),
       ),
     );
     if (dataChanged == true) {
@@ -219,6 +222,29 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 // --- 7. LOG VENDITE (Grigio scuro) ---
                 _buildSalesLogDrawer(),
                 const SizedBox(height: 24),
+                Center(
+                  child:
+                      _isDeleting
+                          ? const CircularProgressIndicator(color: Colors.red)
+                          : TextButton.icon(
+                            onPressed: _deleteItem,
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
+                            label: const Text(
+                              'Elimina Articolo',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
+                ),
+                const SizedBox(height: 48),
               ],
             ),
           ),
@@ -245,6 +271,81 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       if (mounted) setState(() => _isVariantsLoading = false);
     }
     await Future.wait([_fetchSalesLog(), _fetchPhotos(), _fetchPlatforms()]);
+  }
+
+  // Funzione per gestire l'eliminazione dell'articolo
+  Future<void> _deleteItem() async {
+    // 1. Chiedi conferma
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            title: const Text('Sei sicuro?'),
+            content: const Text(
+              'Vuoi eliminare definitivamente questo articolo? L\'azione è irreversibile e possibile solo se non ci sono vendite associate.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Annulla'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sì, elimina'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isDeleting = true;
+    });
+
+    try {
+      final url = '$kBaseUrl/api/items/${_currentItem['item_id']}';
+      final response = await http.delete(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Articolo eliminato con successo.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Torna alla pagina precedente (Home/Search) e segnala il cambiamento (true)
+          Navigator.pop(context, true);
+        }
+      } else if (response.statusCode == 400) {
+        // Errore gestito (es. ha vendite)
+        final error = jsonDecode(response.body);
+        _showError(error['error'] ?? 'Non puoi eliminare questo articolo.');
+      } else {
+        // Errore server
+        _showError('Errore server: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showError('Errore di rete: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+    }
+  }
+
+  // Funzione helper per mostrare errori (dovresti già averla)
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Future<void> _fetchItemDetails() async {
