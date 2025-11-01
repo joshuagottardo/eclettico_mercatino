@@ -1,4 +1,4 @@
-// lib/home_page.dart - FIX ERRORE toInt() e LISTE
+// lib/home_page.dart - FIX LAYOUT RESPONSIVE (ROBUSTO)
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -11,8 +11,8 @@ import 'package:app/add_item_page.dart';
 import 'package:app/item_list_page.dart';
 import 'package:app/item_detail_page.dart';
 import 'package:app/library_page.dart';
-import 'package:app/statistics_page.dart'; // NUOVO IMPORT
-import 'package:app/api_config.dart'; // Importato l'URL base
+import 'package:app/statistics_page.dart'; 
+import 'package:app/api_config.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,7 +22,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Ora sono List
   List _latestSales = [];
   List _latestItems = [];
   bool _isLoading = true;
@@ -43,7 +42,6 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final responses = await Future.wait([
-        // Usiamo kBaseUrl
         http.get(Uri.parse('$kBaseUrl/api/dashboard/latest-sale')),
         http.get(Uri.parse('$kBaseUrl/api/dashboard/latest-item')),
       ]);
@@ -51,7 +49,6 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
 
       setState(() {
-        // CORREZIONE: Decodifichiamo come List<dynamic>
         if (responses[0].statusCode == 200) {
           _latestSales = jsonDecode(responses[0].body) as List<dynamic>;
         }
@@ -85,7 +82,6 @@ class _HomePageState extends State<HomePage> {
   // Funzione per navigare al dettaglio dopo aver preso i dati
   void _navigateToDetail(int itemId) async {
     try {
-      // Usiamo kBaseUrl
       final url = '$kBaseUrl/api/items/$itemId';
       final response = await http.get(Uri.parse(url));
 
@@ -127,71 +123,15 @@ class _HomePageState extends State<HomePage> {
               : ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: [
-                  // --- Riga 1: I "Tastoni" ---
-                  Row(
-                    children: [
-                      _buildDashboardButton(
-                        context,
-                        icon: Icons.search,
-                        label: 'Ricerca',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SearchPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 16),
-
-                      _buildDashboardButton(
-                        context,
-                        icon: Icons.inventory_2,
-                        label: 'Libreria',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LibraryPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 16),
-
-                      _buildDashboardButton(
-                        context,
-                        icon: Icons.add,
-                        label: 'Inserisci',
-                        onTap: () {
-                          _navigateAndReload(const AddItemPage());
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16), // AGGIUNGI SPAZIO
-                  _buildDashboardButton(
-                    // NUOVO PULSANTE A TUTTA LARGHEZZA
-                    context,
-                    icon: Icons.auto_graph,
-                    label: 'Statistiche',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const StatisticsPage(), // NAVIGA
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 32),
+                  
+                  // --- (FIX 1 e 2) LAYOUT BOTTONI RESPONSIVO ---
+                  _buildButtonLayout(context), // Nuovo widget helper
+                  
                   const SizedBox(height: 32),
 
-                  // FIX 2: Avvolgiamo la lista delle vendite in un Card
+                  // Card ULTIME VENDITE
                   Card(
-                    color: Colors.black, // <-- Cambiato a nero
+                    color: Colors.black, 
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: _buildSalesList(),
@@ -200,9 +140,9 @@ class _HomePageState extends State<HomePage> {
 
                   const SizedBox(height: 32),
 
-                  // FIX 2: Impostiamo il colore del Card su nero per gli ULTIMI ARRIVI
+                  // Card ULTIMI ARRIVI
                   Card(
-                    color: Colors.black, // <-- Cambiato a nero
+                    color: Colors.black, 
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: _buildArrivalsList(),
@@ -213,15 +153,131 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget Helper per i "Tastoni" (AGGIORNATO)
+  // --- (FIX 1 e 2) WIDGET PER LAYOUT RESPONSIVO (AGGIORNATO) ---
+  Widget _buildButtonLayout(BuildContext context) {
+    // Definiamo le funzioni onTap per chiarezza
+    final onTapSearch = () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SearchPage()),
+      );
+    };
+    final onTapLibrary = () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LibraryPage()),
+      );
+    };
+    final onTapInsert = () {
+      _navigateAndReload(const AddItemPage());
+    };
+    final onTapStats = () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const StatisticsPage()),
+      );
+    };
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Breakpoint per desktop (non iPad)
+        const double desktopBreakpoint = 900.0; 
+
+        if (constraints.maxWidth > desktopBreakpoint) {
+          // LAYOUT DESKTOP: 1 riga con 4 bottoni (tutti expanded)
+          return Row(
+            children: [
+              _buildDashboardButton(
+                context,
+                icon: Icons.search,
+                label: 'Ricerca',
+                onTap: onTapSearch,
+                isExpanded: true, // <---
+              ),
+              const SizedBox(width: 16),
+              _buildDashboardButton(
+                context,
+                icon: Icons.inventory_2,
+                label: 'Libreria',
+                onTap: onTapLibrary,
+                isExpanded: true, // <---
+              ),
+              const SizedBox(width: 16),
+              _buildDashboardButton(
+                context,
+                icon: Icons.add,
+                label: 'Inserisci',
+                onTap: onTapInsert,
+                isExpanded: true, // <---
+              ),
+              const SizedBox(width: 16),
+              _buildDashboardButton(
+                context,
+                icon: Icons.auto_graph,
+                label: 'Statistiche',
+                onTap: onTapStats,
+                isExpanded: true, // <---
+              ),
+            ],
+          );
+        } else {
+          // LAYOUT MOBILE/TABLET: 3+1
+          return Column(
+            // Assicura che i figli (come il bottone 'Statistiche') si allarghino
+            crossAxisAlignment: CrossAxisAlignment.stretch, 
+            children: [
+              Row(
+                children: [
+                  _buildDashboardButton(
+                    context,
+                    icon: Icons.search,
+                    label: 'Ricerca',
+                    onTap: onTapSearch,
+                    isExpanded: true, // <---
+                  ),
+                  const SizedBox(width: 16),
+                  _buildDashboardButton(
+                    context,
+                    icon: Icons.inventory_2,
+                    label: 'Libreria',
+                    onTap: onTapLibrary,
+                    isExpanded: true, // <---
+                  ),
+                  const SizedBox(width: 16),
+                  _buildDashboardButton(
+                    context,
+                    icon: Icons.add,
+                    label: 'Inserisci',
+                    onTap: onTapInsert,
+                    isExpanded: true, // <---
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildDashboardButton(
+                context,
+                icon: Icons.auto_graph,
+                label: 'Statistiche',
+                onTap: onTapStats,
+                isExpanded: false, // <--- Non è in una Row, non deve essere Expanded
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+  // --- FINE SEZIONE FIX ---
+
+  // --- (FIX 1) WIDGET HELPER TASTONE (AGGIORNATO) ---
   Widget _buildDashboardButton(
     BuildContext context, {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool isExpanded = false, // NUOVO PARAMETRO
   }) {
-    // Usiamo Expanded solo se è in una Row
-    final isFullWidth = context.findAncestorWidgetOfExactType<Row>() == null;
+    // Rimuoviamo la logica 'isFullWidth'
     final buttonContent = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12.0),
@@ -241,15 +297,17 @@ class _HomePageState extends State<HomePage> {
       ),
     );
 
-    return isFullWidth ? buttonContent : Expanded(child: buttonContent);
+    // Usiamo il nuovo parametro
+    return isExpanded ? Expanded(child: buttonContent) : buttonContent;
   }
+  // --- FINE FIX ---
 
-  // Widget per la lista delle Vendite (AGGIORNATO)
+
+  // Widget per la lista delle Vendite (Invariato)
   Widget _buildSalesList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // FIX 1 e 3: Nuovo Titolo e stile più marcato
         Text(
           'ULTIME VENDITE',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -261,7 +319,6 @@ class _HomePageState extends State<HomePage> {
         if (_latestSales.isEmpty)
           const Text('Nessuna vendita recente.')
         else
-          // Usiamo un Column perché vogliamo i separatori
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: _latestSales.map((sale) => _buildSaleTile(sale)).toList(),
@@ -270,20 +327,18 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Widget per la singola vendita (Invariato, non ha icone)
   Widget _buildSaleTile(Map<String, dynamic> sale) {
     String title =
         '${sale['item_name']} ${sale['variant_name'] != null ? '(${sale['variant_name']})' : ''}';
 
-    // CORREZIONE: Gestione sicura del prezzo
     String price = '€ 0.00';
     if (sale['total_price'] != null) {
       final num? totalPrice = num.tryParse(sale['total_price'].toString());
       if (totalPrice != null) {
         if (totalPrice == totalPrice.toInt()) {
-          // FIX CHIAVE: Rimosso il '+'
           price = '€ ${totalPrice.toInt()}';
         } else {
-          // FIX CHIAVE: Rimosso il '+'
           price = '€ ${totalPrice.toStringAsFixed(2)}';
         }
       }
@@ -291,7 +346,6 @@ class _HomePageState extends State<HomePage> {
 
     return InkWell(
       onTap: () {
-        // Naviga al dettaglio usando l'item_id
         _navigateToDetail(sale['item_id']);
       },
       child: Padding(
@@ -310,7 +364,7 @@ class _HomePageState extends State<HomePage> {
             Text(
               price,
               style: TextStyle(
-                color: Colors.green[600], // Verde per i guadagni
+                color: Colors.green[600],
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -320,12 +374,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la lista dei Nuovi Arrivi (AGGIORNATO)
+  // Widget per la lista dei Nuovi Arrivi (Invariato)
   Widget _buildArrivalsList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // FIX 3: Nuovo Titolo e stile più marcato
         Text(
           'ULTIMI ARRIVI',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -337,11 +390,9 @@ class _HomePageState extends State<HomePage> {
         if (_latestItems.isEmpty)
           const Text('Nessun articolo aggiunto di recente.')
         else
-          // Usiamo un ListView.separated per avere le linee divisorie
           ListView.separated(
-            physics:
-                const NeverScrollableScrollPhysics(), // Non far scrollare la lista interna
-            shrinkWrap: true, // Adatta la lista al contenuto
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
             itemCount: _latestItems.length,
             separatorBuilder: (context, index) => const Divider(height: 16),
             itemBuilder: (context, index) {
@@ -353,7 +404,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la singola riga di arrivo (Invariato)
+  // --- (FIX 3) WIDGET RIGA "ULTIMI ARRIVI" (ICONA RIMOSSA) ---
   Widget _buildArrivalTile(Map<String, dynamic> item) {
     return InkWell(
       onTap: () {
@@ -364,12 +415,7 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
         child: Row(
           children: [
-            Icon(
-              Icons.new_releases,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 12),
+            // Icona e SizedBox rimossi
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
