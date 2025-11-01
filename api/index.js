@@ -395,26 +395,40 @@ app.delete('/api/variants/:id', async (req, res) => {
 
 /*
  * GET /api/items/:id/variants
- * (1) Recupera tutte le varianti per un articolo specifico
- * :id è un parametro, prenderà l'ID dell'articolo dall'URL
+ * (MODIFICATO per includere le piattaforme di ogni variante)
  */
-app.get("/api/items/:id/variants", async (req, res) => {
-  // (A) Prendiamo l'ID dell'articolo dall'URL
-  const { id } = req.params;
+app.get('/api/items/:id/variants', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // (A) Query 1: Prende tutte le varianti
+        const [variants] = await pool.query(
+            'SELECT * FROM variants WHERE item_id = ? ORDER BY variant_name ASC',
+            [id]
+        );
 
-  try {
-    // (B) Facciamo una query semplice per trovare le varianti
-    const [variants] = await pool.query(
-      "SELECT * FROM variants WHERE item_id = ? ORDER BY variant_name ASC",
-      [id] // Passiamo l'ID in modo sicuro per evitare SQL injection
-    );
+        // (B) NUOVO: Usiamo Promise.all per caricare le piattaforme
+        //     di ogni variante in parallelo
+        const variantsWithPlatforms = await Promise.all(
+            variants.map(async (variant) => {
+                // (C) Query 2: Prende le piattaforme per QUESTA variante
+                const [platforms] = await pool.query(
+                    'SELECT platform_id FROM variant_platforms WHERE variant_id = ?',
+                    [variant.variant_id]
+                );
+                
+                // (D) Aggiunge l'array di ID all'oggetto variante
+                variant.platforms = platforms.map(p => p.platform_id); // es. [1, 2]
+                return variant;
+            })
+        );
+        
+        // (E) Invia la lista completa
+        res.json(variantsWithPlatforms);
 
-    // (C) Restituiamo la lista di varianti (sarà una lista vuota se non ce ne sono)
-    res.json(variants);
-  } catch (error) {
-    console.error(`Errore in GET /api/items/${id}/variants:`, error);
-    res.status(500).json({ error: "Errore nel recupero delle varianti" });
-  }
+    } catch (error) {
+        console.error(`Errore in GET /api/items/${id}/variants:`, error);
+        res.status(500).json({ error: 'Errore nel recupero delle varianti' });
+    }
 });
 
 /*
@@ -512,6 +526,7 @@ app.get("/api/items/:id/sales", async (req, res) => {
     const sql = `
             SELECT 
                 s.sale_id,
+                s.variant_id,
                 s.sale_date,
                 s.quantity_sold,
                 s.total_price,
@@ -744,12 +759,11 @@ app.delete('/api/sales/:id', async (req, res) => {
 
 /*
  * PUT /api/sales/:id
- * Modifica una vendita e aggiorna lo stock in base alla differenza
+ * Modifica una vendita (AGGIORNATO CON VALIDAZIONE STOCK)
  */
 app.put('/api/sales/:id', async (req, res) => {
     const { id: sale_id } = req.params;
 
-    // Nuovi dati dal corpo
     const {
         platform_id,
         sale_date,
@@ -758,7 +772,6 @@ app.put('/api/sales/:id', async (req, res) => {
         sold_by_user
     } = req.body;
 
-    // Validazione
     if (!platform_id || !sale_date || !new_quantity || !total_price) {
         return res.status(400).json({ error: 'Campi obbligatori mancanti' });
     }
@@ -783,30 +796,45 @@ app.put('/api/sales/:id', async (req, res) => {
         const old_quantity = old_sale.quantity_sold;
         const { item_id, variant_id } = old_sale;
 
-        // (B) Calcola la differenza
-        // Esempio: Vecchia=5, Nuova=3. Diff = 2 (dobbiamo AGGIUNGERE 2 allo stock)
-        // Esempio: Vecchia=5, Nuova=7. Diff = -2 (dobbiamo TOGLIERE 2 dallo stock)
+        // (B) Calcola la differenza (es. Vecchia=5, Nuova=7 -> Diff = -2)
         const quantity_diff = old_quantity - new_quantity;
 
-        // (C) Query 2: Aggiorna lo stock
+        // (C - NUOVA VALIDAZIONE) Query 2: Controlla lo stock ATTUALE
+        let current_stock = 0;
         if (variant_id) {
-            // Aggiorna variante
+            const [rows] = await connection.query('SELECT quantity FROM variants WHERE variant_id = ?', [variant_id]);
+            current_stock = rows[0].quantity;
+        } else {
+            const [rows] = await connection.query('SELECT quantity FROM items WHERE item_id = ?', [item_id]);
+            current_stock = rows[0].quantity;
+        }
+
+        // (D - NUOVA VALIDAZIONE) Calcola il nuovo stock e controlla
+        const new_stock_level = current_stock + quantity_diff;
+
+        if (new_stock_level < 0) {
+            // Errore! Quantità non valida
+            await connection.rollback();
+            return res.status(400).json({ 
+                error: `Quantità non valida. Stock disponibile (prima di questa vendita): ${current_stock + old_quantity}` 
+            });
+        }
+
+        // (E) Query 3: Aggiorna lo stock (Ora sappiamo che è sicuro)
+        if (variant_id) {
             await connection.query(
-                // Aggiungiamo la differenza (sarà negativa se la nuova quantità è maggiore)
-                'UPDATE variants SET quantity = quantity + ?, is_sold = 0 WHERE variant_id = ?',
-                [quantity_diff, variant_id]
+                'UPDATE variants SET quantity = ?, is_sold = 0 WHERE variant_id = ?',
+                [new_stock_level, variant_id] // Usa il nuovo stock calcolato
             );
-            // Assicurati che anche l'articolo padre sia segnato come non venduto
             await connection.query('UPDATE items SET is_sold = 0 WHERE item_id = ?', [item_id]);
         } else {
-            // Aggiorna articolo
             await connection.query(
-                'UPDATE items SET quantity = quantity + ?, is_sold = 0 WHERE item_id = ?',
-                [quantity_diff, item_id]
+                'UPDATE items SET quantity = ?, is_sold = 0 WHERE item_id = ?',
+                [new_stock_level, item_id]
             );
         }
         
-        // (D) Query 3: Aggiorna la vendita nel log
+        // (F) Query 4: Aggiorna la vendita nel log
         const updateSql = `
             UPDATE sales_log SET
                 platform_id = ?, sale_date = ?, quantity_sold = ?, 
@@ -822,8 +850,7 @@ app.put('/api/sales/:id', async (req, res) => {
             sale_id
         ]);
         
-        // (E) Query 4: (IMPORTANTE) Ricontrolla lo stato "is_sold"
-        // Ora che abbiamo aggiornato, la quantità potrebbe essere di nuovo <= 0
+        // (G) Query 5: Ricontrolla e imposta is_sold = 1 se il nuovo stock è <= 0
         if (variant_id) {
             await connection.query(
                 'UPDATE variants SET is_sold = 1 WHERE quantity <= 0 AND variant_id = ?',

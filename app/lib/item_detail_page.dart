@@ -1,4 +1,4 @@
-// lib/item_detail_page.dart - AGGIORNATO PER PASSARE STOCK AL DIALOG
+// lib/item_detail_page.dart - AGGIORNATO CON PIATTAFORME PER VARIANTI
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -20,8 +20,8 @@ class ItemDetailPage extends StatefulWidget {
 }
 
 class _ItemDetailPageState extends State<ItemDetailPage> {
+  // ... (TUTTE le variabili di stato e le funzioni initState, _refreshAllData, _fetch..., _pick..., _show..., _copy... sono INVARIATE) ...
   late Map<String, dynamic> _currentItem;
-
   List _variants = [];
   bool _isVariantsLoading = false;
   List _salesLog = [];
@@ -46,8 +46,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     _isItemSold = _currentItem['is_sold'] == 1;
     _refreshAllData();
   }
-
-  // --- FUNZIONI DI CARICAMENTO DATI (TUTTE INVARIATE) ---
 
   Future<void> _refreshAllData() async {
     if (mounted) {
@@ -84,7 +82,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<void> _fetchVariants() async {
-    /* ... codice invariato ... */
     if (!mounted) return;
     try {
       final itemId = _currentItem['item_id'];
@@ -107,7 +104,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<void> _fetchSalesLog() async {
-    /* ... codice invariato ... */
     if (!mounted) return;
     try {
       final itemId = _currentItem['item_id'];
@@ -129,7 +125,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<void> _fetchPhotos() async {
-    /* ... codice invariato ... */
     if (!mounted) return;
     try {
       final itemId = _currentItem['item_id'];
@@ -152,7 +147,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<void> _fetchPlatforms() async {
-    /* ... codice invariato ... */
     if (!mounted) return;
     try {
       const url = 'http://trentin-nas.synology.me:4000/api/platforms';
@@ -172,9 +166,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     }
   }
 
-  // --- FUNZIONI DI AZIONE (INVARIATE) ---
   Future<void> _pickAndUploadImage() async {
-    /* ... codice invariato ... */
     final dynamic photoTarget = await _showPhotoTargetDialog();
     if (photoTarget == 'cancel') return;
     final XFile? pickedFile = await _picker.pickImage(
@@ -213,7 +205,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Future<dynamic> _showPhotoTargetDialog() {
-    /* ... codice invariato ... */
     dynamic selectedTarget = null;
     return showDialog(
       context: context,
@@ -271,7 +262,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   void _copyToClipboard(String text) {
-    /* ... codice invariato ... */
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Codice copiato negli appunti!')),
@@ -319,7 +309,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 }
               },
             ),
-            // (1 - MODIFICA) Bottone VENDI
             TextButton.icon(
               style: TextButton.styleFrom(
                 foregroundColor:
@@ -360,15 +349,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                               itemId: item['item_id'],
                               hasVariants: item['has_variants'] == 1,
                               variants: _variants,
-                              // (2 - NUOVO) Passiamo lo stock dell'articolo singolo
-                              itemQuantity: item['quantity'],
+                              itemQuantity: (item['quantity'] as num?)?.toInt(),
                             );
                           },
                         );
                         if (saleRegistered == true) {
                           _dataDidChange = true;
-                          // (3 - MODIFICA) Ricarica tutto per aggiornare
-                          // lo stock E lo stato is_sold
                           _refreshAllData();
                         }
                       },
@@ -386,7 +372,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 : ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
-                    // ... (Banner VENDUTO e Sezioni Info... invariate) ...
                     if (_isItemSold)
                       Container(
                         padding: const EdgeInsets.all(12.0),
@@ -494,13 +479,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      _buildVariantsSection(),
+                      _buildVariantsSection(), // (MODIFICATO)
                     ] else ...[
                       const Divider(height: 32),
-                      // (4 - MODIFICA) Mostra lo stock reale
                       _buildInfoRow(
                         'Pezzi Disponibili',
-                        '${item['quantity'] ?? '0'}',
+                        '${(item['quantity'] as num?)?.toInt() ?? '0'}',
                       ),
                       _buildInfoRow(
                         'Prezzo di Acquisto',
@@ -570,7 +554,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
-  // --- WIDGET HELPER (INVARIATI) ---
+  // --- WIDGET HELPER ---
 
   Widget _buildPlatformsSection() {
     /* ... codice invariato ... */
@@ -638,7 +622,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           String targetName = 'Articolo Principale';
           if (photo['variant_id'] != null) {
             final matchingVariant = _variants.firstWhere(
-              (v) => v['variant_id'] == photo['variant_id'],
+              (v) =>
+                  (v['variant_id'] as num?)?.toInt() ==
+                  (photo['variant_id'] as num?)?.toInt(),
               orElse: () => null,
             );
             if (matchingVariant != null) {
@@ -707,8 +693,54 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
+  // (1 - NUOVO) Helper per mostrare i chip delle piattaforme per una variante
+  Widget _buildVariantPlatformsList(List<dynamic> platformIds) {
+    if (_platformsLoading || platformIds.isEmpty) {
+      // Non mostrare nulla se stiamo ancora caricando o non ci sono piattaforme
+      return const SizedBox.shrink();
+    }
+
+    // Filtra la lista principale per trovare i nomi
+    final List<String> platformNames =
+        _allPlatforms
+            .where((platform) => platformIds.contains(platform['platform_id']))
+            .map((platform) => platform['name'].toString())
+            .toList();
+
+    if (platformNames.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Mostra i nomi usando dei "Chip" (etichette)
+    return Wrap(
+      spacing: 4.0, // Spazio orizzontale
+      runSpacing: 0.0, // Spazio verticale
+      children:
+          platformNames
+              .map(
+                (name) => Chip(
+                  label: Text(name),
+                  labelPadding: const EdgeInsets.symmetric(
+                    horizontal: 4.0,
+                  ), // Più compatto
+                  labelStyle: TextStyle(
+                    fontSize: 10, // Più piccolo
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.1),
+                  side: BorderSide.none,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              )
+              .toList(),
+    );
+  }
+
+  // (2 - MODIFICA) Sezione Varianti
   Widget _buildVariantsSection() {
-    /* ... codice invariato ... */
     if (_isVariantsLoading)
       return const Center(
         child: Padding(
@@ -723,10 +755,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           child: Text('Nessuna variante trovata.'),
         ),
       );
+
     return Column(
       children:
           _variants.map((variant) {
             final bool isVariantSold = variant['is_sold'] == 1;
+
             return Card(
               color:
                   isVariantSold
@@ -742,11 +776,20 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                         isVariantSold ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                subtitle: Text(
-                  'Pezzi: ${variant['quantity']} | Prezzo Acq: € ${variant['purchase_price']}',
-                  style: TextStyle(
-                    color: isVariantSold ? Colors.grey[400] : null,
-                  ),
+                // (3 - MODIFICA) Sostituiamo il subtitle con una Column
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pezzi: ${(variant['quantity'] as num?)?.toInt() ?? 0} | Prezzo Acq: € ${variant['purchase_price']}',
+                      style: TextStyle(
+                        color: isVariantSold ? Colors.grey[400] : null,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // (4 - NUOVO) Chiamiamo il nostro helper per i chip
+                    _buildVariantPlatformsList(variant['platforms'] ?? []),
+                  ],
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
@@ -772,7 +815,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Widget _buildSalesLogSection() {
-    /* ... codice invariato ... */
+    // ... (codice invariato con il fix per lo stock) ...
     if (_isLogLoading)
       return const Center(
         child: Padding(
@@ -808,12 +851,45 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 ),
                 trailing: const Icon(Icons.edit_note_outlined, size: 20),
                 onTap: () async {
+                  int? stockPerDialog;
+                  final int? saleVariantId =
+                      (sale['variant_id'] as num?)?.toInt();
+                  if (saleVariantId != null) {
+                    final matchingVariant = _variants.firstWhere(
+                      (v) =>
+                          (v['variant_id'] as num?)?.toInt() == saleVariantId,
+                      orElse: () => null,
+                    );
+                    if (matchingVariant != null) {
+                      stockPerDialog =
+                          (matchingVariant['quantity'] as num?)?.toInt();
+                    }
+                  } else {
+                    if (_currentItem['has_variants'] == 0) {
+                      stockPerDialog =
+                          (_currentItem['quantity'] as num?)?.toInt();
+                    } else {
+                      stockPerDialog = null;
+                    }
+                  }
+                  if (stockPerDialog == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Errore: Stock non trovato (articolo/variante inesistente?).',
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
                   final bool? dataChanged = await showDialog(
                     context: context,
                     builder:
                         (context) => EditSaleDialog(
                           sale: sale,
                           allPlatforms: _allPlatforms,
+                          currentStock: stockPerDialog!,
                         ),
                   );
                   if (dataChanged == true) {

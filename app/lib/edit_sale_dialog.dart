@@ -1,4 +1,4 @@
-// lib/edit_sale_dialog.dart
+// lib/edit_sale_dialog.dart - AGGIORNATO CON VALIDAZIONE STOCK
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -6,14 +6,16 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class EditSaleDialog extends StatefulWidget {
-  // (1) Riceviamo i dati della vendita e la lista delle piattaforme
   final Map<String, dynamic> sale;
   final List allPlatforms;
+  // (1 - NUOVO) Riceviamo lo stock attuale
+  final int currentStock; 
 
   const EditSaleDialog({
     super.key,
     required this.sale,
     required this.allPlatforms,
+    required this.currentStock, // Aggiunto al costruttore
   });
 
   @override
@@ -24,26 +26,30 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  // (2) Controller e valori
   int? _selectedPlatformId;
   final _quantityController = TextEditingController();
   final _priceController = TextEditingController();
   final _userController = TextEditingController();
-  // Per la data, è più complesso, usiamo DateTime
   DateTime _selectedDate = DateTime.now();
+
+  // (2 - NUOVO) Variabile per lo stock massimo
+  int? _maxAvailableQuantity;
 
   @override
   void initState() {
     super.initState();
-    // (3) Popoliamo i campi con i dati esistenti
     _selectedPlatformId = widget.sale['platform_id'];
     _quantityController.text = widget.sale['quantity_sold']?.toString() ?? '1';
     _priceController.text = widget.sale['total_price']?.toString() ?? '0';
     _userController.text = widget.sale['sold_by_user'] ?? '';
     _selectedDate = DateTime.parse(widget.sale['sale_date']);
+
+    // (3 - NUOVO) Calcola lo stock massimo
+    // Stock attuale + Quantità già inclusa in questa vendita = Totale
+    _maxAvailableQuantity = (widget.currentStock + (widget.sale['quantity_sold'] ?? 0)).toInt();
   }
 
-  // (4) Funzione per MODIFICARE la vendita
+  // Funzione per MODIFICARE la vendita (invariata)
   Future<void> _submitUpdate() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPlatformId == null) return;
@@ -67,9 +73,11 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       );
 
       if (response.statusCode == 200) {
-        if (mounted) Navigator.pop(context, true); // Successo!
+        if (mounted) Navigator.pop(context, true);
       } else {
-        _showError('Errore server: ${response.statusCode}');
+         // (MODIFICA) Mostra l'errore del server (es. "Quantità non valida")
+        final error = jsonDecode(response.body);
+        _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
       }
     } catch (e) {
       _showError('Errore di rete: $e');
@@ -78,9 +86,8 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     }
   }
 
-  // (5) Funzione per ELIMINARE la vendita
+  // Funzione per ELIMINARE la vendita (invariata)
   Future<void> _deleteSale() async {
-    // Chiedi conferma
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -97,16 +104,13 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
         ],
       ),
     );
-
     if (confirmed != true) return;
-
     setState(() { _isLoading = true; });
     try {
       final url = 'http://trentin-nas.synology.me:4000/api/sales/${widget.sale['sale_id']}';
       final response = await http.delete(Uri.parse(url));
-
       if (response.statusCode == 200) {
-        if (mounted) Navigator.pop(context, true); // Successo!
+        if (mounted) Navigator.pop(context, true);
       } else {
         _showError('Errore server: ${response.statusCode}');
       }
@@ -125,7 +129,6 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     }
   }
   
-  // (6) Helper per mostrare il selettore data
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -159,7 +162,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // --- Piattaforma ---
+              // ... (Piattaforma e Data invariati) ...
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Piattaforma'),
                 value: _selectedPlatformId,
@@ -175,8 +178,6 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
                 validator: (value) => value == null ? 'Obbligatorio' : null,
               ),
               const SizedBox(height: 16),
-              
-              // --- Data ---
               TextFormField(
                 decoration: const InputDecoration(
                   labelText: 'Data Vendita',
@@ -185,20 +186,41 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
                 controller: TextEditingController(
                   text: DateFormat('dd/MM/yyyy').format(_selectedDate)
                 ),
-                readOnly: true, // Impedisce di scriverci
-                onTap: () => _selectDate(context), // Apre il calendario al tocco
+                readOnly: true,
+                onTap: () => _selectDate(context),
               ),
               const SizedBox(height: 16),
-
+              
               // --- Quantità e Prezzo ---
               Row(
                 children: [
                   Expanded(
+                    // (4 - MODIFICA) Campo Quantità
                     child: TextFormField(
                       controller: _quantityController,
-                      decoration: const InputDecoration(labelText: 'Quantità'),
+                      decoration: InputDecoration(
+                        labelText: 'Quantità',
+                        // (5 - NUOVO) Mostra lo stock
+                        helperText: _maxAvailableQuantity != null 
+                          ? 'Disponibili: $_maxAvailableQuantity' 
+                          : null,
+                        helperStyle: TextStyle(color: Colors.grey[400]),
+                      ),
                       keyboardType: TextInputType.number,
-                      validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                      // (6 - NUOVO) Validatore
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Obbl.';
+                        final int? enteredQuantity = int.tryParse(value);
+                        if (enteredQuantity == null) return 'Num.';
+                        if (enteredQuantity <= 0) return '> 0';
+                        
+                        // Il controllo chiave!
+                        if (_maxAvailableQuantity != null && 
+                            enteredQuantity > _maxAvailableQuantity!) {
+                          return 'Max: $_maxAvailableQuantity';
+                        }
+                        return null; // Va bene
+                      },
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -214,7 +236,6 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
               ),
               const SizedBox(height: 16),
 
-              // --- Utente ---
               TextFormField(
                 controller: _userController,
                 decoration: const InputDecoration(labelText: 'Utente (opzionale)'),
@@ -224,13 +245,12 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
         ),
       ),
       actions: [
-        // (7) Bottone Elimina
         IconButton(
           onPressed: _isLoading ? null : _deleteSale,
           icon: Icon(Icons.delete_outline, color: _isLoading ? Colors.grey : Colors.red),
           tooltip: 'Elimina Vendita',
         ),
-        const Spacer(), // Spinge i bottoni ai lati
+        const Spacer(), 
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
           child: const Text('Annulla'),
