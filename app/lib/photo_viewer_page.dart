@@ -1,72 +1,125 @@
-// lib/photo_viewer_page.dart - AGGIORNATO CON DOWNLOAD
+// lib/photo_viewer_page.dart - AGGIORNATO CON ELIMINAZIONE FOTO
 
-import 'dart:io'; // Ci servirà per la piattaforma
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart'; // (1) Nuovo Import
-import 'package:path_provider/path_provider.dart'; // (2) Nuovo Import
+import 'package:dio/dio.dart';
+import 'package:http/http.dart' as http; // (1 - NUOVO) Import per http.delete
+import 'package:path_provider/path_provider.dart';
 
 class PhotoViewerPage extends StatefulWidget {
+  // (2 - MODIFICA) Riceviamo ID e URL
+  final int photoId;
   final String photoUrl;
-  const PhotoViewerPage({super.key, required this.photoUrl});
+
+  const PhotoViewerPage({
+    super.key,
+    required this.photoId,
+    required this.photoUrl,
+  });
 
   @override
   State<PhotoViewerPage> createState() => _PhotoViewerPageState();
 }
 
 class _PhotoViewerPageState extends State<PhotoViewerPage> {
-  // (3) Stato per il download
   bool _isDownloading = false;
+  bool _isDeleting = false; // (3 - NUOVO) Stato per l'eliminazione
 
-  // (4) Nuova funzione per scaricare la foto
+  // Funzione per scaricare (invariata)
   Future<void> _downloadPhoto() async {
-    setState(() { _isDownloading = true; });
-
-    // (A) Trova la cartella Download
-    // Nota: getDownloadsDirectory() funziona solo su Desktop. 
-    // Per mobile (iOS/Android) dovremo usare un'altra logica in futuro.
-    Directory? downloadsDir;
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-      downloadsDir = await getDownloadsDirectory();
-    } else {
-      // Per iOS/Android è più complesso, per ora salviamo in una cartella temporanea
-      downloadsDir = await getApplicationDocumentsDirectory();
-    }
-
-    if (downloadsDir == null) {
-      _showDownloadAlert(success: false, message: 'Cartella download non trovata.');
-      return;
-    }
-
-    // (B) Ricava il nome del file dall'URL (es. "photo-123.jpg")
-    final String fileName = Uri.parse(widget.photoUrl).pathSegments.last;
-    
-    // (C) Crea il percorso completo di salvataggio
-    final String savePath = '${downloadsDir.path}/$fileName';
-
-    // (D) Avvia il download con Dio
+    setState(() {
+      _isDownloading = true;
+    });
     try {
-      Dio dio = Dio();
-      await dio.download(
-        widget.photoUrl,
-        savePath,
-      );
-      
-      // (E) Mostra un messaggio di successo
-      _showDownloadAlert(success: true, message: 'Foto salvata in Download!');
-
-    } catch (e) {
-      // (F) Gestisci errori
-      print('Errore download: $e');
-      _showDownloadAlert(success: false, message: 'Download fallito.');
-    } finally {
-      if (mounted) {
-        setState(() { _isDownloading = false; });
+      Directory? downloadsDir;
+      if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+        downloadsDir = await getDownloadsDirectory();
+      } else {
+        downloadsDir = await getApplicationDocumentsDirectory();
       }
+      if (downloadsDir == null) {
+        _showFeedback(
+          success: false,
+          message: 'Cartella download non trovata.',
+        );
+        return;
+      }
+      final String fileName = Uri.parse(widget.photoUrl).pathSegments.last;
+      final String savePath = '${downloadsDir.path}/$fileName';
+      Dio dio = Dio();
+      await dio.download(widget.photoUrl, savePath);
+      _showFeedback(success: true, message: 'Foto salvata in Download!');
+    } catch (e) {
+      print('Errore download: $e');
+      _showFeedback(success: false, message: 'Download fallito.');
+    } finally {
+      if (mounted)
+        setState(() {
+          _isDownloading = false;
+        });
+    }
+  }
+
+  // (4 - NUOVO) Funzione per eliminare la foto
+  Future<void> _deletePhoto() async {
+    // Chiedi conferma
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            title: const Text('Sei sicuro?'),
+            content: const Text(
+              'Vuoi eliminare definitivamente questa foto? L\'azione non è reversibile.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Annulla'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sì, elimina'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isDeleting = true;
+    });
+    try {
+      final url =
+          'http://trentin-nas.synology.me:4000/api/photos/${widget.photoId}';
+      final response = await http.delete(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          _showFeedback(success: true, message: 'Foto eliminata.');
+          // Chiudi la pagina e passa "true" per ricaricare la galleria
+          Navigator.pop(context, true);
+        }
+      } else {
+        _showFeedback(
+          success: false,
+          message: 'Errore server: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      _showFeedback(success: false, message: 'Errore di rete: $e');
+    } finally {
+      if (mounted)
+        setState(() {
+          _isDeleting = false;
+        });
     }
   }
 
   // Helper per mostrare un messaggio
-  void _showDownloadAlert({required bool success, required String message}) {
+  void _showFeedback({required bool success, required String message}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -79,6 +132,9 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Disabilita i bottoni se è in corso un'azione
+    final bool actionInProgress = _isDownloading || _isDeleting;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -86,27 +142,53 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
+          // Disabilita se in azione
+          onPressed: actionInProgress ? null : () => Navigator.pop(context),
         ),
         actions: [
-          // (5) Aggiorna il bottone nell'AppBar
+          // (5 - NUOVO) Bottone Elimina
           IconButton(
-            icon: _isDownloading
-                ? const SizedBox( // Mostra un loader se sta scaricando
-                    width: 20, 
-                    height: 20, 
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                  )
-                : const Icon(Icons.download_outlined),
-            onPressed: _isDownloading ? null : _downloadPhoto, // Collega la funzione
+            icon:
+                _isDeleting
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.red,
+                      ),
+                    )
+                    : const Icon(Icons.delete_outline, color: Colors.red),
+            onPressed: actionInProgress ? null : _deletePhoto,
+            tooltip: 'Elimina foto',
+          ),
+
+          // Bottone Download
+          IconButton(
+            icon:
+                _isDownloading
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                    : const Icon(Icons.download_outlined),
+            onPressed: actionInProgress ? null : _downloadPhoto,
             tooltip: 'Scarica foto',
           ),
         ],
       ),
       body: GestureDetector(
-        onTap: () {
-          Navigator.pop(context);
-        },
+        onTap:
+            actionInProgress
+                ? null
+                : () {
+                  // Disabilita se in azione
+                  Navigator.pop(context);
+                },
         child: Center(
           child: InteractiveViewer(
             panEnabled: true,
@@ -118,10 +200,16 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
               // ... (loadingBuilder e errorBuilder invariati) ...
               loadingBuilder: (context, child, progress) {
                 if (progress == null) return child;
-                return const Center(child: CircularProgressIndicator(color: Colors.white));
+                return const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                );
               },
               errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.broken_image, color: Colors.grey, size: 80);
+                return const Icon(
+                  Icons.broken_image,
+                  color: Colors.grey,
+                  size: 80,
+                );
               },
             ),
           ),

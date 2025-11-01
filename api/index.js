@@ -5,6 +5,7 @@ const app = express();
 const PORT = 4000; // Scegliamo una porta su cui l'API ascolterà
 const path = require("path"); //Pacchetto per gestire i percorsi
 const multer = require("multer"); //Pacchetto per gestire gli upload
+const fs = require('fs'); // Importa il File System
 
 app.use(cors()); // Abilita CORS per tutte le richieste
 app.use(express.json()); // Permette al server di capire i dati JSON inviati dall'app (es. quando creiamo un articolo)
@@ -1045,6 +1046,60 @@ app.post("/api/photos/upload", upload.single("photo"), async (req, res) => {
       .status(500)
       .json({ error: "Errore durante il salvataggio della foto nel database" });
   }
+});
+
+/*
+ * DELETE /api/photos/:id
+ * Elimina una foto (sia dal DB che dal disco)
+ */
+app.delete('/api/photos/:id', async (req, res) => {
+    const { id: photo_id } = req.params;
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        // (A) Query 1: Trova il percorso del file nel database
+        const [photos] = await connection.query(
+            'SELECT file_path FROM photos WHERE photo_id = ?',
+            [photo_id]
+        );
+
+        if (photos.length === 0) {
+            return res.status(404).json({ error: 'Foto non trovata.' });
+        }
+
+        const filePath = photos[0].file_path;
+
+        // (B) Query 2: Elimina la riga dal database
+        // (Le tabelle collegate, come le varianti, si aggiorneranno
+        // in automatico grazie a "ON DELETE SET NULL" che abbiamo impostato)
+        await connection.query('DELETE FROM photos WHERE photo_id = ?', [photo_id]);
+
+        // (C) Azione 3: Elimina il file fisico dal disco
+        // (Usiamo path.join per assicurarci che il percorso sia corretto)
+        const physicalPath = path.join(__dirname, filePath);
+
+        fs.unlink(physicalPath, (err) => {
+            if (err) {
+                // Logga l'errore, ma non bloccare la risposta
+                // (potremmo aver cancellato il file ma non il DB, o viceversa)
+                // In un'app più grande, gestiremmo meglio questa transazione
+                console.error("Errore nell'eliminare il file fisico:", err);
+            } else {
+                console.log(`File fisico eliminato: ${physicalPath}`);
+            }
+        });
+
+        // (D) Rispondi subito con successo (non aspettiamo fs.unlink)
+        res.status(200).json({ message: 'Foto eliminata con successo.' });
+
+    } catch (error) {
+        console.error(`Errore in DELETE /api/photos/${photo_id}:`, error);
+        res.status(500).json({ error: 'Errore durante l\'eliminazione della foto.' });
+    } finally {
+        if (connection) connection.release();
+    }
 });
 
 // ---------- AVVIO SERVER ----------

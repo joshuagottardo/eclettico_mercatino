@@ -594,22 +594,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
+
   Widget _buildPhotoGallery() {
-    /* ... codice invariato ... */
-    if (_isPhotosLoading)
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    if (_photos.isEmpty)
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('Nessuna foto trovata.'),
-        ),
-      );
+    if (_isPhotosLoading) return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()));
+    if (_photos.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text('Nessuna foto trovata.')));
+    
     return SizedBox(
       height: 140,
       child: ListView.builder(
@@ -617,14 +606,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         itemCount: _photos.length,
         itemBuilder: (context, index) {
           final photo = _photos[index];
-          final photoUrl =
-              'http://trentin-nas.synology.me:4000/${photo['file_path']}';
+          final photoUrl = 'http://trentin-nas.synology.me:4000/${photo['file_path']}';
           String targetName = 'Articolo Principale';
           if (photo['variant_id'] != null) {
             final matchingVariant = _variants.firstWhere(
-              (v) =>
-                  (v['variant_id'] as num?)?.toInt() ==
-                  (photo['variant_id'] as num?)?.toInt(),
+              (v) => (v['variant_id'] as num?)?.toInt() == (photo['variant_id'] as num?)?.toInt(),
               orElse: () => null,
             );
             if (matchingVariant != null) {
@@ -640,29 +626,32 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               child: AspectRatio(
                 aspectRatio: 1,
                 child: InkWell(
-                  onTap: () {
-                    Navigator.push(
+                  // (MODIFICA CHIAVE)
+                  onTap: () async {
+                    final bool? photoDeleted = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        fullscreenDialog: true,
-                        builder:
-                            (context) => PhotoViewerPage(photoUrl: photoUrl),
+                        fullscreenDialog: true, 
+                        builder: (context) => PhotoViewerPage(
+                          photoId: photo['photo_id'], // Passa l'ID
+                          photoUrl: photoUrl,
+                        ),
                       ),
                     );
+                    
+                    // Se la pagina ritorna "true", ricarica le foto
+                    if (photoDeleted == true) {
+                      _dataDidChange = true; // Segna che i dati sono cambiati
+                      _fetchPhotos(); // Ricarica la galleria
+                    }
                   },
                   child: GridTile(
                     footer: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                       color: Colors.black.withOpacity(0.6),
                       child: Text(
                         targetName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 10),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -672,15 +661,10 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       fit: BoxFit.cover,
                       loadingBuilder: (context, child, progress) {
                         if (progress == null) return child;
-                        return const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        );
+                        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.broken_image,
-                          color: Colors.grey,
-                        );
+                        return const Icon(Icons.broken_image, color: Colors.grey);
                       },
                     ),
                   ),
@@ -692,6 +676,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       ),
     );
   }
+
 
   // (1 - NUOVO) Helper per mostrare i chip delle piattaforme per una variante
   Widget _buildVariantPlatformsList(List<dynamic> platformIds) {
