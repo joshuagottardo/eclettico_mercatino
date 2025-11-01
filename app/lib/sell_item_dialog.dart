@@ -7,17 +7,18 @@ import 'package:intl/intl.dart';
 
 class SellItemDialog extends StatefulWidget {
   final int itemId;
-  final bool hasVariants;
   final List variants;
-  // (1 - NUOVO) Riceviamo la quantità per gli articoli singoli
-  final int? itemQuantity;
+  final List allPlatforms; // CORRETTO: Accetta 'allPlatforms'
+  final bool hasVariants;
+  final int mainItemQuantity; // CORRETTO: Accetta 'mainItemQuantity'
 
   const SellItemDialog({
     super.key,
     required this.itemId,
-    required this.hasVariants,
     required this.variants,
-    this.itemQuantity, // Aggiunto al costruttore
+    required this.allPlatforms, // Aggiornato
+    required this.hasVariants,
+    required this.mainItemQuantity, // Aggiornato
   });
 
   @override
@@ -47,7 +48,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
 
     // (3 - NUOVO) Imposta lo stock massimo se è un articolo singolo
     if (!widget.hasVariants) {
-      _maxAvailableQuantity = widget.itemQuantity;
+      _maxAvailableQuantity = widget.mainItemQuantity;
     }
   }
 
