@@ -43,6 +43,9 @@ class _AddItemPageState extends State<AddItemPage> {
   bool _isPageLoading = false;
   bool _hasVariants = false;
 
+  int _variantCount = 0;
+  bool _isCheckingVariants = false;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +106,13 @@ class _AddItemPageState extends State<AddItemPage> {
   }
 
   Future<void> _loadItemData() async {
+    // (FIX) Imposta il flag di controllo varianti se siamo in Edit Mode
+    if (_isEditMode) {
+      setState(() {
+        _isCheckingVariants = true;
+      });
+    }
+
     try {
       final url = '$kBaseUrl/api/items/${widget.itemId}';
       final response = await http.get(Uri.parse(url));
@@ -123,6 +133,29 @@ class _AddItemPageState extends State<AddItemPage> {
           _selectedPlatformIds.addAll(List<int>.from(item['platforms']));
         }
 
+        // --- (FIX) NUOVA LOGICA: Carica il conteggio varianti ---
+        if (_hasVariants) {
+          try {
+            // Chiamiamo l'endpoint che già usiamo nella pagina di dettaglio
+            final variantsUrl = '$kBaseUrl/api/items/${widget.itemId}/variants';
+            final variantsResponse = await http.get(Uri.parse(variantsUrl));
+
+            if (variantsResponse.statusCode == 200) {
+              final variants = jsonDecode(variantsResponse.body);
+              if (mounted) {
+                _variantCount = variants.length; // Salviamo il conteggio
+              }
+            }
+          } catch (e) {
+            // Non blocchiamo la pagina se fallisce, ma logghiamo l'errore
+            print('Errore caricamento varianti: $e');
+            _variantCount = -1; // Usiamo -1 come flag di errore
+          }
+        } else {
+          _variantCount = 0; // Se non ha varianti, il conteggio è 0
+        }
+        // --- FINE FIX ---
+
         if (!_hasVariants) {
           _quantityController.text = item['quantity']?.toString() ?? '';
           _purchasePriceController.text =
@@ -137,6 +170,7 @@ class _AddItemPageState extends State<AddItemPage> {
       if (mounted) {
         setState(() {
           _isPageLoading = false;
+          _isCheckingVariants = false; // (FIX) Resetta il flag
         });
       }
     }
@@ -296,7 +330,10 @@ class _AddItemPageState extends State<AddItemPage> {
           FocusScope.of(context).unfocus();
         },
         child:
-            _isPageLoading || _categoriesLoading || _platformsLoading
+            _isPageLoading ||
+                    _categoriesLoading ||
+                    _platformsLoading ||
+                    _isCheckingVariants
                 ? Center(
                   child: CircularProgressIndicator(
                     color: Theme.of(context).colorScheme.primary,
@@ -378,12 +415,28 @@ class _AddItemPageState extends State<AddItemPage> {
                         ),
                         value: _hasVariants,
                         onChanged: (bool value) {
+                          // (FIX) Logica aggiornata
                           if (_isEditMode && !value) {
-                            _showError(
-                              'Non puoi disattivare le varianti su un articolo esistente.',
-                            );
-                            return;
+                            // Se sto provando a DISATTIVARE
+
+                            if (_variantCount > 0) {
+                              _showError(
+                                'Non puoi disattivare le varianti. Ci sono $_variantCount varianti collegate.',
+                              );
+                              return; // Blocca l'azione
+                            }
+
+                            if (_variantCount == -1) {
+                              // Flag di errore dal caricamento
+                              _showError(
+                                'Errore nel verificare le varianti. Impossibile modificare.',
+                              );
+                              return; // Blocca l'azione
+                            }
+
+                            // Se _variantCount == 0, l'esecuzione prosegue
                           }
+
                           setState(() {
                             _hasVariants = value;
                           });
