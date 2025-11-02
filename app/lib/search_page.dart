@@ -1,12 +1,14 @@
-// lib/search_page.dart - AGGIORNATO CON NUOVO STILE LISTA E ICONE
+// lib/search_page.dart - AGGIORNATO CON MASTER-DETAIL
 
 import 'dart:convert';
 import 'package:app/add_item_page.dart';
-import 'package:app/item_detail_page.dart';
+import 'package:app/item_detail_content.dart'; // Importa il nuovo contenuto
+import 'package:app/item_detail_page.dart'; // Importa ancora per il mobile
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/icon_helper.dart'; // (FIX 2) Importa l'helper
-import 'package:iconsax/iconsax.dart'; // (FIX 2) Importa iconsax
+import 'package:app/icon_helper.dart'; 
+import 'package:iconsax/iconsax.dart';
+import 'package:app/api_config.dart'; // Importato
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -16,7 +18,7 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  // ... (Tutta la logica e gli stati sono invariati) ...
+  // Stati esistenti
   List _allItems = [];
   List _filteredItems = [];
   bool _isLoading = true;
@@ -28,18 +30,27 @@ class _SearchPageState extends State<SearchPage> {
   int? _selectedCategoryId;
   String? _selectedBrand;
   bool _showOnlyAvailable = false;
+  
+  // --- (FIX 1) NUOVI STATI PER MASTER-DETAIL ---
+  Map<String, dynamic>? _selectedItem;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  // Breakpoint per tablet
+  static const double kTabletBreakpoint = 800.0;
+  
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_filterItems);
     _fetchPageData();
   }
+
   @override
   void dispose() {
     _searchController.removeListener(_filterItems);
     _searchController.dispose();
     super.dispose();
   }
+  
   Future<void> _fetchPageData() async {
     setState(() {
       _isLoading = true;
@@ -48,9 +59,9 @@ class _SearchPageState extends State<SearchPage> {
     });
     try {
       final responses = await Future.wait([
-        http.get(Uri.parse('http://trentin-nas.synology.me:4000/api/items')),
+        http.get(Uri.parse('$kBaseUrl/api/items')),
         http.get(
-          Uri.parse('http://trentin-nas.synology.me:4000/api/categories'),
+          Uri.parse('$kBaseUrl/api/categories'),
         ),
       ]);
       if (responses[0].statusCode == 200) {
@@ -84,10 +95,23 @@ class _SearchPageState extends State<SearchPage> {
           _isLoading = false;
           _filtersLoading = false;
           _filterItems();
+          
+          // (FIX 1) Se un item era selezionato, aggiornalo
+          if (_selectedItem != null) {
+            try {
+              // Aggiorna i dati dell'item selezionato
+              _selectedItem = _allItems.firstWhere(
+                (item) => item['item_id'] == _selectedItem!['item_id']
+              );
+            } catch (e) {
+              _selectedItem = null; // L'item è stato eliminato o non c'è più
+            }
+          }
         });
       }
     }
   }
+  
   void _filterItems() {
     final searchTerm = _searchController.text.toLowerCase();
     List tempFilteredList = _allItems;
@@ -117,6 +141,7 @@ class _SearchPageState extends State<SearchPage> {
       _filteredItems = tempFilteredList;
     });
   }
+
   Future<void> _navigateAndReload(BuildContext context, Widget page) async {
     final result = await Navigator.push(
       context,
@@ -126,6 +151,7 @@ class _SearchPageState extends State<SearchPage> {
       _fetchPageData();
     }
   }
+  
   void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
@@ -224,96 +250,181 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  // --- (FIX 1) NUOVO BUILD METHOD RESPONSIVO ---
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isTablet = constraints.maxWidth >= kTabletBreakpoint;
+
+        if (isTablet) {
+          return _buildTabletLayout();
+        } else {
+          return _buildMobileLayout();
+        }
+      },
+    );
+  }
+  
+  // --- (FIX 1) LAYOUT MOBILE (Il vecchio build()) ---
+  Widget _buildMobileLayout() {
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Cerca per nome o codice...',
-            prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => _searchController.clear(),
-                  )
-                : null,
+      key: _scaffoldKey, // Usa la chiave
+      appBar: _buildSearchAppBar(),
+      body: _buildBodyContent(isTablet: false),
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+
+  // --- (FIX 1) LAYOUT TABLET (Master-Detail) ---
+  Widget _buildTabletLayout() {
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: _buildSearchAppBar(), // L'AppBar è condivisa
+      body: Row(
+        children: [
+          // Pannello MASTER (Lista)
+          Expanded(
+            flex: 1, // La lista occupa 1/3 dello spazio
+            child: _buildBodyContent(isTablet: true),
           ),
-          onSubmitted: (value) => _filterItems(),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.filter_list,
-              color: (_selectedCategoryId != null ||
-                      _selectedBrand != null ||
-                      _showOnlyAvailable)
-                  ? Theme.of(context).colorScheme.primary
-                  : null,
-            ),
-            tooltip: 'Filtri',
-            onPressed: _filtersLoading ? null : _showFilterSheet,
+          
+          const VerticalDivider(width: 1),
+          
+          // Pannello DETAIL (Contenuto)
+          Expanded(
+            flex: 2, // Il dettaglio occupa 2/3 dello spazio
+            child: _selectedItem == null
+                ? const Center(child: Text('Seleziona un articolo dalla lista'))
+                : ItemDetailContent(
+                    // Usiamo UniqueKey per forzare il rebuild quando l'item cambia
+                    key: UniqueKey(), 
+                    item: _selectedItem!,
+                    onDataChanged: (didChange) {
+                      if (didChange) {
+                        // Se i dati cambiano (es. modifica o delete)
+                        // ricarichiamo i dati della lista
+                        _fetchPageData(); 
+                      }
+                    },
+                  ),
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            )
-          : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(_errorMessage!, textAlign: TextAlign.center),
-                  ),
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+  
+  // --- (FIX 1) Widget condivisi ---
+  
+  AppBar _buildSearchAppBar() {
+    return AppBar(
+      title: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Cerca per nome o codice...',
+          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _searchController.clear(),
                 )
-              : _filteredItems.isEmpty
-                  ? Center(
-                      child: Text(
-                        _searchController.text.isEmpty &&
-                                _selectedCategoryId == null &&
-                                _selectedBrand == null &&
-                                !_showOnlyAvailable
-                            ? 'Nessun articolo. Aggiungine uno!'
-                            : 'Nessun articolo trovato con questi filtri.',
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(8.0),
-                      itemCount: _filteredItems.length,
-                      itemBuilder: (context, index) {
-                        final item = _filteredItems[index];
-                        // (FIX 3) Usa la nuova card
-                        return _buildItemCard(item); 
-                      },
-                    ),
-      // Il bottone + rimane qui perché questa è la pagina di Ricerca/Gestione
-      floatingActionButton: FloatingActionButton(
+              : null,
+        ),
+        onSubmitted: (value) => _filterItems(),
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(
+            Icons.filter_list,
+            color: (_selectedCategoryId != null ||
+                    _selectedBrand != null ||
+                    _showOnlyAvailable)
+                ? Theme.of(context).colorScheme.primary
+                : null,
+          ),
+          tooltip: 'Filtri',
+          onPressed: _filtersLoading ? null : _showFilterSheet,
+        ),
+      ],
+    );
+  }
+  
+  Widget? _buildFloatingActionButton() {
+     return FloatingActionButton(
         onPressed: () {
           _navigateAndReload(context, const AddItemPage());
         },
         tooltip: 'Aggiungi articolo',
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add, color: Colors.black),
-      ),
-    );
+      );
+  }
+  
+  Widget _buildBodyContent({required bool isTablet}) {
+     if (_isLoading) {
+        return Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        );
+     }
+     if (_errorMessage != null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(_errorMessage!, textAlign: TextAlign.center),
+          ),
+        );
+     }
+     if (_filteredItems.isEmpty) {
+        return Center(
+          child: Text(
+            _searchController.text.isEmpty &&
+                    _selectedCategoryId == null &&
+                    _selectedBrand == null &&
+                    !_showOnlyAvailable
+                ? 'Nessun articolo. Aggiungine uno!'
+                : 'Nessun articolo trovato con questi filtri.',
+          ),
+        );
+     }
+      
+     return ListView.builder(
+        padding: const EdgeInsets.all(8.0),
+        itemCount: _filteredItems.length,
+        itemBuilder: (context, index) {
+          final item = _filteredItems[index];
+          // Passiamo 'isTablet' al builder della card
+          return _buildItemCard(item, isTablet: isTablet); 
+        },
+      );
   }
 
-  // (FIX 2 e 3) Widget Card AGGIORNATO
-  Widget _buildItemCard(Map<String, dynamic> item) {
+  // (FIX 1) Widget Card AGGIORNATO per gestire il tap
+  Widget _buildItemCard(Map<String, dynamic> item, {required bool isTablet}) {
     final bool isSold = item['is_sold'] == 1;
 
-    Color cardColor =
-        isSold ? const Color(0xFF422B2B) : Theme.of(context).cardColor;
+    // (FIX 1) Logica per evidenziare l'item selezionato su tablet
+    final bool isSelected = isTablet &&
+        _selectedItem != null &&
+        _selectedItem!['item_id'] == item['item_id'];
+
+    Color cardColor;
+    if (isSelected) {
+      // Colore per l'item selezionato su tablet
+      cardColor = Theme.of(context).colorScheme.primary.withOpacity(0.3);
+    } else if (isSold) {
+      cardColor = const Color(0xFF422B2B);
+    } else {
+      cardColor = Theme.of(context).cardColor;
+    }
+    
     Color textColor =
         isSold ? Colors.grey[300]! : Theme.of(context).textTheme.bodyLarge!.color!;
     Color iconColor =
         isSold ? Colors.grey[400]! : Theme.of(context).colorScheme.primary;
 
-    // (FIX 2) Logica Icona
     final IconData itemIcon = isSold 
         ? Iconsax.money_remove 
         : getIconForCategory(item['category_name']);
@@ -323,26 +434,31 @@ class _SearchPageState extends State<SearchPage> {
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
         onTap: () {
-          _navigateAndReload(context, ItemDetailPage(item: item));
+          // --- (FIX 1) Logica di TAP diversa ---
+          if (isTablet) {
+            // Su tablet, aggiorna lo stato e il pannello di destra
+            setState(() {
+              _selectedItem = item;
+            });
+          } else {
+            // Su mobile, naviga alla pagina di dettaglio
+            _navigateAndReload(context, ItemDetailPage(item: item));
+          }
         },
-        // (FIX 2) Icona
         leading: Icon(
           itemIcon,
           color: iconColor,
         ),
-        // (FIX 3) Solo Nome
         title: Text(
           item['name'] ?? 'Articolo senza nome',
-          style: TextStyle(color: textColor), // Rimosso Bold
+          style: TextStyle(color: textColor),
         ),
-        // (FIX 3) Niente Sottotitolo
         subtitle: null,
-        // (FIX 3) Quantità
         trailing: Text(
           (int.tryParse(item['display_quantity'].toString()) ?? 0).toString(),
           style: TextStyle(
-            color: Colors.grey[600], // (FIX 3) Colore grigio
-            fontSize: 14, // (FIX 3) Font più piccolo
+            color: Colors.grey[600], 
+            fontSize: 14,
           ),
         ),
       ),
