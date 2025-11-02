@@ -1,4 +1,4 @@
-// lib/statistics_page.dart - FIX LAYOUT REATTIVO E MOBILE
+
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -89,14 +89,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16.0),
                     children: [
-                      // --- SEZIONE BOX REATTIVA ---
+                      
                       _buildResponsiveStatBoxes(),
 
-                      // (FIX 1) Sostituito il titolo con un semplice separatore
+                    
                       const SizedBox(height: 32),
 
-                      // (FIX 2) Sostituito _buildTopPerformerSection
-                      // con due card individuali
+                     
                       _buildTopCategoryCard(),
                       const SizedBox(height: 16),
                       _buildTopBrandCard(),
@@ -119,7 +118,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
         const double desktopBreakpoint = 900.0;
 
         if (constraints.maxWidth >= desktopBreakpoint) {
-          // --- LAYOUT DESKTOP: 1 riga con 4 box (INVARIATO) ---
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -157,10 +155,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
             ],
           );
         } else {
-          // --- (FIX 3) LAYOUT MOBILE: 1-2-1 ---
+       
           return Column(
             children: [
-              // Riga 1: Valore Magazzino
+  
               Row(
                 children: [
                   _buildStatCard(
@@ -173,7 +171,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Riga 2: Margine di Profitto e Spesa Totale
+  
               Row(
                 children: [
                   _buildStatCard(
@@ -194,7 +192,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Riga 3: Guadagno Lordo
+
               Row(
                 children: [
                   _buildStatCard(
@@ -213,7 +211,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  // Skeleton Loader (invariato)
+
   Widget _buildSkeletonLoader() {
     final Color baseColor = Colors.grey[850]!;
     final Color highlightColor = Colors.grey[700]!;
@@ -247,7 +245,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  // Widget _buildStatCard (invariato)
+
   Widget _buildStatCard(
     String title,
     String value,
@@ -290,17 +288,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  // (FIX 4) Funzione _buildTopPerformerSection ELIMINATA
-
-  // (FIX 5) CREATO NUOVO HELPER PER LA CARD (basato sul vecchio _buildTopCard)
-  // Rimosso 'Expanded' per permettere l'uso in una Column
+  
   Widget _buildTopPerformerCard({
     required String title,
     required String name,
     required int count,
     required IconData icon,
   }) {
-    return Card( // 'Expanded' rimosso da qui
+    return Card( 
       color: const Color(0xFF161616),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -339,7 +334,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  // (FIX 6) Creato helper per la card Categoria
+
   Widget _buildTopCategoryCard() {
     final topCategory = _statsData['topCategory'];
     return _buildTopPerformerCard(
@@ -350,7 +345,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  // (FIX 7) Creato helper per la card Brand
+
   Widget _buildTopBrandCard() {
     final topBrand = _statsData['topBrand'];
     return _buildTopPerformerCard(

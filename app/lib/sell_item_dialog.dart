@@ -1,5 +1,3 @@
-// lib/sell_item_dialog.dart - AGGIORNATO CON VALIDAZIONE STOCK
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -8,17 +6,17 @@ import 'package:intl/intl.dart';
 class SellItemDialog extends StatefulWidget {
   final int itemId;
   final List variants;
-  final List allPlatforms; // CORRETTO: Accetta 'allPlatforms'
+  final List allPlatforms;
   final bool hasVariants;
-  final int mainItemQuantity; // CORRETTO: Accetta 'mainItemQuantity'
+  final int mainItemQuantity;
 
   const SellItemDialog({
     super.key,
     required this.itemId,
     required this.variants,
-    required this.allPlatforms, // Aggiornato
+    required this.allPlatforms,
     required this.hasVariants,
-    required this.mainItemQuantity, // Aggiornato
+    required this.mainItemQuantity,
   });
 
   @override
@@ -38,7 +36,6 @@ class _SellItemDialogState extends State<SellItemDialog> {
   final _priceController = TextEditingController();
   final _userController = TextEditingController();
 
-  // (2 - NUOVO) Variabile per lo stock massimo
   int? _maxAvailableQuantity;
 
   @override
@@ -46,14 +43,12 @@ class _SellItemDialogState extends State<SellItemDialog> {
     super.initState();
     _fetchPlatforms();
 
-    // (3 - NUOVO) Imposta lo stock massimo se è un articolo singolo
     if (!widget.hasVariants) {
       _maxAvailableQuantity = widget.mainItemQuantity;
     }
   }
 
   Future<void> _fetchPlatforms() async {
-    // ... (codice invariato) ...
     try {
       const url = 'http://trentin-nas.synology.me:4000/api/platforms';
       final response = await http.get(Uri.parse(url));
@@ -77,7 +72,6 @@ class _SellItemDialogState extends State<SellItemDialog> {
   }
 
   Future<void> _submitSale() async {
-    // (4 - MODIFICA) Il validatore ora fa il controllo
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -106,7 +100,6 @@ class _SellItemDialogState extends State<SellItemDialog> {
     };
 
     try {
-      // ... (chiamata API invariata) ...
       const url = 'http://trentin-nas.synology.me:4000/api/sales';
       final response = await http.post(
         Uri.parse(url),
@@ -202,7 +195,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
                                 );
                               }).toList(),
                           onChanged: (value) {
-                            // (5 - NUOVO) Aggiorna lo stock max
+                            //  Aggiorna lo stock max
                             setState(() {
                               _selectedVariantId = value;
                               if (value != null) {
@@ -232,20 +225,14 @@ class _SellItemDialogState extends State<SellItemDialog> {
                       Row(
                         children: [
                           Expanded(
-                            // (6 - MODIFICA) Campo Quantità
+                            //  Campo Quantità
                             child: TextFormField(
                               controller: _quantityController,
                               decoration: InputDecoration(
                                 labelText: 'Quantità',
-                                // (7 - NUOVO) Mostra lo stock disponibile
-                                /*helperText:
-                                    _maxAvailableQuantity != null
-                                        ? 'Disponibili: $_maxAvailableQuantity'
-                                        : null,
-                                helperStyle: TextStyle(color: Colors.grey[400]),*/
                               ),
                               keyboardType: TextInputType.number,
-                              // (8 - NUOVO) Validatore
+
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Obbl.';
@@ -256,12 +243,11 @@ class _SellItemDialogState extends State<SellItemDialog> {
                                 if (enteredQuantity == null) return 'Num.';
                                 if (enteredQuantity <= 0) return '> 0';
 
-                                // Il controllo chiave!
                                 if (_maxAvailableQuantity != null &&
                                     enteredQuantity > _maxAvailableQuantity!) {
                                   return 'Max: $_maxAvailableQuantity';
                                 }
-                                return null; // Va bene
+                                return null;
                               },
                             ),
                           ),
@@ -270,7 +256,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
                             child: TextFormField(
                               controller: _priceController,
                               decoration: const InputDecoration(
-                                labelText: 'Prezzo Totale (€)',
+                                labelText: 'Acquisto (€)',
                               ),
                               keyboardType: TextInputType.number,
                               validator: (v) => v!.isEmpty ? 'Obbl.' : null,
@@ -280,7 +266,6 @@ class _SellItemDialogState extends State<SellItemDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // --- Utente ---
                       TextFormField(
                         controller: _userController,
                         decoration: const InputDecoration(
@@ -292,7 +277,6 @@ class _SellItemDialogState extends State<SellItemDialog> {
                 ),
               ),
       actions: [
-        // ... (bottoni invariati) ...
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Annulla'),

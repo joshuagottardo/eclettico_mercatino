@@ -1,5 +1,3 @@
-// lib/add_variant_page.dart - AGGIORNATO PER MODIFICA E DELETE
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -7,7 +5,7 @@ import 'package:app/api_config.dart';
 
 class AddVariantPage extends StatefulWidget {
   final int itemId;
-  // (1 - MODIFICA) Aggiungiamo variantId opzionale
+
   final int? variantId;
 
   const AddVariantPage({super.key, required this.itemId, this.variantId});
@@ -19,18 +17,17 @@ class AddVariantPage extends StatefulWidget {
 class _AddVariantPageState extends State<AddVariantPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controller (invariati)
+  // Controller
   final _nameController = TextEditingController();
   final _purchasePriceController = TextEditingController();
   final _quantityController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  // Dati per Piattaforme (invariati)
+  // Dati per Piattaforme
   List _platforms = [];
   bool _platformsLoading = true;
   final Set<int> _selectedPlatformIds = {};
 
-  // (2 - NUOVO) Stati per la logica di pagina
   bool _isLoading = false; // Per il salvataggio
   bool _isPageLoading = false; // Per il caricamento iniziale
   bool _isEditMode = false;
@@ -40,7 +37,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
     super.initState();
     _fetchPlatforms();
 
-    // (3 - NUOVO) Logica per la modalità Modifica
     if (widget.variantId != null) {
       _isEditMode = true;
       _isPageLoading = true;
@@ -48,7 +44,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // (4 - NUOVO) Funzione per caricare i dati della variante
+  //  Funzione per caricare i dati della variante
   Future<void> _loadVariantData() async {
     try {
       final url = '$kBaseUrl/api/variants/${widget.variantId}';
@@ -84,7 +80,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // Funzione per caricare le piattaforme (invariata)
+  // Funzione per caricare le piattaforme
   Future<void> _fetchPlatforms() async {
     try {
       const url = '$kBaseUrl/api/platforms';
@@ -107,7 +103,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // (5 - MODIFICA) Rinominata in _submitForm
+  // (Rinominata in _submitForm
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -125,7 +121,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     try {
       http.Response response;
 
-      // (6 - NUOVO) Logica per POST (Crea) o PUT (Modifica)
+      // Logica per POST (Crea) o PUT (Modifica)
       if (_isEditMode) {
         // --- MODALITÀ MODIFICA ---
         final url = '$kBaseUrl/api/variants/${widget.variantId}';
@@ -145,7 +141,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) Navigator.pop(context, true); // Successo!
+        if (mounted) Navigator.pop(context, true);
       } else {
         _showError('Errore server: ${response.statusCode}');
       }
@@ -160,12 +156,12 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // (7 - NUOVO) Funzione per eliminare la variante
+  // Funzione per eliminare la variante
   Future<void> _deleteVariant() async {
     // Chiedi conferma
     final bool? confirmed = await _showDeleteConfirmation();
     if (confirmed != true) return;
-    
+
     setState(() {
       _isLoading = true;
     }); // Usiamo lo stesso loader
@@ -174,9 +170,8 @@ class _AddVariantPageState extends State<AddVariantPage> {
       final response = await http.delete(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        Navigator.pop(context, true); // Successo!
+        Navigator.pop(context, true);
       } else {
-        // Mostra l'errore specifico (es. "ha vendite associate")
         final error = jsonDecode(response.body);
         _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
       }
@@ -191,7 +186,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // (8 - NUOVO) Dialog di conferma eliminazione
+  //  Dialog di conferma eliminazione
   Future<bool?> _showDeleteConfirmation() {
     return showDialog<bool>(
       context: context,
@@ -238,10 +233,10 @@ class _AddVariantPageState extends State<AddVariantPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // (9 - MODIFICA) Titolo e Azioni dinamiche
+        //  Titolo e Azioni dinamiche
         title: Text(_isEditMode ? 'Modifica Variante' : 'Aggiungi Variante'),
         actions: [
-          // (10 - NUOVO) Bottone Elimina (solo in Modifica)
+          //  Bottone Elimina (solo in Modifica)
           if (_isEditMode)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -260,12 +255,12 @@ class _AddVariantPageState extends State<AddVariantPage> {
                       ),
                     )
                     : const Icon(Icons.save),
-            onPressed: _isLoading ? null : _submitForm, // (11 - MODIFICA)
+            onPressed: _isLoading ? null : _submitForm,
             tooltip: 'Salva',
           ),
         ],
       ),
-      // (12 - MODIFICA) Mostra loader
+      //Mostra loader
       body: GestureDetector(
         onTap: () {
           // Chiude la tastiera forzando la rimozione del focus da qualsiasi campo
@@ -283,7 +278,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16.0),
                     children: [
-                      // ... (Campi modulo invariati) ...
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(labelText: 'Nome'),

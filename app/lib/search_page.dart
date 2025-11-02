@@ -1,14 +1,12 @@
-// lib/search_page.dart - AGGIORNATO CON MASTER-DETAIL
-
 import 'dart:convert';
 import 'package:app/add_item_page.dart';
-import 'package:app/item_detail_content.dart'; // Importa il nuovo contenuto
-import 'package:app/item_detail_page.dart'; // Importa ancora per il mobile
+import 'package:app/item_detail_content.dart';
+import 'package:app/item_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:app/api_config.dart'; // Importato
+import 'package:app/api_config.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -18,7 +16,6 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  // Stati esistenti
   List _allItems = [];
   List _filteredItems = [];
   bool _isLoading = true;
@@ -31,7 +28,6 @@ class _SearchPageState extends State<SearchPage> {
   String? _selectedBrand;
   bool _showOnlyAvailable = false;
 
-  // --- (FIX 1) NUOVI STATI PER MASTER-DETAIL ---
   Map<String, dynamic>? _selectedItem;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   // Breakpoint per tablet
@@ -94,7 +90,6 @@ class _SearchPageState extends State<SearchPage> {
           _filtersLoading = false;
           _filterItems();
 
-          // (FIX 1) Se un item era selezionato, aggiornalo
           if (_selectedItem != null) {
             try {
               // Aggiorna i dati dell'item selezionato
@@ -275,7 +270,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // --- (FIX 1) NUOVO BUILD METHOD RESPONSIVO ---
+  // --- NUOVO BUILD METHOD RESPONSIVO ---
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -291,7 +286,6 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // (FIX) Nuovo widget per l'animazione "skeleton" della lista
   Widget _buildSkeletonList() {
     final Color baseColor = Colors.grey[850]!;
     final Color highlightColor = Colors.grey[700]!;
@@ -303,7 +297,7 @@ class _SearchPageState extends State<SearchPage> {
       period: const Duration(milliseconds: 1200),
       child: ListView.builder(
         padding: const EdgeInsets.all(8.0),
-        itemCount: 10, // Mostra 10 righe finte
+        itemCount: 10,
         itemBuilder: (context, index) {
           return Card(
             color: baseColor,
@@ -340,10 +334,8 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // --- (FIX 1) LAYOUT MOBILE (Il vecchio build()) ---
   Widget _buildMobileLayout() {
     return PopScope(
-      // <-- (FIX) Aggiunto
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         // didPop è true se il sistema *ha tentato* di chiudere la pagina
@@ -361,41 +353,31 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // --- (FIX 1) LAYOUT TABLET (Master-Detail) ---
   Widget _buildTabletLayout() {
     return PopScope(
-      // <-- (FIX) Aggiunto
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
-        // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
 
-        // Passa il risultato (se i dati sono cambiati) alla pagina precedente
         Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
         key: _scaffoldKey,
-        appBar: _buildSearchAppBar(), // L'AppBar è condivisa
+        appBar: _buildSearchAppBar(),
         body: Row(
           children: [
-            // Pannello MASTER (Lista)
-            Expanded(
-              flex: 1, // La lista occupa 1/3 dello spazio
-              child: _buildBodyContent(isTablet: true),
-            ),
+            Expanded(flex: 1, child: _buildBodyContent(isTablet: true)),
 
             const VerticalDivider(width: 1),
 
-            // Pannello DETAIL (Contenuto)
             Expanded(
-              flex: 2, // Il dettaglio occupa 2/3 dello spazio
+              flex: 2,
               child:
                   _selectedItem == null
                       ? const Center(
                         child: Text('Seleziona un articolo dalla lista'),
                       )
                       : ItemDetailContent(
-                        // Usiamo UniqueKey per forzare il rebuild quando l'item cambia
                         key: UniqueKey(),
                         item: _selectedItem!,
                         showAppBar: false,
@@ -414,8 +396,6 @@ class _SearchPageState extends State<SearchPage> {
       ),
     );
   }
-
-  // --- (FIX 1) Widget condivisi ---
 
   AppBar _buildSearchAppBar() {
     return AppBar(
@@ -463,13 +443,11 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // (FIX) Sostituito: Nuovo widget per la thumbnail (più grande)
   Widget _buildThumbnail(String? thumbnailPath) {
     final double thumbSize = 80.0; // Dimensione aumentata
     final Color placeholderColor = Colors.grey[850]!;
 
     return ClipRRect(
-      // (FIX) Aumentato il raggio per un look più moderno
       borderRadius: BorderRadius.circular(12.0),
       child: Container(
         width: thumbSize,
@@ -488,7 +466,6 @@ class _SearchPageState extends State<SearchPage> {
                     );
                   },
                 )
-                // Icona placeholder se non c'è thumbnail
                 : Icon(Iconsax.gallery, size: 32, color: Colors.grey[600]),
       ),
     );
@@ -530,7 +507,6 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // (FIX) Sostituito: Widget Card AGGIORNATO con nuovo layout
   Widget _buildItemCard(Map<String, dynamic> item, {required bool isTablet}) {
     final bool isSold = item['is_sold'] == 1;
 
@@ -550,7 +526,7 @@ class _SearchPageState extends State<SearchPage> {
 
     Color textColor =
         isSold
-            ? Colors.grey[400]! // Testo più sbiadito se venduto
+            ? Colors.grey[400]!
             : Theme.of(context).textTheme.bodyLarge!.color!;
 
     final String brand = item['brand'] ?? 'N/D';
@@ -558,7 +534,7 @@ class _SearchPageState extends State<SearchPage> {
     return Card(
       color: cardColor,
       margin: const EdgeInsets.symmetric(vertical: 6.0),
-      clipBehavior: Clip.antiAlias, // Per smussare gli angoli dell'InkWell
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
           if (isTablet) {
@@ -610,7 +586,6 @@ class _SearchPageState extends State<SearchPage> {
                   ],
                 ),
               ),
-              // (FIX) Contatore quantità (trailing) RIMOSSO
             ],
           ),
         ),

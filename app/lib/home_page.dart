@@ -1,10 +1,6 @@
-// lib/home_page.dart - FIX LAYOUT RESPONSIVE (ROBUSTO)
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-// Importiamo le pagine a cui navigare
 import 'package:app/search_page.dart';
 import 'package:app/add_item_page.dart';
 import 'package:app/item_detail_page.dart';
@@ -120,8 +116,7 @@ class _HomePageState extends State<HomePage> {
               : ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: [
-                  // --- (FIX 1 e 2) LAYOUT BOTTONI RESPONSIVO ---
-                  _buildButtonLayout(context), // Nuovo widget helper
+                  _buildButtonLayout(context),
 
                   const SizedBox(height: 32),
 
@@ -149,9 +144,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- (FIX 1 e 2) WIDGET PER LAYOUT RESPONSIVO (AGGIORNATO) ---
   Widget _buildButtonLayout(BuildContext context) {
-    // Definiamo le funzioni onTap per chiarezza
     void onTapSearch() {
       Navigator.push(
         context,
@@ -183,7 +176,6 @@ class _HomePageState extends State<HomePage> {
         const double desktopBreakpoint = 900.0;
 
         if (constraints.maxWidth > desktopBreakpoint) {
-          // LAYOUT DESKTOP: 1 riga con 4 bottoni (tutti expanded)
           return Row(
             children: [
               _buildDashboardButton(
@@ -222,7 +214,6 @@ class _HomePageState extends State<HomePage> {
         } else {
           // LAYOUT MOBILE/TABLET: 3+1
           return Column(
-            // Assicura che i figli (come il bottone 'Statistiche') si allarghino
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
@@ -258,8 +249,7 @@ class _HomePageState extends State<HomePage> {
                 icon: Icons.auto_graph,
                 label: 'Statistiche',
                 onTap: onTapStats,
-                isExpanded:
-                    false, // <--- Non è in una Row, non deve essere Expanded
+                isExpanded: false,
               ),
             ],
           );
@@ -267,17 +257,14 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
-  // --- FINE SEZIONE FIX ---
 
-  // --- (FIX 1) WIDGET HELPER TASTONE (AGGIORNATO) ---
   Widget _buildDashboardButton(
     BuildContext context, {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
-    bool isExpanded = false, // NUOVO PARAMETRO
+    bool isExpanded = false,
   }) {
-    // Rimuoviamo la logica 'isFullWidth'
     final buttonContent = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12.0),
@@ -297,12 +284,10 @@ class _HomePageState extends State<HomePage> {
       ),
     );
 
-    // Usiamo il nuovo parametro
     return isExpanded ? Expanded(child: buttonContent) : buttonContent;
   }
-  // --- FINE FIX ---
 
-  // Widget per la lista delle Vendite (Invariato)
+  // Widget per la lista delle Vendite
   Widget _buildSalesList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,7 +311,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la singola vendita (Invariato, non ha icone)
+  // Widget per la singola vendita
   Widget _buildSaleTile(Map<String, dynamic> sale) {
     String title =
         '${sale['item_name']} ${sale['variant_name'] != null ? '(${sale['variant_name']})' : ''}';
@@ -373,7 +358,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget per la lista dei Nuovi Arrivi (Invariato)
+  // Widget per la lista dei Nuovi Arrivi
   Widget _buildArrivalsList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +388,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- (FIX 3) WIDGET RIGA "ULTIMI ARRIVI" (ICONA RIMOSSA) ---
+  // ---  WIDGET RIGA "ULTIMI ARRIVI"  ---
   Widget _buildArrivalTile(Map<String, dynamic> item) {
     return InkWell(
       onTap: () {
@@ -414,7 +399,6 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
         child: Row(
           children: [
-            // Icona e SizedBox rimossi
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

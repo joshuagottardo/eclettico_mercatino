@@ -1,5 +1,4 @@
-// lib/edit_sale_dialog.dart - AGGIORNATO CON VALIDAZIONE STOCK
-
+// lib/edit_sale_dialog.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -9,14 +8,13 @@ import 'package:app/api_config.dart';
 class EditSaleDialog extends StatefulWidget {
   final Map<String, dynamic> sale;
   final List allPlatforms;
-  // (1 - NUOVO) Riceviamo lo stock attuale
   final int currentStock;
 
   const EditSaleDialog({
     super.key,
     required this.sale,
     required this.allPlatforms,
-    required this.currentStock, // Aggiunto al costruttore
+    required this.currentStock,
   });
 
   @override
@@ -33,8 +31,6 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
   final _priceController = TextEditingController();
   final _userController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
-
-  // (2 - NUOVO) Variabile per lo stock massimo
   int? _maxAvailableQuantity;
 
   @override
@@ -47,7 +43,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     _selectedDate = DateTime.parse(widget.sale['sale_date']);
     _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
 
-    // (3 - NUOVO) Calcola lo stock massimo
+    // Calcola lo stock massimo
     // Stock attuale + Quantità già inclusa in questa vendita = Totale
     _maxAvailableQuantity =
         (widget.currentStock +
@@ -55,7 +51,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
             .toInt();
   }
 
-  // Funzione per MODIFICARE la vendita (invariata)
+  // Funzione per MODIFICARE la vendita
   Future<void> _submitUpdate() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPlatformId == null) return;
@@ -84,7 +80,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       if (response.statusCode == 200) {
         if (context.mounted) Navigator.pop(context, true);
       } else {
-        // (MODIFICA) Mostra l'errore del server (es. "Quantità non valida")
+        // Mostra l'errore del server (es. "Quantità non valida")
         final error = jsonDecode(response.body);
         _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
       }
@@ -99,7 +95,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     }
   }
 
-  // Funzione per ELIMINARE la vendita (invariata)
+  // Funzione per ELIMINARE la vendita
   Future<void> _deleteSale() async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -184,13 +180,11 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       backgroundColor: const Color(0xFF1E1E1E),
       actionsAlignment: MainAxisAlignment.spaceBetween,
       title: const Text('Modifica Vendita'),
-      // (FIX) Rimosso il SingleChildScrollView che avvolgeva la Column
       content: Form(
         key: _formKey,
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Questo è importante
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // ... (Piattaforma e Data invariati) ...
             DropdownButtonFormField<int>(
               decoration: const InputDecoration(labelText: 'Piattaforma'),
               value: _selectedPlatformId,
@@ -221,12 +215,12 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
             Row(
               children: [
                 Expanded(
-                  // (4 - MODIFICA) Campo Quantità
+                  //  Campo Quantità
                   child: TextFormField(
                     controller: _quantityController,
                     decoration: InputDecoration(
                       labelText: 'Quantità',
-                      // (5 - NUOVO) Mostra lo stock
+                      //  Mostra lo stock
                       helperText:
                           _maxAvailableQuantity != null
                               ? 'Disponibili: $_maxAvailableQuantity'
@@ -234,19 +228,18 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
                       helperStyle: TextStyle(color: Colors.grey[400]),
                     ),
                     keyboardType: TextInputType.number,
-                    // (6 - NUOVO) Validatore
+                    // Validatore
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Obbl.';
                       final int? enteredQuantity = int.tryParse(value);
                       if (enteredQuantity == null) return 'Num.';
                       if (enteredQuantity <= 0) return '> 0';
 
-                      // Il controllo chiave!
                       if (_maxAvailableQuantity != null &&
                           enteredQuantity > _maxAvailableQuantity!) {
                         return 'Max: $_maxAvailableQuantity';
                       }
-                      return null; // Va bene
+                      return null;
                     },
                   ),
                 ),

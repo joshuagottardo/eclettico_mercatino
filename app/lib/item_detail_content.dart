@@ -1,4 +1,4 @@
-// lib/item_detail_page.dart - FIX COMPLETO (FINALIZZAZIONE UI)
+// lib/item_detail_page.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -53,7 +53,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   bool _isSalesLogOpen = false; // Stato per il Drawer Log
   bool _isDeleting = false;
 
-  // Colori (resi stabili e definiti)
+  // Colori 
   final Color _soldColor = Colors.red[500]!;
   final Color _availableColor = Colors.green[500]!;
   final Color _headerTextColor = Colors.grey[600]!;
@@ -92,7 +92,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
   @override
   Widget build(BuildContext context) {
-    // (FIX 3) Rimosso PopScope ridondante.
+    // (Rimosso PopScope ridondante.
     // La navigazione "indietro" è gestita dal wrapper (item_detail_page.dart)
     return Scaffold(
       appBar:
@@ -110,8 +110,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                           _currentItem['unique_code'].toString(),
                         ),
                   ),
-
-                  // FIX 2: RIMOSSO Tasto Aggiorna (Icons.refresh)
 
                   // Bottone Modifica Articolo
                   IconButton(
@@ -166,13 +164,13 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
               : null,
       body: RefreshIndicator(
         onRefresh: _refreshAllData,
-        // (FIX) Avvolgiamo in una Column per aggiungere i bottoni su tablet
+        //  Avvolgiamo in una Column per aggiungere i bottoni su tablet
         child: Column(
           children: [
-            // (FIX) Mostra la barra azioni solo se l'AppBar è nascosta
+            //  Mostra la barra azioni solo se l'AppBar è nascosta
             if (!widget.showAppBar) _buildActionButtonsRow(),
 
-            // (FIX) Expanded assicura che lo scroll riempia lo spazio rimanente
+            //  Expanded assicura che lo scroll riempia lo spazio rimanente
             Expanded(
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -214,8 +212,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       ),
                       const SizedBox(height: 8),
                       _buildVariantsSection(),
-                      const SizedBox(height: 16), // Spazio prima del bottone
-                      // FIX CHIAVE: Tasto Aggiungi Variante spostato in basso
+                      const SizedBox(height: 16), 
                       Align(
                         alignment: Alignment.center,
                         child: TextButton.icon(
@@ -270,17 +267,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                               ),
                     ),
                     const SizedBox(height: 48),
-                  ], // Chiusura Column interna
+                  ], 
                 ),
               ),
-            ), // Chiusura Expanded
-          ], // Chiusura Column esterna
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // --- FUNZIONI DI CARICAMENTO DATI (Invariate) ---
+  // --- FUNZIONI DI CARICAMENTO DATI  ---
 
   Future<void> _refreshAllData() async {
     if (mounted) {
@@ -367,7 +364,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // Funzione helper per mostrare errori (dovresti già averla)
+  // Funzione helper per mostrare errori 
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -477,14 +474,14 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // --- FUNZIONI DI AZIONE (Invariate) ---
+  // --- FUNZIONI DI AZIONE ---
 
-  // Funzioni di caricamento (AGGIORNATE per selezione multipla)
+  // Funzioni di caricamento
   Future<void> _pickAndUploadImage() async {
     final dynamic photoTarget = await _showPhotoTargetDialog();
     if (photoTarget == 'cancel') return;
 
-    // (FIX 1) Usa pickMultiImage per selezionare più file
+    //  Usa pickMultiImage per selezionare più file
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
     // Controlla se almeno un file è stato selezionato
@@ -496,7 +493,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     });
 
     try {
-      // (FIX 2) Itera su ogni file selezionato per l'upload
+      // Itera su ogni file selezionato per l'upload
       for (final XFile pickedFile in pickedFiles) {
         await _uploadSingleImage(pickedFile, photoTarget);
       }
@@ -524,7 +521,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // (NUOVA FUNZIONE) Gestisce l'upload di un singolo file
+  // Gestisce l'upload di un singolo file
   Future<void> _uploadSingleImage(XFile pickedFile, dynamic photoTarget) async {
     try {
       const url = '$kBaseUrl/api/photos/upload';
@@ -544,13 +541,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       if (streamedResponse.statusCode != 201) {
         final response = await http.Response.fromStream(streamedResponse);
         print('Errore upload di ${pickedFile.name}: ${response.body}');
-        // Potresti voler mostrare un errore per ogni file fallito qui,
-        // ma per ora logghiamo e proseguiamo con il prossimo file.
+
       }
     } catch (e) {
       print('Errore upload di ${pickedFile.name}: $e');
-      // Ignora l'errore per continuare con il prossimo file, l'errore generale
-      // verrà catturato dal blocco superiore se necessario.
+
     }
   }
 
@@ -631,7 +626,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // (FIX) Nuovo widget per lo skeleton della galleria
+  // Nuovo widget per lo skeleton della galleria
   Widget _buildPhotoGallerySkeleton() {
     final Color baseColor = Colors.grey[850]!;
     final Color highlightColor = Colors.grey[700]!;
@@ -662,7 +657,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Widget _buildPriceAndPurchaseInfo() { ... } (Invariato)
+
   Widget _buildPriceAndPurchaseInfo() {
     final String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}';
     final String estimatedValue = '€ ${_currentItem['value'] ?? 'N/D'}';
@@ -736,7 +731,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Widget _buildInfoRow(...) { ... } (Invariato)
+  
   Widget _buildInfoRow(String label, String? value, [IconData? icon]) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -766,13 +761,13 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           const Divider(
             height: 1,
             color: Color(0xFF2A2A2A),
-          ), // Divisore più discreto
+          ), 
         ],
       ),
     );
   }
 
-  // Widget _buildStockAndSalePrice() { ... } (Invariato)
+ 
   Widget _buildStockAndSalePrice() {
     final int totalStock = _calculateTotalStock();
     final String salePrice = '€ ${_currentItem['sale_price'] ?? 'N/D'}';
@@ -843,7 +838,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Widget _buildSalesLogDrawer() { ... } (Invariato)
+
   Widget _buildSalesLogDrawer() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -857,7 +852,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         const SizedBox(height: 8),
         // Testa del Drawer
         Card(
-          color: _logDrawerColor, // Nuovo colore: Grigio molto scuro
+          color: _logDrawerColor, 
           child: InkWell(
             onTap: () {
               setState(() {
@@ -896,7 +891,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           curve: Curves.easeInOut,
           child: Container(
             height: _isSalesLogOpen ? null : 0, // Altezza dinamica
-            // Lo sfondo del corpo del log sarà lo stesso della Card
             color: _logDrawerColor,
             child: Visibility(
               visible: _isSalesLogOpen,
@@ -908,7 +902,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Widget _buildSalesLogSection() { ... } (Invariato)
+
   Widget _buildSalesLogSection() {
     if (_isLogLoading) {
       return const Center(
@@ -999,11 +993,16 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   final bool? dataChanged = await showDialog(
                     context: context,
                     builder:
-                        (context) => EditSaleDialog(
-                          sale: sale,
-                          allPlatforms: _allPlatforms,
-                          currentStock: currentStock!,
-                        ),
+                        (context) => ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: 600,
+                          ), 
+                          child: EditSaleDialog(
+                            sale: sale,
+                            allPlatforms: _allPlatforms,
+                            currentStock: currentStock!,
+                          ),
+                        ), 
                   );
                   if (dataChanged == true) {
                     _markChanged();
@@ -1016,7 +1015,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // (FIX) Widget helper per mostrare i bottoni su tablet/desktop
+  // Widget helper per mostrare i bottoni su tablet/desktop
   Widget _buildActionButtonsRow() {
     // Usiamo un colore di sfondo simile all'AppBar per coerenza
     return Container(
@@ -1064,14 +1063,20 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       final bool? dataChanged = await showDialog(
                         context: context,
                         builder:
-                            (context) => SellItemDialog(
-                              itemId: _currentItem['item_id'],
-                              variants: _variants,
-                              allPlatforms: _allPlatforms,
-                              hasVariants: _currentItem['has_variants'] == 1,
-                              mainItemQuantity:
-                                  (_currentItem['quantity'] as num?)?.toInt() ??
-                                  0,
+                            (context) => ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: 600,
+                              ), 
+                              child: SellItemDialog(
+                                itemId: _currentItem['item_id'],
+                                variants: _variants,
+                                allPlatforms: _allPlatforms,
+                                hasVariants: _currentItem['has_variants'] == 1,
+                                mainItemQuantity:
+                                    (_currentItem['quantity'] as num?)
+                                        ?.toInt() ??
+                                    0,
+                              ),
                             ),
                       );
                       if (dataChanged == true) {
@@ -1086,12 +1091,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-
   // --- WIDGET VARIANTE ---
   Widget _buildVariantsSection() {
     final Color soldColor = Colors.red[500]!;
     final Color availableColor =
-        Colors.green[500]!; // FIX 4: Colore verde per disponibile
+        Colors.green[500]!; // Colore verde per disponibile
 
     if (_isVariantsLoading) {
       return const Center(
@@ -1127,7 +1131,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 title: Text(
                   variant['variant_name'] ?? 'Senza nome',
                   style: TextStyle(
-                    color: statusColor, // FIX 4: Usa colore verde/rosso
+                    color: statusColor, // Usa colore verde/rosso
                     decoration:
                         isVariantSold ? TextDecoration.lineThrough : null,
                   ),
@@ -1144,7 +1148,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                                 : Colors.grey[300], // Colore del sottotitolo
                       ),
                     ),
-                    // FIX 3: RIMOSSO _buildVariantPlatformsList(variant['platforms'] ?? []),
+                    //  RIMOSSO _buildVariantPlatformsList(variant['platforms'] ?? []),
                   ],
                 ),
                 trailing: Icon(Iconsax.arrow_right_3, color: statusColor),
@@ -1170,11 +1174,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // (FIX) Funzione AGGIORNATA con Skeleton e Thumbnail
+
   Widget _buildPhotoGallery() {
     final Color accentColor = Theme.of(context).colorScheme.primary;
 
-    // --- (FIX 1) Gestione SKELETON LOADER ---
+    // --- Gestione SKELETON LOADER ---
     if (_isPhotosLoading) {
       return _buildPhotoGallerySkeleton(); // Mostra lo skeleton
     }
@@ -1182,7 +1186,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
     if (_photos.isEmpty) {
       return Center(
-        // ... (gestione "Nessuna foto", invariata) ...
         child: Column(
           children: [
             const Padding(
@@ -1211,11 +1214,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             itemBuilder: (context, index) {
               final photo = _photos[index];
 
-              // --- (FIX 2) Logica THUMBNAIL ---
-              // L'onTap che apre PhotoViewerPage è GIÀ CORRETTO.
-              // Userà la lista _photos, e PhotoViewerPage userà
-              // l'URL compresso (come da fix precedente).
-
+              // --- Logica THUMBNAIL ---
               // 1. Prendi il percorso full-res (per fallback)
               final fullResUrl = '$kBaseUrl/${photo['file_path']}';
 
@@ -1228,7 +1227,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
               String targetName = 'Articolo Principale';
               if (photo['variant_id'] != null) {
-                // ... (logica 'targetName' invariata) ...
                 final matchingVariant = _variants.firstWhere(
                   (v) =>
                       (v['variant_id'] as num?)?.toInt() ==
@@ -1249,7 +1247,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     aspectRatio: 1,
                     child: InkWell(
                       onTap: () async {
-                        // Questa navigazione è corretta
                         final bool? photoDeleted = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -1267,7 +1264,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       },
                       child: GridTile(
                         footer: Container(
-                          // ... (footer invariato) ...
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 4,
@@ -1291,11 +1287,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                                 .clamp(256, 4096);
 
                             return Image.network(
-                              thumbnailUrl, // <-- (FIX 3) USA IL THUMBNAIL QUI
+                              thumbnailUrl, //  USA IL THUMBNAIL QUI
                               fit: BoxFit.cover,
                               gaplessPlayback: true,
                               filterQuality:
-                                  FilterQuality.medium, // Va bene per thumbnail
+                                  FilterQuality.medium, 
                               cacheWidth: cacheW,
                               loadingBuilder: (context, child, progress) {
                                 if (progress == null) return child;
@@ -1322,7 +1318,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             },
           ),
         ),
-        // ... (resto della funzione, 'Aggiungi foto', invariato) ...
         if (_isUploading)
           const Padding(
             padding: EdgeInsets.only(top: 16.0),

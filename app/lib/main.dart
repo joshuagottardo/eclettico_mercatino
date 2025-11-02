@@ -1,4 +1,4 @@
-// main.dart - AGGIORNATO CON ACCENTO BIANCO
+
 import 'dart:async';
 import 'dart:developer';
 
@@ -10,17 +10,13 @@ import 'package:google_fonts/google_fonts.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Logga gli errori Flutter con stacktrace leggibile
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.dumpErrorToConsole(details);
     if (kDebugMode) log(details.exceptionAsString(), stackTrace: details.stack);
   };
 
-  // Cattura errori asincroni fuori dal tree Flutter
   runZonedGuarded(
     () {
-      // Opzionale: più verbosità sulle ricostruzioni (solo per debug di lag UI)
-      // debugPrintRebuildDirtyWidgets = true;
 
       runApp(const MagazzinoApp());
     },
@@ -44,11 +40,10 @@ class MagazzinoApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF121212),
         cardColor: const Color(0xFF1E1E1E),
 
-        // (1 - MODIFICA) Cambiamo il colore primario
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.grey, // Un seme neutro
+          seedColor: Colors.grey, 
           brightness: Brightness.dark,
-          primary: Colors.white, // (Era Colors.cyan[300])
+          primary: Colors.white, 
         ),
 
         appBarTheme: const AppBarTheme(
@@ -56,15 +51,13 @@ class MagazzinoApp extends StatelessWidget {
           elevation: 0,
         ),
 
-        // (2 - MODIFICA) Bottoni
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white, // (Era Colors.cyan[400])
-            foregroundColor: Colors.black, // (Già corretto)
+            backgroundColor: Colors.white, 
+            foregroundColor: Colors.black, 
           ),
         ),
 
-        // (3 - MODIFICA) Campi di testo
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: const Color(0xFF2A2A2A),
@@ -76,7 +69,7 @@ class MagazzinoApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12.0),
             borderSide: const BorderSide(
               color: Colors.white,
-            ), // (Era Colors.cyan[300])
+            ),
           ),
           hintStyle: TextStyle(color: Colors.grey[600]),
         ),

@@ -1,4 +1,4 @@
-// lib/item_list_page.dart (AGGIORNATO CON STILE E ICONE)
+// lib/item_list_page.dart
 
 import 'dart:convert';
 import 'package:app/item_detail_page.dart';
@@ -63,10 +63,8 @@ class _ItemListPageState extends State<ItemListPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      // <-- (FIX) Aggiunto
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
-        // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
 
         // Passa il risultato (se i dati sono cambiati) alla pagina precedente
@@ -84,7 +82,6 @@ class _ItemListPageState extends State<ItemListPage> {
                   itemCount: _items.length,
                   itemBuilder: (context, index) {
                     final item = _items[index];
-                    // (FIX 3) Usa la nuova card
                     return _buildItemCard(item);
                   },
                 ),
@@ -92,7 +89,6 @@ class _ItemListPageState extends State<ItemListPage> {
     );
   }
 
-  // (FIX) Nuovo widget per la thumbnail
   Widget _buildThumbnail(String? thumbnailPath) {
     final double thumbSize = 80.0;
     final Color placeholderColor = Colors.grey[850]!;
@@ -122,12 +118,10 @@ class _ItemListPageState extends State<ItemListPage> {
     );
   }
 
-  // (FIX) Nuovo widget per l'animazione "skeleton" della lista
   Widget _buildSkeletonList() {
     final Color baseColor = Colors.grey[850]!;
     final Color highlightColor = Colors.grey[700]!;
 
-    // Questo è il colore dei "box" che verranno animati
     final Color boxColor = Colors.grey[850]!;
 
     return Shimmer.fromColors(
@@ -136,9 +130,8 @@ class _ItemListPageState extends State<ItemListPage> {
       period: const Duration(milliseconds: 1200),
       child: ListView.builder(
         padding: const EdgeInsets.all(8.0),
-        itemCount: 8, // Mostra 8 "righe" finte durante il caricamento
+        itemCount: 8,
         itemBuilder: (context, index) {
-          // Questa Card imita perfettamente la tua _buildItemCard
           return Card(
             color: baseColor,
             margin: const EdgeInsets.symmetric(vertical: 4.0),
@@ -177,7 +170,6 @@ class _ItemListPageState extends State<ItemListPage> {
     );
   }
 
-  // (FIX) Sostituito: Widget Card AGGIORNATO con nuovo layout
   Widget _buildItemCard(Map<String, dynamic> item) {
     final bool isSold = item['is_sold'] == 1;
 

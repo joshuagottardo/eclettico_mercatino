@@ -1,5 +1,3 @@
-// lib/photo_viewer_page.dart - AGGIORNATO CON SWIPE (PAGEVIEW)
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
@@ -8,7 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:app/api_config.dart';
 
 class PhotoViewerPage extends StatefulWidget {
-  // (1 - MODIFICA) Riceviamo l'elenco e l'indice iniziale
   final List<Map<String, dynamic>> photos;
   final int initialIndex;
 
@@ -26,14 +23,12 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   bool _isDownloading = false;
   bool _isDeleting = false;
 
-  // (2 - NUOVO) Controller per il PageView
   late PageController _pageController;
   late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
-    // (3 - NUOVO) Inizializza il controller e l'indice
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
   }
@@ -44,7 +39,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     super.dispose();
   }
 
-  // (4 - MODIFICA) Funzione per scaricare (usa _currentIndex)
   Future<void> _downloadPhoto() async {
     if (widget.photos.isEmpty) return;
 
@@ -57,7 +51,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     final photoUrl = '$kBaseUrl/${currentPhoto['file_path']}';
 
     try {
-      // ... (Logica di download invariata) ...
       Directory? downloadsDir;
       if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
         downloadsDir = await getDownloadsDirectory();
@@ -88,7 +81,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     }
   }
 
-  // (5 - MODIFICA) Funzione per eliminare la foto (usa _currentIndex)
   Future<void> _deletePhoto() async {
     if (widget.photos.isEmpty) return;
 
@@ -134,8 +126,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
           _showFeedback(success: true, message: 'Foto eliminata.');
           // Chiudi la pagina e passa "true" per ricaricare la galleria
           Navigator.pop(context, true);
-          // NOTA: Non serve rimuovere l'item dalla lista localmente
-          // perché chiudiamo subito la pagina e la galleria si ricarica.
         }
       } else {
         _showFeedback(
@@ -154,7 +144,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     }
   }
 
-  // Helper per mostrare un messaggio (invariato)
+  // Helper per mostrare un messaggio
   void _showFeedback({required bool success, required String message}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -169,7 +159,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   @override
   Widget build(BuildContext context) {
     final bool actionInProgress = _isDownloading || _isDeleting;
-    // (6 - NUOVO) Controllo se ci sono foto
+    //  Controllo se ci sono foto
     final bool hasPhotos = widget.photos.isNotEmpty;
 
     return Scaffold(
@@ -216,7 +206,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
           ),
         ],
       ),
-      // (7 - MODIFICA) Sostituito il body con un PageView.builder
+      //  Sostituito il body con un PageView.builder
       body: PageView.builder(
         controller: _pageController,
         itemCount: widget.photos.length,
@@ -229,22 +219,15 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
 
-          // (FIX 1) Prendi l'ID della foto
           final photoId = photo['photo_id'];
 
-          // (FIX 2) Crea il nuovo URL per l'immagine compressa
-          // Questo usa il nuovo endpoint /api/photos/compressed/:photoId
-          // che hai aggiunto al tuo index.js
           final compressedPhotoUrl = '$kBaseUrl/api/photos/compressed/$photoId';
 
-          // Mantiene lo zoom per ogni singola foto
           return InteractiveViewer(
             panEnabled: true,
             minScale: 1.0,
             maxScale: 4.0,
             child: Center(
-              // Il tuo LayoutBuilder e cacheWidth vanno bene per ottimizzare
-              // il rendering, quindi li manteniamo.
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final dpr = MediaQuery.devicePixelRatioOf(context);
@@ -254,17 +237,13 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                   );
 
                   return Image.network(
-                    compressedPhotoUrl, // <-- (FIX 3) Usa l'URL compresso qui
-                    // NOTA: Ti consiglio 'contain' invece di 'cover'
-                    // per un visualizzatore di foto, altrimenti l'immagine
-                    // viene tagliata finché non fai zoom-out.
+                    compressedPhotoUrl,
                     fit: BoxFit.contain,
 
                     gaplessPlayback: true,
                     filterQuality: FilterQuality.medium,
                     cacheWidth: cacheW,
 
-                    // I tuoi builder originali:
                     loadingBuilder: (context, child, progress) {
                       if (progress == null) return child;
                       return const Center(

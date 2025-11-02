@@ -1,10 +1,10 @@
-// lib/library_page.dart (AGGIORNATO CON ICONE E TESTO FIXATO)
+// lib/library_page.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:app/item_list_page.dart';
-import 'package:app/icon_helper.dart'; // (FIX 2) Importa l'helper
+import 'package:app/icon_helper.dart';
 import 'package:app/api_config.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -51,13 +51,10 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      // <-- (FIX) Aggiunto
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
-        // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
 
-        // Passa il risultato (se i dati sono cambiati) alla pagina precedente
         Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
@@ -79,11 +76,8 @@ class _LibraryPageState extends State<LibraryPage> {
                     return _buildCategoryButton(
                       context,
                       label: category['name'],
-                      // (FIX 2) Passa l'icona corretta
                       icon: getIconForCategory(category['name']),
                       onTap: () async {
-                        // <-- (FIX 1) Aggiunto async
-                        // (FIX 2) Aggiunto 'await' e salvato il risultato
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -95,7 +89,6 @@ class _LibraryPageState extends State<LibraryPage> {
                           ),
                         );
 
-                        // (FIX 3) Se il risultato è 'true', imposta il flag
                         if (result == true) {
                           _dataDidChange = true;
                         }
@@ -107,11 +100,10 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  // Widget Helper per i "Tastoni" Categoria (AGGIORNATO)
   Widget _buildCategoryButton(
     BuildContext context, {
     required String label,
-    required IconData icon, // (FIX 2) Riceve l'icona
+    required IconData icon,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -127,14 +119,12 @@ class _LibraryPageState extends State<LibraryPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // (FIX 2) Mostra l'icona
               Icon(
                 icon,
                 size: 32,
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 12),
-              // (FIX 1) Testo più piccolo e FittedBox
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
@@ -143,7 +133,6 @@ class _LibraryPageState extends State<LibraryPage> {
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14, // Dimensione ridotta
                   ),
                   maxLines: 1,
                 ),

@@ -6,6 +6,7 @@ const PORT = 4000; // Scegliamo una porta su cui l'API ascolterà
 const path = require("path"); //Pacchetto per gestire i percorsi
 const multer = require("multer"); //Pacchetto per gestire gli upload
 const fs = require("fs"); // Importa il File System
+const sharp = require("sharp");
 
 app.use(cors()); // Abilita CORS per tutte le richieste
 app.use(express.json()); // Permette al server di capire i dati JSON inviati dall'app (es. quando creiamo un articolo)
@@ -22,7 +23,12 @@ const dbConfig = {
 const storage = multer.diskStorage({
   // La destinazione è la cartella 'uploads' che abbiamo creato
   destination: function (req, file, cb) {
-    cb(null, "uploads");
+    const tempDir = "uploads/temp";
+    // Assicurati che la cartella temp esista
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    cb(null, tempDir);
   },
   // Creiamo un nome file univoco
   filename: function (req, file, cb) {
@@ -69,16 +75,20 @@ app.get("/api/items", async (req, res) => {
     SELECT 
         i.*, 
         c.name as category_name,
-
-        -- (FIX) Logica per calcolare la quantità (copiata da /api/items/category/:id)
         IF(i.has_variants = 1, 
            IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
            i.quantity
-        ) AS display_quantity 
+        ) AS display_quantity,
+
+        (SELECT p.thumbnail_path 
+         FROM photos p 
+         WHERE p.item_id = i.item_id 
+         LIMIT 1) AS thumbnail_path 
 
     FROM items i
     LEFT JOIN categories c ON i.category_id = c.category_id
     ORDER BY i.created_at DESC
+    LIMIT 20 -- (FIX 2) Limita ai 20 risultati più recenti
 `);
 
     // Inviamo i risultati all'app come JSON
@@ -586,20 +596,24 @@ app.get("/api/items/category/:id", async (req, res) => {
             SELECT 
                 i.*, 
                 c.name as category_name,
-                
-                -- Logica per calcolare la quantità (esattamente come nella rotta /api/items)
                 IF(i.has_variants = 1, 
                    IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
                    i.quantity
-                ) AS display_quantity 
-                
+                ) AS display_quantity,
+
+                -- (FIX 3) Aggiunge il percorso della prima thumbnail trovata
+                (SELECT p.thumbnail_path 
+                 FROM photos p 
+                 WHERE p.item_id = i.item_id 
+                 LIMIT 1) AS thumbnail_path 
+
             FROM items i
             LEFT JOIN categories c ON i.category_id = c.category_id
-            WHERE i.category_id = ?  -- La nuova condizione!
+            WHERE i.category_id = ?
             ORDER BY i.created_at DESC
         `,
       [id]
-    ); // Passa l'ID di categoria
+    );
 
     res.json(items);
   } catch (error) {
@@ -705,14 +719,21 @@ app.post("/api/sales", async (req, res) => {
 
     // (Assicurati che la riga 1 esista, potresti volerla inserire se non c'è)
 
+    // (FIX 1) Spostato blocco validazione quantità PRIMA di usarlo
+    const qty = Number(quantity_sold) || 0;
+    if (!Number.isFinite(qty) || qty <= 0) {
+      await connection.rollback();
+      return res.status(400).json({ error: "quantity_sold non valido" });
+    }
+
     // 5. AGGIORNA I CONTATORI (sales_counter)
     // Aggiorna Categoria
     if (itemCategoryId) {
       await connection.query(
         `INSERT INTO sales_counter (category_id, sales_count) 
-                 VALUES (?, 1) 
-                 ON DUPLICATE KEY UPDATE sales_count = sales_count + 1`,
-        [itemCategoryId]
+                 VALUES (?, ?) 
+                 ON DUPLICATE KEY UPDATE sales_count = sales_count + ?`,
+        [itemCategoryId, qty, qty] // <-- FIX: era 1
       );
     }
 
@@ -720,19 +741,15 @@ app.post("/api/sales", async (req, res) => {
     if (itemBrand) {
       await connection.query(
         `INSERT INTO sales_counter (brand, sales_count) 
-                 VALUES (?, 1) 
-                 ON DUPLICATE KEY UPDATE sales_count = sales_count + 1`,
-        [itemBrand]
+                 VALUES (?, ?) 
+                 ON DUPLICATE KEY UPDATE sales_count = sales_count + ?`,
+        [itemBrand, qty, qty] // <-- FIX: era 1
       );
     }
 
-    // Decremento stock in transazione, con guardia anti-negativo
-    const qty = Number(quantity_sold) || 0;
-    if (!Number.isFinite(qty) || qty <= 0) {
-      await connection.rollback();
-      return res.status(400).json({ error: "quantity_sold non valido" });
-    }
+    // (FIX 2) Blocco validazione quantità rimosso da qui (già eseguito sopra)
 
+    // Decremento stock in transazione, con guardia anti-negativo
     if (variant_id) {
       // Variante
       const [resUpd] = await connection.query(
@@ -746,11 +763,9 @@ app.post("/api/sales", async (req, res) => {
       );
       if (resUpd.affectedRows === 0) {
         await connection.rollback();
-        return res
-          .status(400)
-          .json({
-            error: "Stock variante insufficiente o variante non trovata",
-          });
+        return res.status(400).json({
+          error: "Stock variante insufficiente o variante non trovata",
+        });
       }
     } else {
       // Articolo senza varianti
@@ -765,11 +780,9 @@ app.post("/api/sales", async (req, res) => {
       );
       if (resUpd.affectedRows === 0) {
         await connection.rollback();
-        return res
-          .status(400)
-          .json({
-            error: "Stock articolo insufficiente o articolo non trovato",
-          });
+        return res.status(400).json({
+          error: "Stock articolo insufficiente o articolo non trovato",
+        });
       }
     }
 
@@ -791,42 +804,44 @@ app.post("/api/sales", async (req, res) => {
  * DELETE /api/items/:id
  * Elimina un articolo (SOLO SE NON HA VENDITE ASSOCIATE)
  */
-app.delete('/api/items/:id', async (req, res) => {
-    const { id: item_id } = req.params;
+app.delete("/api/items/:id", async (req, res) => {
+  const { id: item_id } = req.params;
 
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
 
-        // 1. Controlla lo storico vendite
-        const [sales] = await connection.query(
-            'SELECT COUNT(*) as salesCount FROM sales_log WHERE item_id = ?',
-            [item_id]
-        );
+    // 1. Controlla lo storico vendite
+    const [sales] = await connection.query(
+      "SELECT COUNT(*) as salesCount FROM sales_log WHERE item_id = ?",
+      [item_id]
+    );
 
-        if (sales[0].salesCount > 0) {
-            // Se ci sono vendite, blocca l'eliminazione
-            await connection.rollback();
-            return res.status(400).json({ 
-                error: 'Impossibile eliminare: l\'articolo ha uno storico vendite associato.' 
-            });
-        }
-
-        // 2. Se non ci sono vendite, procedi con l'eliminazione
-        // (Assumendo che il DB usi ON DELETE CASCADE per variants, photos, item_platforms)
-        await connection.query('DELETE FROM items WHERE item_id = ?', [item_id]);
-
-        await connection.commit();
-        res.status(200).json({ message: 'Articolo eliminato con successo.' });
-
-    } catch (error) {
-        if (connection) await connection.rollback();
-        console.error(`Errore in DELETE /api/items/${item_id}:`, error);
-        res.status(500).json({ error: 'Errore durante l\'eliminazione dell\'articolo.' });
-    } finally {
-        if (connection) connection.release();
+    if (sales[0].salesCount > 0) {
+      // Se ci sono vendite, blocca l'eliminazione
+      await connection.rollback();
+      return res.status(400).json({
+        error:
+          "Impossibile eliminare: l'articolo ha uno storico vendite associato.",
+      });
     }
+
+    // 2. Se non ci sono vendite, procedi con l'eliminazione
+    // (Assumendo che il DB usi ON DELETE CASCADE per variants, photos, item_platforms)
+    await connection.query("DELETE FROM items WHERE item_id = ?", [item_id]);
+
+    await connection.commit();
+    res.status(200).json({ message: "Articolo eliminato con successo." });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error(`Errore in DELETE /api/items/${item_id}:`, error);
+    res
+      .status(500)
+      .json({ error: "Errore durante l'eliminazione dell'articolo." });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 /*
@@ -916,19 +931,19 @@ app.delete("/api/sales/:id", async (req, res) => {
     );
 
     // 5) Aggiorna contatori (se li usi)
+    // (La variabile 'qty' è già stata definita correttamente sopra)
     if (sale.category_id) {
       await connection.query(
-        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - 1 WHERE category_id = ?`,
-        [sale.category_id]
+        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - ? WHERE category_id = ?`,
+        [qty, sale.category_id] // <-- FIX: era - 1
       );
     }
     if (sale.brand) {
       await connection.query(
-        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - 1 WHERE brand = ?`,
-        [sale.brand]
+        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - ? WHERE brand = ?`,
+        [qty, sale.brand] // <-- FIX: era - 1
       );
     }
-
     // 6) Elimina la vendita dal log
     await connection.query(`DELETE FROM sales_log WHERE sale_id = ?`, [
       sale_id,
@@ -942,6 +957,63 @@ app.delete("/api/sales/:id", async (req, res) => {
     res
       .status(500)
       .json({ error: "Errore durante l'eliminazione della vendita" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+/*
+ * GET /api/photos/compressed/:photoId
+ * (NUOVO) Restituisce un'immagine compressa al volo per la visualizzazione
+ */
+app.get("/api/photos/compressed/:photoId", async (req, res) => {
+  const { photoId } = req.params;
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    // 1. Trova il percorso del file originale dal DB
+    const [photos] = await connection.query(
+      "SELECT file_path FROM photos WHERE photo_id = ?",
+      [photoId]
+    );
+
+    if (photos.length === 0) {
+      return res.status(404).json({ error: "Foto non trovata." });
+    }
+
+    const originalFilePath = photos[0].file_path;
+    const physicalPath = path.join(__dirname, originalFilePath);
+
+    // 2. Controlla se il file esiste fisicamente
+    if (!fs.existsSync(physicalPath)) {
+      console.warn(`File non trovato: ${physicalPath}`);
+      return res
+        .status(404)
+        .json({ error: "File immagine non trovato sul server." });
+    }
+
+    // 3. Comprimi l'immagine al volo con Sharp e inviala
+    res.set("Content-Type", "image/jpeg"); // O il tipo originale, se puoi rilevarlo
+
+    // Qualità di compressione: 70 è un buon compromesso.
+    // Puoi giocare con questo valore (es. 60-80)
+    await sharp(physicalPath)
+      .jpeg({ quality: 70 }) // Comprime a JPEG con qualità 70
+      .toBuffer()
+      .then((data) => {
+        res.send(data);
+      })
+      .catch((err) => {
+        console.error("Errore compressione Sharp:", err);
+        res
+          .status(500)
+          .json({ error: "Errore durante la compressione dell'immagine." });
+      });
+  } catch (error) {
+    console.error(`Errore in GET /api/photos/compressed/${photoId}:`, error);
+    res.status(500).json({ error: "Errore interno del server." });
   } finally {
     if (connection) connection.release();
   }
@@ -1194,13 +1266,43 @@ app.get("/api/statistics/summary", async (req, res) => {
             LIMIT 1
         `);
 
-    // 4. Assembla la risposta
+    const [estimatedProfitRows] = await pool.query(`
+        SELECT SUM(total_value) AS estimated_profit
+        FROM (
+            -- 1. Articoli semplici (valore * quantità)
+            SELECT (value * quantity) AS total_value
+            FROM items
+            WHERE has_variants = 0 AND is_sold = 0 AND value IS NOT NULL AND quantity IS NOT NULL
+
+            UNION ALL
+
+            -- 2. Articoli con varianti (valore_articolo * SOMMA(quantità_varianti))
+            SELECT (i.value * IFNULL(v_sum.total_qty, 0)) AS total_value
+            FROM items i
+            JOIN (
+                SELECT item_id, SUM(quantity) AS total_qty
+                FROM variants
+                WHERE is_sold = 0 AND quantity > 0
+                GROUP BY item_id
+            ) v_sum ON i.item_id = v_sum.item_id
+            WHERE i.has_variants = 1 AND i.value IS NOT NULL
+        ) AS combined_values;
+    `);
+
+    // Estrai il valore, o 0 se nullo
+    const estimated_profit = estimatedProfitRows[0]?.estimated_profit || 0;
+
+    const totalsData = totals[0] || {
+      gross_profit_total: 0,
+      net_profit_total: 0,
+      total_spent: 0,
+    };
+
+    // Aggiungi il nuovo valore all'oggetto totals
+    totalsData.estimated_profit = estimated_profit;
+
     res.json({
-      totals: totals[0] || {
-        gross_profit_total: 0,
-        net_profit_total: 0,
-        total_spent: 0,
-      },
+      totals: totalsData, // Invia l'oggetto totals aggiornato
       topCategory: topCategory[0] || null,
       topBrand: topBrand[0] || null,
     });
@@ -1345,65 +1447,118 @@ app.get("/api/items/:id/photos", async (req, res) => {
  * POST /api/photos/upload
  * Carica una nuova foto e la salva nel database
  */
-// (5 - NUOVO) Usiamo il middleware 'upload.single('photo')'
-// 'photo' deve essere il nome del campo che l'app userà
+/*
+ * POST /api/photos/upload
+ * (MODIFICATO) Carica una foto, crea un thumbnail e salva entrambi
+ */
+/*
+ * POST /api/photos/upload
+ * (MODIFICATO) Salva in una cartella specifica per item_id
+ */
 app.post("/api/photos/upload", upload.single("photo"), async (req, res) => {
-  // (A) Multer ha già salvato il file. I suoi dati sono in 'req.file'
   if (!req.file) {
     return res.status(400).json({ error: "Nessun file caricato." });
   }
 
-  // (B) I dati del form (a quale articolo/variante appartiene) sono in 'req.body'
   const { item_id, variant_id, description } = req.body;
-
   if (!item_id) {
+    // Se manca l'item_id, cancella il file temp caricato
+    fs.unlinkSync(req.file.path);
     return res.status(400).json({ error: "item_id è obbligatorio." });
   }
 
-  // (C) Creiamo il percorso URL per salvare nel DB
-  // es. "uploads/photo-123456.jpg"
-  const file_path = "uploads/" + req.file.filename;
-
+  let connection;
   try {
-    // (D) Salviamo il riferimento nel DB
+    connection = await pool.getConnection();
+
+    // --- (FIX 1) Trova il unique_code dell'articolo ---
+    const [items] = await connection.query(
+      "SELECT unique_code FROM items WHERE item_id = ?",
+      [item_id]
+    );
+
+    if (items.length === 0) {
+      fs.unlinkSync(req.file.path); // Cancella il file temp
+      return res.status(404).json({ error: "Articolo non trovato." });
+    }
+    const unique_code = items[0].unique_code;
+
+    // --- (FIX 2) Definisci i nuovi percorsi ---
+    const originalFilename = req.file.filename;
+    const thumbFilename = "thumb-" + originalFilename;
+
+    // Cartelle di destinazione
+    const itemDir = path.join(__dirname, "uploads", unique_code);
+    const thumbDir = path.join(itemDir, "thumbnails");
+
+    // Percorsi fisici finali
+    const finalOriginalPath = path.join(itemDir, originalFilename);
+    const finalThumbPath = path.join(thumbDir, thumbFilename);
+
+    // Percorsi URL da salvare nel DB
+    const originalUrlPath = `uploads/${unique_code}/${originalFilename}`;
+    const thumbUrlPath = `uploads/${unique_code}/thumbnails/${thumbFilename}`;
+
+    // --- (FIX 3) Crea le cartelle e sposta il file ---
+
+    // Crea le cartelle (ricorsivo le crea entrambe)
+    if (!fs.existsSync(thumbDir)) {
+      fs.mkdirSync(thumbDir, { recursive: true });
+    }
+
+    // Sposta il file dalla cartella /temp alla destinazione finale
+    fs.renameSync(req.file.path, finalOriginalPath);
+
+    // --- (FIX 4) Crea la thumbnail (dal nuovo percorso) ---
+    await sharp(finalOriginalPath)
+      .resize(300, 300, { fit: "cover" })
+      .toFile(finalThumbPath);
+
+    // --- (FIX 5) Salva i nuovi percorsi nel DB ---
     const sql = `
-            INSERT INTO photos (item_id, variant_id, file_path, description)
-            VALUES (?, ?, ?, ?)
-        `;
-    await pool.query(sql, [
+        INSERT INTO photos (item_id, variant_id, file_path, thumbnail_path, description)
+        VALUES (?, ?, ?, ?, ?)
+    `;
+    await connection.query(sql, [
       item_id,
-      variant_id ? variant_id : null, // Salva null se variant_id è assente
-      file_path,
+      variant_id ? variant_id : null,
+      originalUrlPath, // Percorso originale (es. uploads/123/file.jpg)
+      thumbUrlPath, // Percorso thumbnail (es. uploads/123/thumbnails/thumb-file.jpg)
       description,
     ]);
 
-    // (E) Inviamo una risposta di successo con il percorso del file
     res.status(201).json({
       message: "Foto caricata con successo!",
-      filePath: file_path,
+      filePath: originalUrlPath,
     });
   } catch (error) {
-    console.error("Errore salvataggio foto su DB:", error);
-    res
-      .status(500)
-      .json({ error: "Errore durante il salvataggio della foto nel database" });
+    // Se qualcosa va storto, prova a cancellare il file temp
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error(
+      "Errore durante la creazione del thumbnail o salvataggio DB:",
+      error
+    );
+    res.status(500).json({ error: "Errore durante il salvataggio della foto" });
+  } finally {
+    if (connection) connection.release();
   }
 });
-
 /*
  * DELETE /api/photos/:id
  * Elimina una foto (sia dal DB che dal disco)
  */
 app.delete("/api/photos/:id", async (req, res) => {
   const { id: photo_id } = req.params;
-
   let connection;
+
   try {
     connection = await pool.getConnection();
 
-    // (A) Query 1: Trova il percorso del file nel database
+    // (FIX 1) Trova entrambi i percorsi (originale e thumbnail)
     const [photos] = await connection.query(
-      "SELECT file_path FROM photos WHERE photo_id = ?",
+      "SELECT file_path, thumbnail_path FROM photos WHERE photo_id = ?",
       [photo_id]
     );
 
@@ -1411,29 +1566,29 @@ app.delete("/api/photos/:id", async (req, res) => {
       return res.status(404).json({ error: "Foto non trovata." });
     }
 
-    const filePath = photos[0].file_path;
+    const originalPath = photos[0].file_path;
+    const thumbPath = photos[0].thumbnail_path;
 
-    // (B) Query 2: Elimina la riga dal database
-    // (Le tabelle collegate, come le varianti, si aggiorneranno
-    // in automatico grazie a "ON DELETE SET NULL" che abbiamo impostato)
+    // (FIX 2) Elimina la riga dal database
     await connection.query("DELETE FROM photos WHERE photo_id = ?", [photo_id]);
 
-    // (C) Azione 3: Elimina il file fisico dal disco
-    // (Usiamo path.join per assicurarci che il percorso sia corretto)
-    const physicalPath = path.join(__dirname, filePath);
+    // (FIX 3) Elimina i file fisici (entrambi)
+    if (originalPath) {
+      const physicalPath = path.join(__dirname, originalPath);
+      fs.unlink(physicalPath, (err) => {
+        if (err) console.error("Errore eliminazione file originale:", err);
+        else console.log(`File fisico eliminato: ${physicalPath}`);
+      });
+    }
+    // Elimina anche la thumbnail se esiste
+    if (thumbPath) {
+      const physicalThumbPath = path.join(__dirname, thumbPath);
+      fs.unlink(physicalThumbPath, (err) => {
+        if (err) console.error("Errore eliminazione thumbnail:", err);
+        else console.log(`File fisico eliminato: ${physicalThumbPath}`);
+      });
+    }
 
-    fs.unlink(physicalPath, (err) => {
-      if (err) {
-        // Logga l'errore, ma non bloccare la risposta
-        // (potremmo aver cancellato il file ma non il DB, o viceversa)
-        // In un'app più grande, gestiremmo meglio questa transazione
-        console.error("Errore nell'eliminare il file fisico:", err);
-      } else {
-        console.log(`File fisico eliminato: ${physicalPath}`);
-      }
-    });
-
-    // (D) Rispondi subito con successo (non aspettiamo fs.unlink)
     res.status(200).json({ message: "Foto eliminata con successo." });
   } catch (error) {
     console.error(`Errore in DELETE /api/photos/${photo_id}:`, error);

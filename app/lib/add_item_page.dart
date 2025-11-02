@@ -1,9 +1,7 @@
-// lib/add_item_page.dart - AGGIORNATO CON NAVIGAZIONE AL DETTAGLIO
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-// Importiamo le pagine necessarie
+
 import 'package:app/item_detail_page.dart';
 import 'package:app/api_config.dart';
 import 'package:shimmer/shimmer.dart';
@@ -128,7 +126,6 @@ class _AddItemPageState extends State<AddItemPage> {
   }
 
   Future<void> _loadItemData() async {
-    // (FIX) Imposta il flag di controllo varianti se siamo in Edit Mode
     if (_isEditMode) {
       setState(() {
         _isCheckingVariants = true;
@@ -155,7 +152,6 @@ class _AddItemPageState extends State<AddItemPage> {
           _selectedPlatformIds.addAll(List<int>.from(item['platforms']));
         }
 
-        // --- (FIX) NUOVA LOGICA: Carica il conteggio varianti ---
         if (_hasVariants) {
           try {
             // Chiamiamo l'endpoint che già usiamo nella pagina di dettaglio
@@ -165,7 +161,7 @@ class _AddItemPageState extends State<AddItemPage> {
             if (variantsResponse.statusCode == 200) {
               final variants = jsonDecode(variantsResponse.body);
               if (mounted) {
-                _variantCount = variants.length; // Salviamo il conteggio
+                _variantCount = variants.length;
               }
             }
           } catch (e) {
@@ -174,7 +170,6 @@ class _AddItemPageState extends State<AddItemPage> {
         } else {
           _variantCount = 0; // Se non ha varianti, il conteggio è 0
         }
-        // --- FINE FIX ---
 
         if (!_hasVariants) {
           _quantityController.text = item['quantity']?.toString() ?? '';
@@ -190,7 +185,7 @@ class _AddItemPageState extends State<AddItemPage> {
       if (mounted) {
         setState(() {
           _isPageLoading = false;
-          _isCheckingVariants = false; // (FIX) Resetta il flag
+          _isCheckingVariants = false;
         });
       }
     }
@@ -207,11 +202,15 @@ class _AddItemPageState extends State<AddItemPage> {
       _isLoading = true;
     });
 
+    final String cleanName = _nameController.text.toUpperCase();
+
+    final String cleanBrand = _brandController.text.trim().toUpperCase();
+
     final body = {
-      "name": _nameController.text,
+      "name": cleanName,
       "category_id": _selectedCategoryId,
       "description": _descriptionController.text,
-      "brand": _brandController.text,
+      "brand": cleanBrand,
       "value": double.tryParse(_valueController.text),
       "sale_price": double.tryParse(_salePriceController.text),
       "has_variants": _hasVariants,
@@ -231,7 +230,6 @@ class _AddItemPageState extends State<AddItemPage> {
           body: jsonEncode(body),
         );
       } else {
-        // --- LOGICA DI CREAZIONE ---
         const url = '$kBaseUrl/api/items';
         response = await http.post(
           Uri.parse(url),
@@ -242,15 +240,12 @@ class _AddItemPageState extends State<AddItemPage> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          // (1 - NUOVA LOGICA) Se l'articolo è stato creato, naviga alla sua pagina
           if (!_isEditMode && response.statusCode == 201) {
             final Map<String, dynamic> responseData = jsonDecode(response.body);
             final int newItemId = responseData['newItemId'];
 
-            // Reperiamo l'articolo appena creato per avere tutti i dati
             _navigateToNewItemDetail(newItemId);
           } else {
-            // Se è una MODIFICA, torniamo alla pagina precedente (dettaglio)
             Navigator.pop(context, true);
           }
         }
@@ -268,13 +263,9 @@ class _AddItemPageState extends State<AddItemPage> {
     }
   }
 
-  // (2 - NUOVA FUNZIONE) Prende il nuovo ID e naviga al dettaglio
   void _navigateToNewItemDetail(int itemId) async {
-    // Prima, chiudi la pagina di aggiunta
     Navigator.pop(context, true);
 
-    // Poi, naviga al dettaglio dell'articolo appena creato
-    // Usiamo una rotta 'GET /api/items/:id' per prelevare i dati completi
     try {
       final url = '$kBaseUrl/api/items/$itemId';
       final response = await http.get(Uri.parse(url));
@@ -284,7 +275,6 @@ class _AddItemPageState extends State<AddItemPage> {
       if (response.statusCode == 200) {
         final itemData = jsonDecode(response.body);
 
-        // Naviga alla pagina di dettaglio
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -353,11 +343,7 @@ class _AddItemPageState extends State<AddItemPage> {
                     _isCheckingVariants ||
                     _isWarmingUp
                 ? _buildFormSkeleton()
-                // (FIX) Avvolgi la lista in un Form e assegna la chiave
-                : Form(
-                  key: _formKey, // <-- Assegna la chiave qui
-                  child: _buildFormList(),
-                ),
+                : Form(key: _formKey, child: _buildFormList()),
       ),
     );
   }
@@ -366,9 +352,8 @@ class _AddItemPageState extends State<AddItemPage> {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      cacheExtent: 600, // pre-render di un po’ di contenuto
+      cacheExtent: 600,
       children: [
-        // ... (Campi modulo invariati, solo la logica di navigazione è cambiata)
         TextFormField(
           controller: _nameController,
           decoration: const InputDecoration(labelText: 'Nome'),
@@ -443,26 +428,20 @@ class _AddItemPageState extends State<AddItemPage> {
           ),
           value: _hasVariants,
           onChanged: (bool value) {
-            // (FIX) Logica aggiornata
             if (_isEditMode && !value) {
-              // Se sto provando a DISATTIVARE
-
               if (_variantCount > 0) {
                 _showError(
                   'Non puoi disattivare le varianti. Ci sono $_variantCount varianti collegate.',
                 );
-                return; // Blocca l'azione
+                return;
               }
 
               if (_variantCount == -1) {
-                // Flag di errore dal caricamento
                 _showError(
                   'Errore nel verificare le varianti. Impossibile modificare.',
                 );
-                return; // Blocca l'azione
+                return;
               }
-
-              // Se _variantCount == 0, l'esecuzione prosegue
             }
 
             setState(() {
@@ -473,7 +452,6 @@ class _AddItemPageState extends State<AddItemPage> {
         ),
         const SizedBox(height: 16),
 
-        // --- CAMPI CONDIZIONALI (Quantità, Prezzo e Piattaforme) ---
         if (!_hasVariants) ...[
           const Divider(),
           const SizedBox(height: 16),
@@ -497,7 +475,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ],
           ),
           const SizedBox(height: 24),
-          // (8 - NUOVO) Sezione Checkbox Piattaforme
+
           Text('Piattaforme', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           _PlatformsSection(
@@ -517,16 +495,12 @@ class _AddItemPageState extends State<AddItemPage> {
       ],
     );
   }
-
-  // (9 - NUOVO) Funzione Helper per costruire le checkbox
 }
 
 Widget _buildFormSkeleton() {
-  final Color baseColor = Colors.grey[850]!; // Colore base scuro
-  final Color highlightColor =
-      Colors.grey[700]!; // Colore chiaro dell'animazione
+  final Color baseColor = Colors.grey[850]!;
+  final Color highlightColor = Colors.grey[700]!;
 
-  // Un widget helper per creare i box
   Widget buildSkeletonBox({
     double height = 58, // Altezza di un TextFormField
     double vPadding = 8.0,
@@ -542,11 +516,10 @@ Widget _buildFormSkeleton() {
     );
   }
 
-  // Usiamo Shimmer.fromColors per applicare l'effetto
   return Shimmer.fromColors(
     baseColor: baseColor,
     highlightColor: highlightColor,
-    period: const Duration(milliseconds: 1200), // Durata dell'animazione
+    period: const Duration(milliseconds: 1200),
     child: ListView(
       padding: const EdgeInsets.all(16.0),
       physics: const NeverScrollableScrollPhysics(), // Disabilita lo scroll
