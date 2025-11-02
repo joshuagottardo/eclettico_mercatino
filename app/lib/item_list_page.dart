@@ -4,8 +4,9 @@ import 'dart:convert';
 import 'package:app/item_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/icon_helper.dart'; // (FIX 2) Importa l'helper
-import 'package:iconsax/iconsax.dart'; // (FIX 2) Importa iconsax
+import 'package:app/icon_helper.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:app/api_config.dart';
 
 class ItemListPage extends StatefulWidget {
@@ -61,22 +62,76 @@ class _ItemListPageState extends State<ItemListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.categoryName),
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _items.isEmpty
+      appBar: AppBar(title: Text(widget.categoryName)),
+      body:
+          _isLoading
+              ? _buildSkeletonList()
+              : _items.isEmpty
               ? Center(child: Text('Nessun articolo in questa categoria.'))
               : ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: _items.length,
-                  itemBuilder: (context, index) {
-                    final item = _items[index];
-                    // (FIX 3) Usa la nuova card
-                    return _buildItemCard(item); 
-                  },
+                padding: const EdgeInsets.all(8.0),
+                itemCount: _items.length,
+                itemBuilder: (context, index) {
+                  final item = _items[index];
+                  // (FIX 3) Usa la nuova card
+                  return _buildItemCard(item);
+                },
+              ),
+    );
+  }
+
+  // (FIX) Nuovo widget per l'animazione "skeleton" della lista
+  Widget _buildSkeletonList() {
+    final Color baseColor = Colors.grey[850]!;
+    final Color highlightColor = Colors.grey[700]!;
+
+    // Questo è il colore dei "box" che verranno animati
+    final Color boxColor = Colors.grey[850]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      period: const Duration(milliseconds: 1200),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(8.0),
+        itemCount: 8, // Mostra 8 "righe" finte durante il caricamento
+        itemBuilder: (context, index) {
+          // Questa Card imita perfettamente la tua _buildItemCard
+          return Card(
+            color: baseColor,
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            child: ListTile(
+              // 1. Scheletro per l'Icona (un cerchio)
+              leading: Container(
+                width: 40.0,
+                height: 40.0,
+                decoration: BoxDecoration(
+                  color: boxColor,
+                  shape: BoxShape.circle,
                 ),
+              ),
+              // 2. Scheletro per il Titolo (una barra)
+              title: Container(
+                height: 16.0,
+                width: 200.0, // La larghezza è fittizia, sarà espansa
+                decoration: BoxDecoration(
+                  color: boxColor,
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+              ),
+              // 3. Scheletro per il Trailing (una barra piccola)
+              trailing: Container(
+                width: 30.0,
+                height: 14.0,
+                decoration: BoxDecoration(
+                  color: boxColor,
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -87,14 +142,17 @@ class _ItemListPageState extends State<ItemListPage> {
     Color cardColor =
         isSold ? const Color(0xFF422B2B) : Theme.of(context).cardColor;
     Color textColor =
-        isSold ? Colors.grey[300]! : Theme.of(context).textTheme.bodyLarge!.color!;
+        isSold
+            ? Colors.grey[300]!
+            : Theme.of(context).textTheme.bodyLarge!.color!;
     Color iconColor =
         isSold ? Colors.grey[400]! : Theme.of(context).colorScheme.primary;
 
     // (FIX 2) Logica Icona
-    final IconData itemIcon = isSold 
-        ? Iconsax.money_remove 
-        : getIconForCategory(item['category_name']);
+    final IconData itemIcon =
+        isSold
+            ? Iconsax.money_remove
+            : getIconForCategory(item['category_name']);
 
     return Card(
       color: cardColor,
@@ -104,10 +162,7 @@ class _ItemListPageState extends State<ItemListPage> {
           _navigateAndReload(context, ItemDetailPage(item: item));
         },
         // (FIX 2) Icona
-        leading: Icon(
-          itemIcon,
-          color: iconColor,
-        ),
+        leading: Icon(itemIcon, color: iconColor),
         // (FIX 3) Solo Nome
         title: Text(
           item['name'] ?? 'Articolo senza nome',

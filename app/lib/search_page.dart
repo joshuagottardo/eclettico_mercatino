@@ -6,6 +6,7 @@ import 'package:app/item_detail_content.dart'; // Importa il nuovo contenuto
 import 'package:app/item_detail_page.dart'; // Importa ancora per il mobile
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shimmer/shimmer.dart';
 import 'package:app/icon_helper.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:app/api_config.dart'; // Importato
@@ -289,6 +290,55 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  // (FIX) Nuovo widget per l'animazione "skeleton" della lista
+  Widget _buildSkeletonList() {
+    final Color baseColor = Colors.grey[850]!;
+    final Color highlightColor = Colors.grey[700]!;
+    final Color boxColor = Colors.grey[850]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      period: const Duration(milliseconds: 1200),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(8.0),
+        itemCount: 10, // Mostra 10 righe finte
+        itemBuilder: (context, index) {
+          return Card(
+            color: baseColor,
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            child: ListTile(
+              leading: Container(
+                width: 40.0,
+                height: 40.0,
+                decoration: BoxDecoration(
+                  color: boxColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              title: Container(
+                height: 16.0,
+                width: 200.0,
+                decoration: BoxDecoration(
+                  color: boxColor,
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+              ),
+              trailing: Container(
+                width: 30.0,
+                height: 14.0,
+                decoration: BoxDecoration(
+                  color: boxColor,
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // --- (FIX 1) LAYOUT MOBILE (Il vecchio build()) ---
   Widget _buildMobileLayout() {
     return Scaffold(
@@ -392,11 +442,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildBodyContent({required bool isTablet}) {
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      );
+      return _buildSkeletonList();
     }
     if (_errorMessage != null) {
       return Center(

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 // Importiamo le pagine necessarie
 import 'package:app/item_detail_page.dart';
 import 'package:app/api_config.dart';
+import 'package:shimmer/shimmer.dart';
 
 class AddItemPage extends StatefulWidget {
   final int? itemId;
@@ -16,6 +17,7 @@ class AddItemPage extends StatefulWidget {
 }
 
 class _AddItemPageState extends State<AddItemPage> {
+  static bool _globalHasWarmedUp = false;
   final _formKey = GlobalKey<FormState>();
 
   // Controller
@@ -45,7 +47,7 @@ class _AddItemPageState extends State<AddItemPage> {
 
   int _variantCount = 0;
   bool _isCheckingVariants = false;
-  bool _isWarmingUp = true;
+  bool _isWarmingUp = !_globalHasWarmedUp;
 
   @override
   void initState() {
@@ -58,12 +60,14 @@ class _AddItemPageState extends State<AddItemPage> {
       _loadItemData();
     }
 
-    _startWarmUp();
+    if (_isWarmingUp) {
+      _startWarmUp();
+    }
   }
 
   void _startWarmUp() async {
     // Aspettiamo 500ms.
-    // I tuoi log dicono "timeout: 0.250000", quindi 500ms
+    // I  log dicono "timeout: 0.250000", quindi 500ms
     // dovrebbero bastare per coprire quel lag.
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -71,6 +75,7 @@ class _AddItemPageState extends State<AddItemPage> {
       setState(() {
         _isWarmingUp = false;
       });
+      _globalHasWarmedUp = true;
     }
   }
 
@@ -345,12 +350,8 @@ class _AddItemPageState extends State<AddItemPage> {
                     _platformsLoading ||
                     _isCheckingVariants ||
                     _isWarmingUp
-                ? Center(
-                  child: CircularProgressIndicator(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                )
-                : _buildFormList(), // 👈 estraiamo in un metodo
+                ? _buildFormSkeleton()
+                : _buildFormList(),
       ),
     );
   }
@@ -512,6 +513,55 @@ class _AddItemPageState extends State<AddItemPage> {
   }
 
   // (9 - NUOVO) Funzione Helper per costruire le checkbox
+}
+
+Widget _buildFormSkeleton() {
+  final Color baseColor = Colors.grey[850]!; // Colore base scuro
+  final Color highlightColor =
+      Colors.grey[700]!; // Colore chiaro dell'animazione
+
+  // Un widget helper per creare i box
+  Widget buildSkeletonBox({
+    double height = 58, // Altezza di un TextFormField
+    double vPadding = 8.0,
+  }) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: vPadding),
+      height: height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: baseColor,
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+    );
+  }
+
+  // Usiamo Shimmer.fromColors per applicare l'effetto
+  return Shimmer.fromColors(
+    baseColor: baseColor,
+    highlightColor: highlightColor,
+    period: const Duration(milliseconds: 1200), // Durata dell'animazione
+    child: ListView(
+      padding: const EdgeInsets.all(16.0),
+      physics: const NeverScrollableScrollPhysics(), // Disabilita lo scroll
+      children: [
+        buildSkeletonBox(vPadding: 0), // Simula campo "Nome"
+        buildSkeletonBox(), // Simula campo "Categoria"
+        buildSkeletonBox(), // Simula campo "Brand"
+        buildSkeletonBox(height: 120), // Simula "Descrizione" (maxLines: 5)
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: buildSkeletonBox(vPadding: 0)), // Simula "Valore"
+            const SizedBox(width: 16),
+            Expanded(child: buildSkeletonBox(vPadding: 0)), // Simula "Vendita"
+          ],
+        ),
+        const SizedBox(height: 16),
+        buildSkeletonBox(height: 70), // Simula lo Switch "Varianti"
+      ],
+    ),
+  );
 }
 
 class _PlatformsSection extends StatefulWidget {
