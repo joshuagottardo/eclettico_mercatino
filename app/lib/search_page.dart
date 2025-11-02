@@ -1,5 +1,3 @@
-
-
 // lib/search_page.dart - AGGIORNATO CON MASTER-DETAIL
 
 import 'dart:convert';
@@ -8,7 +6,7 @@ import 'package:app/item_detail_content.dart'; // Importa il nuovo contenuto
 import 'package:app/item_detail_page.dart'; // Importa ancora per il mobile
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/icon_helper.dart'; 
+import 'package:app/icon_helper.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:app/api_config.dart'; // Importato
 
@@ -32,13 +30,13 @@ class _SearchPageState extends State<SearchPage> {
   int? _selectedCategoryId;
   String? _selectedBrand;
   bool _showOnlyAvailable = false;
-  
+
   // --- (FIX 1) NUOVI STATI PER MASTER-DETAIL ---
   Map<String, dynamic>? _selectedItem;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   // Breakpoint per tablet
   static const double kTabletBreakpoint = 800.0;
-  
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +50,7 @@ class _SearchPageState extends State<SearchPage> {
     _searchController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _fetchPageData() async {
     setState(() {
       _isLoading = true;
@@ -62,20 +60,17 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final responses = await Future.wait([
         http.get(Uri.parse('$kBaseUrl/api/items')),
-        http.get(
-          Uri.parse('$kBaseUrl/api/categories'),
-        ),
+        http.get(Uri.parse('$kBaseUrl/api/categories')),
       ]);
       if (responses[0].statusCode == 200) {
         final data = jsonDecode(responses[0].body);
         _allItems = data;
-        _allBrands = _allItems
-            .map((item) => item['brand'] as String?)
-            .where(
-              (brand) => brand != null && brand.isNotEmpty,
-            )
-            .toSet()
-            .toList();
+        _allBrands =
+            _allItems
+                .map((item) => item['brand'] as String?)
+                .where((brand) => brand != null && brand.isNotEmpty)
+                .toSet()
+                .toList();
         _allBrands.sort();
       } else {
         throw Exception('Errore nel recupero articoli');
@@ -97,13 +92,13 @@ class _SearchPageState extends State<SearchPage> {
           _isLoading = false;
           _filtersLoading = false;
           _filterItems();
-          
+
           // (FIX 1) Se un item era selezionato, aggiornalo
           if (_selectedItem != null) {
             try {
               // Aggiorna i dati dell'item selezionato
               _selectedItem = _allItems.firstWhere(
-                (item) => item['item_id'] == _selectedItem!['item_id']
+                (item) => item['item_id'] == _selectedItem!['item_id'],
               );
             } catch (e) {
               _selectedItem = null; // L'item è stato eliminato o non c'è più
@@ -113,50 +108,56 @@ class _SearchPageState extends State<SearchPage> {
       }
     }
   }
-  
-  int availableQtyFromItem(Map<String, dynamic> item) {
-  final hasVariants = item['has_variants'] == 1 || item['has_variants'] == true;
-  if (!hasVariants) {
-    final q = item['quantity'];
-    if (q is int) return q;
-    if (q is num) return q.toInt();
-    return 0;
-  }
-  final variants = (item['variants'] as List?) ?? const [];
-  int sum = 0;
-  for (final v in variants) {
-    final q = v is Map ? v['quantity'] : null;
-    if (q is int) sum += q;
-    else if (q is num) sum += q.toInt();
-  }
-  return sum;
-}
 
+  int availableQtyFromItem(Map<String, dynamic> item) {
+    final hasVariants =
+        item['has_variants'] == 1 || item['has_variants'] == true;
+    if (!hasVariants) {
+      final q = item['quantity'];
+      if (q is int) return q;
+      if (q is num) return q.toInt();
+      return 0;
+    }
+    final variants = (item['variants'] as List?) ?? const [];
+    int sum = 0;
+    for (final v in variants) {
+      final q = v is Map ? v['quantity'] : null;
+      if (q is int)
+        sum += q;
+      else if (q is num)
+        sum += q.toInt();
+    }
+    return sum;
+  }
 
   void _filterItems() {
     final searchTerm = _searchController.text.toLowerCase();
     List tempFilteredList = _allItems;
     if (_showOnlyAvailable) {
-      tempFilteredList = tempFilteredList.where((item) {
-        return item['is_sold'] == 0;
-      }).toList();
+      tempFilteredList =
+          tempFilteredList.where((item) {
+            return item['is_sold'] == 0;
+          }).toList();
     }
     if (_selectedCategoryId != null) {
-      tempFilteredList = tempFilteredList.where((item) {
-        return item['category_id'] == _selectedCategoryId;
-      }).toList();
+      tempFilteredList =
+          tempFilteredList.where((item) {
+            return item['category_id'] == _selectedCategoryId;
+          }).toList();
     }
     if (_selectedBrand != null) {
-      tempFilteredList = tempFilteredList.where((item) {
-        return item['brand'] == _selectedBrand;
-      }).toList();
+      tempFilteredList =
+          tempFilteredList.where((item) {
+            return item['brand'] == _selectedBrand;
+          }).toList();
     }
     if (searchTerm.isNotEmpty) {
-      tempFilteredList = tempFilteredList.where((item) {
-        final name = item['name']?.toLowerCase() ?? '';
-        final code = item['unique_code']?.toLowerCase() ?? '';
-        return name.contains(searchTerm) || code.contains(searchTerm);
-      }).toList();
+      tempFilteredList =
+          tempFilteredList.where((item) {
+            final name = item['name']?.toLowerCase() ?? '';
+            final code = item['unique_code']?.toLowerCase() ?? '';
+            return name.contains(searchTerm) || code.contains(searchTerm);
+          }).toList();
     }
     setState(() {
       _filteredItems = tempFilteredList;
@@ -172,7 +173,7 @@ class _SearchPageState extends State<SearchPage> {
       _fetchPageData();
     }
   }
-  
+
   void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
@@ -287,7 +288,7 @@ class _SearchPageState extends State<SearchPage> {
       },
     );
   }
-  
+
   // --- (FIX 1) LAYOUT MOBILE (Il vecchio build()) ---
   Widget _buildMobileLayout() {
     return Scaffold(
@@ -310,36 +311,39 @@ class _SearchPageState extends State<SearchPage> {
             flex: 1, // La lista occupa 1/3 dello spazio
             child: _buildBodyContent(isTablet: true),
           ),
-          
+
           const VerticalDivider(width: 1),
-          
+
           // Pannello DETAIL (Contenuto)
           Expanded(
             flex: 2, // Il dettaglio occupa 2/3 dello spazio
-            child: _selectedItem == null
-                ? const Center(child: Text('Seleziona un articolo dalla lista'))
-                : ItemDetailContent(
-                    // Usiamo UniqueKey per forzare il rebuild quando l'item cambia
-                    key: UniqueKey(), 
-                    item: _selectedItem!,
-                    showAppBar: false,
-                    onDataChanged: (didChange) {
-                      if (didChange) {
-                        // Se i dati cambiano (es. modifica o delete)
-                        // ricarichiamo i dati della lista
-                        _fetchPageData(); 
-                      }
-                    },
-                  ),
+            child:
+                _selectedItem == null
+                    ? const Center(
+                      child: Text('Seleziona un articolo dalla lista'),
+                    )
+                    : ItemDetailContent(
+                      // Usiamo UniqueKey per forzare il rebuild quando l'item cambia
+                      key: UniqueKey(),
+                      item: _selectedItem!,
+                      showAppBar: false,
+                      onDataChanged: (didChange) {
+                        if (didChange) {
+                          // Se i dati cambiano (es. modifica o delete)
+                          // ricarichiamo i dati della lista
+                          _fetchPageData();
+                        }
+                      },
+                    ),
           ),
         ],
       ),
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
-  
+
   // --- (FIX 1) Widget condivisi ---
-  
+
   AppBar _buildSearchAppBar() {
     return AppBar(
       title: TextField(
@@ -347,12 +351,13 @@ class _SearchPageState extends State<SearchPage> {
         decoration: InputDecoration(
           hintText: 'Cerca per nome o codice...',
           prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () => _searchController.clear(),
-                )
-              : null,
+          suffixIcon:
+              _searchController.text.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => _searchController.clear(),
+                  )
+                  : null,
         ),
         onSubmitted: (value) => _filterItems(),
       ),
@@ -360,11 +365,12 @@ class _SearchPageState extends State<SearchPage> {
         IconButton(
           icon: Icon(
             Icons.filter_list,
-            color: (_selectedCategoryId != null ||
-                    _selectedBrand != null ||
-                    _showOnlyAvailable)
-                ? Theme.of(context).colorScheme.primary
-                : null,
+            color:
+                (_selectedCategoryId != null ||
+                        _selectedBrand != null ||
+                        _showOnlyAvailable)
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
           ),
           tooltip: 'Filtri',
           onPressed: _filtersLoading ? null : _showFilterSheet,
@@ -372,56 +378,56 @@ class _SearchPageState extends State<SearchPage> {
       ],
     );
   }
-  
+
   Widget? _buildFloatingActionButton() {
-     return FloatingActionButton(
-        onPressed: () {
-          _navigateAndReload(context, const AddItemPage());
-        },
-        tooltip: 'Aggiungi articolo',
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: const Icon(Icons.add, color: Colors.black),
-      );
+    return FloatingActionButton(
+      onPressed: () {
+        _navigateAndReload(context, const AddItemPage());
+      },
+      tooltip: 'Aggiungi articolo',
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      child: const Icon(Icons.add, color: Colors.black),
+    );
   }
-  
+
   Widget _buildBodyContent({required bool isTablet}) {
-     if (_isLoading) {
-        return Center(
-          child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        );
-     }
-     if (_errorMessage != null) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(_errorMessage!, textAlign: TextAlign.center),
-          ),
-        );
-     }
-     if (_filteredItems.isEmpty) {
-        return Center(
-          child: Text(
-            _searchController.text.isEmpty &&
-                    _selectedCategoryId == null &&
-                    _selectedBrand == null &&
-                    !_showOnlyAvailable
-                ? 'Nessun articolo. Aggiungine uno!'
-                : 'Nessun articolo trovato con questi filtri.',
-          ),
-        );
-     }
-      
-     return ListView.builder(
-        padding: const EdgeInsets.all(8.0),
-        itemCount: _filteredItems.length,
-        itemBuilder: (context, index) {
-          final item = _filteredItems[index];
-          // Passiamo 'isTablet' al builder della card
-          return _buildItemCard(item, isTablet: isTablet); 
-        },
+    if (_isLoading) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.primary,
+        ),
       );
+    }
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(_errorMessage!, textAlign: TextAlign.center),
+        ),
+      );
+    }
+    if (_filteredItems.isEmpty) {
+      return Center(
+        child: Text(
+          _searchController.text.isEmpty &&
+                  _selectedCategoryId == null &&
+                  _selectedBrand == null &&
+                  !_showOnlyAvailable
+              ? 'Nessun articolo. Aggiungine uno!'
+              : 'Nessun articolo trovato con questi filtri.',
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(8.0),
+      itemCount: _filteredItems.length,
+      itemBuilder: (context, index) {
+        final item = _filteredItems[index];
+        // Passiamo 'isTablet' al builder della card
+        return _buildItemCard(item, isTablet: isTablet);
+      },
+    );
   }
 
   // (FIX 1) Widget Card AGGIORNATO per gestire il tap
@@ -429,7 +435,8 @@ class _SearchPageState extends State<SearchPage> {
     final bool isSold = item['is_sold'] == 1;
 
     // (FIX 1) Logica per evidenziare l'item selezionato su tablet
-    final bool isSelected = isTablet &&
+    final bool isSelected =
+        isTablet &&
         _selectedItem != null &&
         _selectedItem!['item_id'] == item['item_id'];
 
@@ -442,15 +449,18 @@ class _SearchPageState extends State<SearchPage> {
     } else {
       cardColor = Theme.of(context).cardColor;
     }
-    
+
     Color textColor =
-        isSold ? Colors.grey[300]! : Theme.of(context).textTheme.bodyLarge!.color!;
+        isSold
+            ? Colors.grey[300]!
+            : Theme.of(context).textTheme.bodyLarge!.color!;
     Color iconColor =
         isSold ? Colors.grey[400]! : Theme.of(context).colorScheme.primary;
 
-    final IconData itemIcon = isSold 
-        ? Iconsax.money_remove 
-        : getIconForCategory(item['category_name']);
+    final IconData itemIcon =
+        isSold
+            ? Iconsax.money_remove
+            : getIconForCategory(item['category_name']);
 
     return Card(
       color: cardColor,
@@ -468,32 +478,17 @@ class _SearchPageState extends State<SearchPage> {
             _navigateAndReload(context, ItemDetailPage(item: item));
           }
         },
-        leading: Icon(
-          itemIcon,
-          color: iconColor,
-        ),
+        leading: Icon(itemIcon, color: iconColor),
         title: Text(
           item['name'] ?? 'Articolo senza nome',
           style: TextStyle(color: textColor),
         ),
         subtitle: null,
         trailing: Text(
-          (() {
-            final any = item['available_quantity'] ?? item['display_quantity'];
-            int q;
-            if (any is int) q = any;
-            else if (any is num) q = any.toInt();
-            else if (any is String) q = int.tryParse(any) ?? 0;
-            else q = 0;
-            if (q == 0) {
-              q = availableQtyFromItem(item);
-            }
-            return q.toString();
-          })(),
-          style: TextStyle(
-            color: Colors.grey[600], 
-            fontSize: 14,
-          ),
+          // (FIX) Semplificato: ora usiamo solo il campo 'display_quantity'
+          // che l'API (corretta) ci fornisce sempre.
+          (int.tryParse(item['display_quantity'].toString()) ?? 0).toString(),
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
         ),
       ),
     );

@@ -66,7 +66,16 @@ app.get("/api/items", async (req, res) => {
     // Usiamo il pool per eseguire la query SQL
     // Ordiniamo per i più recenti (created_at)
     const [items] = await pool.query(`
-    SELECT i.*, c.name as category_name 
+    SELECT 
+        i.*, 
+        c.name as category_name,
+
+        -- (FIX) Logica per calcolare la quantità (copiata da /api/items/category/:id)
+        IF(i.has_variants = 1, 
+           IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
+           i.quantity
+        ) AS display_quantity 
+
     FROM items i
     LEFT JOIN categories c ON i.category_id = c.category_id
     ORDER BY i.created_at DESC
