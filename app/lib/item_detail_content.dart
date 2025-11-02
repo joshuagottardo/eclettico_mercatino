@@ -1165,8 +1165,9 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                             fullscreenDialog: true,
                             builder:
                                 (context) => PhotoViewerPage(
-                                  photoId: photo['photo_id'],
-                                  photoUrl: photoUrl,
+                                  photos: _photos.cast<Map<String, dynamic>>(),
+                                  // (FIX) Passa l'indice della foto cliccata
+                                  initialIndex: index,
                                 ),
                           ),
                         );
