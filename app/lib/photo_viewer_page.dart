@@ -47,9 +47,11 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   // (4 - MODIFICA) Funzione per scaricare (usa _currentIndex)
   Future<void> _downloadPhoto() async {
     if (widget.photos.isEmpty) return;
-    
-    setState(() { _isDownloading = true; });
-    
+
+    setState(() {
+      _isDownloading = true;
+    });
+
     // Prende l'URL della foto corrente
     final currentPhoto = widget.photos[_currentIndex];
     final photoUrl = '$kBaseUrl/${currentPhoto['file_path']}';
@@ -63,7 +65,10 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         downloadsDir = await getApplicationDocumentsDirectory();
       }
       if (downloadsDir == null) {
-        _showFeedback(success: false, message: 'Cartella download non trovata.');
+        _showFeedback(
+          success: false,
+          message: 'Cartella download non trovata.',
+        );
         return;
       }
       final String fileName = Uri.parse(photoUrl).pathSegments.last;
@@ -76,7 +81,9 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       _showFeedback(success: false, message: 'Download fallito.');
     } finally {
       if (mounted) {
-        setState(() { _isDownloading = false; });
+        setState(() {
+          _isDownloading = false;
+        });
       }
     }
   }
@@ -87,24 +94,32 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Sei sicuro?'),
-        content: const Text('Vuoi eliminare definitivamente questa foto? L\'azione non è reversibile.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annulla')),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sì, elimina'),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            title: const Text('Sei sicuro?'),
+            content: const Text(
+              'Vuoi eliminare definitivamente questa foto? L\'azione non è reversibile.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Annulla'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sì, elimina'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed != true) return;
 
-    setState(() { _isDeleting = true; });
+    setState(() {
+      _isDeleting = true;
+    });
 
     // Prende l'ID della foto corrente
     final currentPhoto = widget.photos[_currentIndex];
@@ -118,18 +133,23 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         if (mounted) {
           _showFeedback(success: true, message: 'Foto eliminata.');
           // Chiudi la pagina e passa "true" per ricaricare la galleria
-          Navigator.pop(context, true); 
+          Navigator.pop(context, true);
           // NOTA: Non serve rimuovere l'item dalla lista localmente
           // perché chiudiamo subito la pagina e la galleria si ricarica.
         }
       } else {
-        _showFeedback(success: false, message: 'Errore server: ${response.statusCode}');
+        _showFeedback(
+          success: false,
+          message: 'Errore server: ${response.statusCode}',
+        );
       }
     } catch (e) {
       _showFeedback(success: false, message: 'Errore di rete: $e');
     } finally {
       if (mounted) {
-        setState(() { _isDeleting = false; });
+        setState(() {
+          _isDeleting = false;
+        });
       }
     }
   }
@@ -163,17 +183,33 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         ),
         actions: [
           IconButton(
-            icon: _isDeleting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
-                : const Icon(Icons.delete_outline, color: Colors.red),
+            icon:
+                _isDeleting
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.red,
+                      ),
+                    )
+                    : const Icon(Icons.delete_outline, color: Colors.red),
             // Disabilita se non ci sono foto
             onPressed: actionInProgress || !hasPhotos ? null : _deletePhoto,
             tooltip: 'Elimina foto',
           ),
           IconButton(
-            icon: _isDownloading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Icon(Icons.download_outlined),
+            icon:
+                _isDownloading
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                    : const Icon(Icons.download_outlined),
             // Disabilita se non ci sono foto
             onPressed: actionInProgress || !hasPhotos ? null : _downloadPhoto,
             tooltip: 'Scarica foto',
@@ -200,20 +236,32 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
             minScale: 1.0,
             maxScale: 4.0,
             child: Center(
-              child: Image.network(
-                photoUrl,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // larghezza reale del riquadro in cui stai mostrando la foto
+                  final dpr = MediaQuery.devicePixelRatioOf(context);
+                  // limita per sicurezza (iOS ama avere un upper bound)
+                  final cacheW = (constraints.maxWidth * dpr).round().clamp(
+                    256,
+                    4096,
                   );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.broken_image,
-                    color: Colors.grey,
-                    size: 80,
+
+                  return Image.network(
+                    photoUrl, // 👈 lascia la tua variabile/url
+                    fit: BoxFit.cover, // o quello che avevi (cover/contain)
+                    gaplessPlayback: true,
+                    filterQuality: FilterQuality.medium,
+                    cacheWidth: cacheW, // 👈 la novità
+                    // 👇 incolla qui ESATTAMENTE i tuoi builder se li avevi già:
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.broken_image, color: Colors.grey);
+                    },
                   );
                 },
               ),

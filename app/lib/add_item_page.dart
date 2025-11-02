@@ -45,15 +45,32 @@ class _AddItemPageState extends State<AddItemPage> {
 
   int _variantCount = 0;
   bool _isCheckingVariants = false;
+  bool _isWarmingUp = true;
 
   @override
   void initState() {
     super.initState();
+    _nameController.text = '';
     _fetchInitialData();
     if (widget.itemId != null) {
       _isEditMode = true;
       _isPageLoading = true;
       _loadItemData();
+    }
+
+    _startWarmUp();
+  }
+
+  void _startWarmUp() async {
+    // Aspettiamo 500ms.
+    // I tuoi log dicono "timeout: 0.250000", quindi 500ms
+    // dovrebbero bastare per coprire quel lag.
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (mounted) {
+      setState(() {
+        _isWarmingUp = false;
+      });
     }
   }
 
@@ -147,8 +164,6 @@ class _AddItemPageState extends State<AddItemPage> {
               }
             }
           } catch (e) {
-            // Non blocchiamo la pagina se fallisce, ma logghiamo l'errore
-            print('Errore caricamento varianti: $e');
             _variantCount = -1; // Usiamo -1 come flag di errore
           }
         } else {
@@ -323,189 +338,223 @@ class _AddItemPageState extends State<AddItemPage> {
         ],
       ),
       body: GestureDetector(
-        // Questa funzione viene chiamata quando l'utente tocca un punto
-        // al di fuori di un widget interattivo (come un campo di testo)
-        onTap: () {
-          // Rimuove il focus da qualsiasi elemento, chiudendo la tastiera
-          FocusScope.of(context).unfocus();
-        },
+        onTap: () => FocusScope.of(context).unfocus(),
         child:
             _isPageLoading ||
                     _categoriesLoading ||
                     _platformsLoading ||
-                    _isCheckingVariants
+                    _isCheckingVariants ||
+                    _isWarmingUp
                 ? Center(
                   child: CircularProgressIndicator(
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 )
-                : Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16.0),
-                    children: [
-                      // ... (Campi modulo invariati, solo la logica di navigazione è cambiata)
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'Nome'),
-                        validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<int>(
-                        decoration: const InputDecoration(
-                          labelText: 'Categoria',
-                        ),
-                        value: _selectedCategoryId,
-                        items:
-                            _categories.map<DropdownMenuItem<int>>((category) {
-                              return DropdownMenuItem<int>(
-                                value: category['category_id'],
-                                child: Text(category['name']),
-                              );
-                            }).toList(),
-                        onChanged:
-                            (value) => setState(() {
-                              _selectedCategoryId = value;
-                            }),
-                        validator:
-                            (value) => value == null ? 'Obbligatoria' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _brandController,
-                        decoration: const InputDecoration(labelText: 'Brand'),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Descrizione',
-                        ),
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _valueController,
-                              decoration: const InputDecoration(
-                                labelText: 'Valore (€)',
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _salePriceController,
-                              decoration: const InputDecoration(
-                                labelText: 'Vendita (€)',
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      SwitchListTile.adaptive(
-                        title: const Text('L\'articolo ha varianti?'),
-                        subtitle: const Text(
-                          'Se sì, quantità e prezzi saranno gestiti per ogni variante',
-                        ),
-                        value: _hasVariants,
-                        onChanged: (bool value) {
-                          // (FIX) Logica aggiornata
-                          if (_isEditMode && !value) {
-                            // Se sto provando a DISATTIVARE
-
-                            if (_variantCount > 0) {
-                              _showError(
-                                'Non puoi disattivare le varianti. Ci sono $_variantCount varianti collegate.',
-                              );
-                              return; // Blocca l'azione
-                            }
-
-                            if (_variantCount == -1) {
-                              // Flag di errore dal caricamento
-                              _showError(
-                                'Errore nel verificare le varianti. Impossibile modificare.',
-                              );
-                              return; // Blocca l'azione
-                            }
-
-                            // Se _variantCount == 0, l'esecuzione prosegue
-                          }
-
-                          setState(() {
-                            _hasVariants = value;
-                          });
-                        },
-                        activeColor: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // --- CAMPI CONDIZIONALI (Quantità, Prezzo e Piattaforme) ---
-                      if (!_hasVariants) ...[
-                        const Divider(),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _quantityController,
-                                decoration: const InputDecoration(
-                                  labelText: 'N° Pezzi',
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _purchasePriceController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Acquisto (€)',
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        // (8 - NUOVO) Sezione Checkbox Piattaforme
-                        Text(
-                          'Piattaforme',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        ..._buildPlatformCheckboxes(),
-                      ],
-                    ],
-                  ),
-                ),
+                : _buildFormList(), // 👈 estraiamo in un metodo
       ),
     );
   }
 
-  // (9 - NUOVO) Funzione Helper per costruire le checkbox
-  List<Widget> _buildPlatformCheckboxes() {
-    return _platforms.map((platform) {
-      final platformId = platform['platform_id'];
-      return CheckboxListTile(
-        title: Text(platform['name']),
-        value: _selectedPlatformIds.contains(platformId),
-        onChanged: (bool? value) {
-          setState(() {
-            if (value == true) {
-              _selectedPlatformIds.add(platformId);
-            } else {
-              _selectedPlatformIds.remove(platformId);
+  Widget _buildFormList() {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      cacheExtent: 600, // pre-render di un po’ di contenuto
+      children: [
+        // ... (Campi modulo invariati, solo la logica di navigazione è cambiata)
+        TextFormField(
+          controller: _nameController,
+          decoration: const InputDecoration(labelText: 'Nome'),
+          validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
+          textInputAction: TextInputAction.next,
+          autofocus: true,
+          enableSuggestions: false,
+          autocorrect: false,
+        ),
+
+        const SizedBox(height: 16),
+        DropdownButtonFormField<int>(
+          decoration: const InputDecoration(labelText: 'Categoria'),
+          value: _selectedCategoryId,
+          items:
+              _categories.map<DropdownMenuItem<int>>((category) {
+                return DropdownMenuItem<int>(
+                  value: category['category_id'],
+                  child: Text(category['name']),
+                );
+              }).toList(),
+          onChanged:
+              (value) => setState(() {
+                _selectedCategoryId = value;
+              }),
+          validator: (value) => value == null ? 'Obbligatoria' : null,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _brandController,
+          decoration: const InputDecoration(labelText: 'Brand'),
+          textInputAction: TextInputAction.next,
+          autofocus: false,
+          enableSuggestions: true,
+          autocorrect: true,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _descriptionController,
+          decoration: const InputDecoration(labelText: 'Descrizione'),
+          textInputAction: TextInputAction.next,
+          autofocus: false,
+          enableSuggestions: true,
+          autocorrect: true,
+          maxLines: 5,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _valueController,
+                decoration: const InputDecoration(labelText: 'Valore (€)'),
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: TextFormField(
+                controller: _salePriceController,
+                decoration: const InputDecoration(labelText: 'Vendita (€)'),
+                keyboardType: TextInputType.number,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        SwitchListTile.adaptive(
+          title: const Text('L\'articolo ha varianti?'),
+          subtitle: const Text(
+            'Se sì, quantità e prezzi saranno gestiti per ogni variante',
+          ),
+          value: _hasVariants,
+          onChanged: (bool value) {
+            // (FIX) Logica aggiornata
+            if (_isEditMode && !value) {
+              // Se sto provando a DISATTIVARE
+
+              if (_variantCount > 0) {
+                _showError(
+                  'Non puoi disattivare le varianti. Ci sono $_variantCount varianti collegate.',
+                );
+                return; // Blocca l'azione
+              }
+
+              if (_variantCount == -1) {
+                // Flag di errore dal caricamento
+                _showError(
+                  'Errore nel verificare le varianti. Impossibile modificare.',
+                );
+                return; // Blocca l'azione
+              }
+
+              // Se _variantCount == 0, l'esecuzione prosegue
             }
-          });
+
+            setState(() {
+              _hasVariants = value;
+            });
+          },
+          activeColor: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(height: 16),
+
+        // --- CAMPI CONDIZIONALI (Quantità, Prezzo e Piattaforme) ---
+        if (!_hasVariants) ...[
+          const Divider(),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _quantityController,
+                  decoration: const InputDecoration(labelText: 'N° Pezzi'),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextFormField(
+                  controller: _purchasePriceController,
+                  decoration: const InputDecoration(labelText: 'Acquisto (€)'),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // (8 - NUOVO) Sezione Checkbox Piattaforme
+          Text('Piattaforme', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _PlatformsSection(
+            platforms: _platforms,
+            selectedIds: _selectedPlatformIds,
+            onToggle: (platformId) {
+              setState(() {
+                if (_selectedPlatformIds.contains(platformId)) {
+                  _selectedPlatformIds.remove(platformId);
+                } else {
+                  _selectedPlatformIds.add(platformId);
+                }
+              });
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  // (9 - NUOVO) Funzione Helper per costruire le checkbox
+}
+
+class _PlatformsSection extends StatefulWidget {
+  final List platforms;
+  final Set<int> selectedIds;
+  final ValueChanged<int> onToggle;
+
+  const _PlatformsSection({
+    super.key,
+    required this.platforms,
+    required this.selectedIds,
+    required this.onToggle,
+  });
+
+  @override
+  State<_PlatformsSection> createState() => _PlatformsSectionState();
+}
+
+class _PlatformsSectionState extends State<_PlatformsSection>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return RepaintBoundary(
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: widget.platforms.length,
+        itemBuilder: (context, i) {
+          final platform = widget.platforms[i];
+          final platformId = platform['platform_id'] as int;
+          final checked = widget.selectedIds.contains(platformId);
+          return CheckboxListTile(
+            title: Text(platform['name'].toString()),
+            value: checked,
+            onChanged: (bool? v) => widget.onToggle(platformId),
+            activeColor: Theme.of(context).colorScheme.primary,
+          );
         },
-        activeColor: Theme.of(context).colorScheme.primary,
-      );
-    }).toList();
+      ),
+    );
   }
 }

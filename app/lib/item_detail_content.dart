@@ -1277,19 +1277,38 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        child: Image.network(
-                          photoUrl,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.broken_image,
-                              color: Colors.grey,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            // larghezza reale del riquadro in cui stai mostrando la foto
+                            final dpr = MediaQuery.devicePixelRatioOf(context);
+                            // limita per sicurezza (iOS ama avere un upper bound)
+                            final cacheW = (constraints.maxWidth * dpr)
+                                .round()
+                                .clamp(256, 4096);
+
+                            return Image.network(
+                              photoUrl, // 👈 lascia la tua variabile/url
+                              fit:
+                                  BoxFit
+                                      .cover, // o quello che avevi (cover/contain)
+                              gaplessPlayback: true,
+                              filterQuality: FilterQuality.medium,
+                              cacheWidth: cacheW, // 👈 la novità
+                              // 👇 incolla qui ESATTAMENTE i tuoi builder se li avevi già:
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                );
+                              },
                             );
                           },
                         ),
