@@ -7,7 +7,6 @@ import 'package:app/item_detail_page.dart'; // Importa ancora per il mobile
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
-import 'package:app/icon_helper.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:app/api_config.dart'; // Importato
 
@@ -124,10 +123,11 @@ class _SearchPageState extends State<SearchPage> {
     int sum = 0;
     for (final v in variants) {
       final q = v is Map ? v['quantity'] : null;
-      if (q is int)
+      if (q is int) {
         sum += q;
-      else if (q is num)
+      } else if (q is num) {
         sum += q.toInt();
+      }
     }
     return sum;
   }
@@ -278,7 +278,6 @@ class _SearchPageState extends State<SearchPage> {
   // --- (FIX 1) NUOVO BUILD METHOD RESPONSIVO ---
   @override
   Widget build(BuildContext context) {
-    final bool isWide = MediaQuery.of(context).size.width >= 1024;
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isTablet = constraints.maxWidth >= kTabletBreakpoint;
@@ -346,9 +345,12 @@ class _SearchPageState extends State<SearchPage> {
     return PopScope(
       // <-- (FIX) Aggiunto
       canPop: false,
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
-        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+
+        // Passa il risultato (se i dati sono cambiati) alla pagina precedente
+        Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
         key: _scaffoldKey,
@@ -364,9 +366,12 @@ class _SearchPageState extends State<SearchPage> {
     return PopScope(
       // <-- (FIX) Aggiunto
       canPop: false,
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
-        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+
+        // Passa il risultato (se i dati sono cambiati) alla pagina precedente
+        Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
         key: _scaffoldKey,
@@ -536,7 +541,7 @@ class _SearchPageState extends State<SearchPage> {
 
     Color cardColor;
     if (isSelected) {
-      cardColor = Theme.of(context).colorScheme.primary.withOpacity(0.3);
+      cardColor = Theme.of(context).colorScheme.primary.withAlpha(77);
     } else if (isSold) {
       cardColor = const Color(0xFF422B2B);
     } else {

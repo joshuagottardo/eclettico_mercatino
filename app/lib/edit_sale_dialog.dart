@@ -91,10 +91,11 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -137,10 +138,11 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     } catch (e) {
       _showError('Errore di rete: $e');
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 

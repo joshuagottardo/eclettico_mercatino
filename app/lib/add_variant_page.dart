@@ -165,7 +165,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     // Chiedi conferma
     final bool? confirmed = await _showDeleteConfirmation();
     if (confirmed != true) return;
-
+    
     setState(() {
       _isLoading = true;
     }); // Usiamo lo stesso loader

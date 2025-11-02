@@ -3,12 +3,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 
 // Importiamo le pagine a cui navigare
 import 'package:app/search_page.dart';
 import 'package:app/add_item_page.dart';
-import 'package:app/item_list_page.dart';
 import 'package:app/item_detail_page.dart';
 import 'package:app/library_page.dart';
 import 'package:app/statistics_page.dart';
@@ -64,7 +62,6 @@ class _HomePageState extends State<HomePage> {
           _errorMessage = 'Errore di rete o conversione: $e';
         });
       }
-      print('Errore caricamento dashboard: $e');
     }
   }
 
@@ -155,23 +152,30 @@ class _HomePageState extends State<HomePage> {
   // --- (FIX 1 e 2) WIDGET PER LAYOUT RESPONSIVO (AGGIORNATO) ---
   Widget _buildButtonLayout(BuildContext context) {
     // Definiamo le funzioni onTap per chiarezza
-    final onTapSearch = () {
-      // (FIX) Usa la funzione che fa l'await e il refresh
-      _navigateAndReload(const SearchPage());
-    };
-    final onTapLibrary = () {
-      // (FIX) Usa la funzione che fa l'await e il refresh
-      _navigateAndReload(const LibraryPage());
-    };
-    final onTapInsert = () {
+    void onTapSearch() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SearchPage()),
+      );
+    }
+
+    void onTapLibrary() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LibraryPage()),
+      );
+    }
+
+    void onTapInsert() {
       _navigateAndReload(const AddItemPage());
-    };
-    final onTapStats = () {
+    }
+
+    void onTapStats() {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const StatisticsPage()),
       );
-    };
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {

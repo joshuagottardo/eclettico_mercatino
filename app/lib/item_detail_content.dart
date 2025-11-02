@@ -32,7 +32,7 @@ class ItemDetailContent extends StatefulWidget {
 
 class _ItemDetailContentState extends State<ItemDetailContent> {
   void _markChanged() {
-    _dataDidChange = true;
+    // Notifica solo il wrapper, non serve un flag locale
     try {
       widget.onDataChanged?.call(true);
     } catch (_) {}
@@ -48,10 +48,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   bool _isPhotosLoading = false;
   bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
-  bool _dataDidChange = false;
   List _allPlatforms = [];
   bool _platformsLoading = true;
-  bool _isItemSold = false;
   bool _isSalesLogOpen = false; // Stato per il Drawer Log
   bool _isDeleting = false;
 
@@ -71,7 +69,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     _isLogLoading = true;
     _isPhotosLoading = true;
     _platformsLoading = true;
-    _isItemSold = _currentItem['is_sold'] == 1;
     _refreshAllData();
   }
 
@@ -386,11 +383,10 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       if (response.statusCode == 200 && mounted) {
         setState(() {
           _currentItem = jsonDecode(response.body);
-          _isItemSold = _currentItem['is_sold'] == 1;
         });
       }
     } catch (e) {
-      print('Errore ricaricando item details: $e');
+      print(e);
     }
   }
 
@@ -1090,46 +1086,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Funzione Helper per costruire le piattaforme di una variante (Mantenuta ma non usata)
-  Widget _buildVariantPlatformsList(List<dynamic> platformIds) {
-    if (platformIds.isEmpty || _allPlatforms.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final List<String> platformNames =
-        platformIds
-            .map((id) {
-              final platform = _allPlatforms.firstWhere(
-                (p) =>
-                    (p['platform_id'] as num?)?.toInt() ==
-                    (id as num?)?.toInt(),
-                orElse: () => null,
-              );
-              return platform != null ? platform['name'].toString() : null;
-            })
-            .whereType<String>()
-            .toList();
-
-    if (platformNames.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children:
-          platformNames.map((name) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey[850],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(name, style: const TextStyle(color: Colors.white70)),
-            );
-          }).toList(),
-    );
-  }
 
   // --- WIDGET VARIANTE ---
   Widget _buildVariantsSection() {
@@ -1164,7 +1120,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             return Card(
               color:
                   isVariantSold
-                      ? soldColor.withOpacity(0.2)
+                      ? soldColor.withAlpha(51)
                       : Theme.of(context).cardColor,
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
@@ -1316,7 +1272,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                             horizontal: 6,
                             vertical: 4,
                           ),
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withAlpha(51),
                           child: Text(
                             targetName,
                             style: const TextStyle(
@@ -1424,7 +1380,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     color: accentColor,
                     fontWeight: FontWeight.bold,
                   ),
-                  backgroundColor: accentColor.withOpacity(0.1),
+                  backgroundColor: accentColor.withAlpha(25),
                   side: BorderSide.none,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),

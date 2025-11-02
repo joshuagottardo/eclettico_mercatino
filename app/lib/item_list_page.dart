@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:app/item_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/icon_helper.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:app/api_config.dart';
@@ -66,9 +65,12 @@ class _ItemListPageState extends State<ItemListPage> {
     return PopScope(
       // <-- (FIX) Aggiunto
       canPop: false,
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
-        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+
+        // Passa il risultato (se i dati sono cambiati) alla pagina precedente
+        Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
         appBar: AppBar(title: Text(widget.categoryName)),

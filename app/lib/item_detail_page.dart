@@ -20,7 +20,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     // (FIX 3) Sostituiamo WillPopScope con PopScope.
     return PopScope(
       canPop: false, // Gestiamo noi il "pop"
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
         // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
 

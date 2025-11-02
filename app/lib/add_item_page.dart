@@ -576,7 +576,6 @@ class _PlatformsSection extends StatefulWidget {
   final ValueChanged<int> onToggle;
 
   const _PlatformsSection({
-    super.key,
     required this.platforms,
     required this.selectedIds,
     required this.onToggle,

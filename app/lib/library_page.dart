@@ -53,9 +53,12 @@ class _LibraryPageState extends State<LibraryPage> {
     return PopScope(
       // <-- (FIX) Aggiunto
       canPop: false,
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
-        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+
+        // Passa il risultato (se i dati sono cambiati) alla pagina precedente
+        Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('Libreria')),
@@ -106,7 +109,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
   // Widget Helper per i "Tastoni" Categoria (AGGIORNATO)
   Widget _buildCategoryButton(
-    BuildContext, {
+    BuildContext context, {
     required String label,
     required IconData icon, // (FIX 2) Riceve l'icona
     required VoidCallback onTap,
