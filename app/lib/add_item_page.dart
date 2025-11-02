@@ -351,7 +351,11 @@ class _AddItemPageState extends State<AddItemPage> {
                     _isCheckingVariants ||
                     _isWarmingUp
                 ? _buildFormSkeleton()
-                : _buildFormList(),
+                // (FIX) Avvolgi la lista in un Form e assegna la chiave
+                : Form(
+                  key: _formKey, // <-- Assegna la chiave qui
+                  child: _buildFormList(),
+                ),
       ),
     );
   }

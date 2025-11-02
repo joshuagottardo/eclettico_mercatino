@@ -440,6 +440,37 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  // (FIX) Sostituito: Nuovo widget per la thumbnail (più grande)
+  Widget _buildThumbnail(String? thumbnailPath) {
+    final double thumbSize = 80.0; // Dimensione aumentata
+    final Color placeholderColor = Colors.grey[850]!;
+
+    return ClipRRect(
+      // (FIX) Aumentato il raggio per un look più moderno
+      borderRadius: BorderRadius.circular(12.0),
+      child: Container(
+        width: thumbSize,
+        height: thumbSize,
+        color: placeholderColor,
+        child:
+            thumbnailPath != null
+                ? Image.network(
+                  '$kBaseUrl/$thumbnailPath',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Iconsax.gallery_slash,
+                      size: 32,
+                      color: Colors.grey[600],
+                    );
+                  },
+                )
+                // Icona placeholder se non c'è thumbnail
+                : Icon(Iconsax.gallery, size: 32, color: Colors.grey[600]),
+      ),
+    );
+  }
+
   Widget _buildBodyContent({required bool isTablet}) {
     if (_isLoading) {
       return _buildSkeletonList();
@@ -476,11 +507,10 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // (FIX 1) Widget Card AGGIORNATO per gestire il tap
+  // (FIX) Sostituito: Widget Card AGGIORNATO con nuovo layout
   Widget _buildItemCard(Map<String, dynamic> item, {required bool isTablet}) {
     final bool isSold = item['is_sold'] == 1;
 
-    // (FIX 1) Logica per evidenziare l'item selezionato su tablet
     final bool isSelected =
         isTablet &&
         _selectedItem != null &&
@@ -488,7 +518,6 @@ class _SearchPageState extends State<SearchPage> {
 
     Color cardColor;
     if (isSelected) {
-      // Colore per l'item selezionato su tablet
       cardColor = Theme.of(context).colorScheme.primary.withOpacity(0.3);
     } else if (isSold) {
       cardColor = const Color(0xFF422B2B);
@@ -498,43 +527,69 @@ class _SearchPageState extends State<SearchPage> {
 
     Color textColor =
         isSold
-            ? Colors.grey[300]!
+            ? Colors.grey[400]! // Testo più sbiadito se venduto
             : Theme.of(context).textTheme.bodyLarge!.color!;
-    Color iconColor =
-        isSold ? Colors.grey[400]! : Theme.of(context).colorScheme.primary;
 
-    final IconData itemIcon =
-        isSold
-            ? Iconsax.money_remove
-            : getIconForCategory(item['category_name']);
+    final String brand = item['brand'] ?? 'N/D';
 
     return Card(
       color: cardColor,
-      margin: const EdgeInsets.symmetric(vertical: 4.0),
-      child: ListTile(
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
+      clipBehavior: Clip.antiAlias, // Per smussare gli angoli dell'InkWell
+      child: InkWell(
         onTap: () {
-          // --- (FIX 1) Logica di TAP diversa ---
           if (isTablet) {
-            // Su tablet, aggiorna lo stato e il pannello di destra
             setState(() {
               _selectedItem = item;
             });
           } else {
-            // Su mobile, naviga alla pagina di dettaglio
             _navigateAndReload(context, ItemDetailPage(item: item));
           }
         },
-        leading: Icon(itemIcon, color: iconColor),
-        title: Text(
-          item['name'] ?? 'Articolo senza nome',
-          style: TextStyle(color: textColor),
-        ),
-        subtitle: null,
-        trailing: Text(
-          // (FIX) Semplificato: ora usiamo solo il campo 'display_quantity'
-          // che l'API (corretta) ci fornisce sempre.
-          (int.tryParse(item['display_quantity'].toString()) ?? 0).toString(),
-          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+        child: Padding(
+          padding: const EdgeInsets.all(10.0), // Spaziatura interna della card
+          child: Row(
+            children: [
+              // 1. Thumbnail (a sinistra)
+              _buildThumbnail(item['thumbnail_path']?.toString()),
+
+              const SizedBox(width: 16),
+
+              // 2. Testo (a destra)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Nome articolo (Titolo)
+                    Text(
+                      item['name'] ?? 'Articolo senza nome',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        decoration: isSold ? TextDecoration.lineThrough : null,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Brand (Sottotitolo)
+                    Text(
+                      brand,
+                      style: TextStyle(
+                        color: isSold ? Colors.grey[500] : Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              // (FIX) Contatore quantità (trailing) RIMOSSO
+            ],
+          ),
         ),
       ),
     );

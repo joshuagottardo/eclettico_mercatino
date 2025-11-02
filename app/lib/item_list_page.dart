@@ -80,6 +80,30 @@ class _ItemListPageState extends State<ItemListPage> {
     );
   }
 
+// (FIX) Nuovo widget per la thumbnail
+Widget _buildThumbnail(String? thumbnailPath) {
+  final double thumbSize = 80.0;
+  final Color placeholderColor = Colors.grey[850]!;
+  
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(12.0),
+    child: Container(
+      width: thumbSize,
+      height: thumbSize,
+      color: placeholderColor,
+      child: thumbnailPath != null
+          ? Image.network(
+              '$kBaseUrl/$thumbnailPath',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(Iconsax.gallery_slash, size: 32, color: Colors.grey[600]);
+              },
+            )
+          // Icona placeholder se non c'è thumbnail
+          : Icon(Iconsax.gallery, size: 32, color: Colors.grey[600]),
+    ),
+  );
+}
   // (FIX) Nuovo widget per l'animazione "skeleton" della lista
   Widget _buildSkeletonList() {
     final Color baseColor = Colors.grey[850]!;
@@ -135,50 +159,69 @@ class _ItemListPageState extends State<ItemListPage> {
     );
   }
 
-  // (FIX 2 e 3) Widget Card AGGIORNATO
-  Widget _buildItemCard(Map<String, dynamic> item) {
-    final bool isSold = item['is_sold'] == 1;
+// (FIX) Sostituito: Widget Card AGGIORNATO con nuovo layout
+Widget _buildItemCard(Map<String, dynamic> item) {
+  final bool isSold = item['is_sold'] == 1;
 
-    Color cardColor =
-        isSold ? const Color(0xFF422B2B) : Theme.of(context).cardColor;
-    Color textColor =
-        isSold
-            ? Colors.grey[300]!
-            : Theme.of(context).textTheme.bodyLarge!.color!;
-    Color iconColor =
-        isSold ? Colors.grey[400]! : Theme.of(context).colorScheme.primary;
+  Color cardColor =
+      isSold ? const Color(0xFF422B2B) : Theme.of(context).cardColor;
+  Color textColor =
+      isSold
+          ? Colors.grey[400]!
+          : Theme.of(context).textTheme.bodyLarge!.color!;
+          
+  final String brand = item['brand'] ?? 'N/D';
 
-    // (FIX 2) Logica Icona
-    final IconData itemIcon =
-        isSold
-            ? Iconsax.money_remove
-            : getIconForCategory(item['category_name']);
-
-    return Card(
-      color: cardColor,
-      margin: const EdgeInsets.symmetric(vertical: 4.0),
-      child: ListTile(
-        onTap: () {
-          _navigateAndReload(context, ItemDetailPage(item: item));
-        },
-        // (FIX 2) Icona
-        leading: Icon(itemIcon, color: iconColor),
-        // (FIX 3) Solo Nome
-        title: Text(
-          item['name'] ?? 'Articolo senza nome',
-          style: TextStyle(color: textColor), // Rimosso Bold
-        ),
-        // (FIX 3) Niente Sottotitolo
-        subtitle: null,
-        // (FIX 3) Quantità
-        trailing: Text(
-          (int.tryParse(item['display_quantity'].toString()) ?? 0).toString(),
-          style: TextStyle(
-            color: Colors.grey[600], // (FIX 3) Colore grigio
-            fontSize: 14, // (FIX 3) Font più piccolo
-          ),
+  return Card(
+    color: cardColor,
+    margin: const EdgeInsets.symmetric(vertical: 6.0),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: () {
+        _navigateAndReload(context, ItemDetailPage(item: item));
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Row(
+          children: [
+            // 1. Thumbnail
+            _buildThumbnail(item['thumbnail_path']?.toString()),
+            
+            const SizedBox(width: 16),
+            
+            // 2. Testo
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['name'] ?? 'Articolo senza nome',
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      decoration: isSold ? TextDecoration.lineThrough : null,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    brand,
+                    style: TextStyle(
+                      color: isSold ? Colors.grey[500] : Colors.grey[400],
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
