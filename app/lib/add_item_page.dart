@@ -42,6 +42,7 @@ class _AddItemPageState extends State<AddItemPage> {
   bool _isLoading = false;
   bool _isPageLoading = false;
   bool _hasVariants = false;
+  bool _isUsed = true;
 
   int _variantCount = 0;
   bool _isCheckingVariants = false;
@@ -143,6 +144,7 @@ class _AddItemPageState extends State<AddItemPage> {
         _selectedCategoryId = item['category_id'];
         _descriptionController.text = item['description'] ?? '';
         _brandController.text = item['brand'] ?? '';
+        _isUsed = item['is_used'] == 1 || item['is_used'] == true;
         _valueController.text = item['value']?.toString() ?? '';
         _salePriceController.text = item['sale_price']?.toString() ?? '';
         _hasVariants = item['has_variants'] == 1;
@@ -210,6 +212,7 @@ class _AddItemPageState extends State<AddItemPage> {
       "name": cleanName,
       "category_id": _selectedCategoryId,
       "description": _descriptionController.text,
+      "is_used": _isUsed,
       "brand": cleanBrand,
       "value": double.tryParse(_valueController.text),
       "sale_price": double.tryParse(_salePriceController.text),
@@ -389,6 +392,20 @@ class _AddItemPageState extends State<AddItemPage> {
           autofocus: false,
           enableSuggestions: true,
           autocorrect: true,
+        ),
+        const SizedBox(height: 16),
+        SwitchListTile.adaptive(
+          title: const Text('L\'articolo è USATO?'),
+          subtitle: const Text(
+            'Attiva se l\'articolo è di seconda mano (altrimenti è Nuovo)',
+          ),
+          value: _isUsed,
+          onChanged: (bool value) {
+            setState(() {
+              _isUsed = value;
+            });
+          },
+          activeColor: Theme.of(context).colorScheme.primary,
         ),
         const SizedBox(height: 16),
         TextFormField(

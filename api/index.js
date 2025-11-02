@@ -79,7 +79,7 @@ app.get("/api/items", async (req, res) => {
            IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
            i.quantity
         ) AS display_quantity,
-
+         i.is_used,
         (SELECT p.thumbnail_path 
          FROM photos p 
          WHERE p.item_id = i.item_id 
@@ -120,6 +120,7 @@ app.post("/api/items", async (req, res) => {
     name,
     category_id,
     description,
+    is_used,
     brand,
     value,
     sale_price,
@@ -150,8 +151,8 @@ app.post("/api/items", async (req, res) => {
     // 5. Query 1: Inseriamo l'articolo nella tabella 'items'
     const itemSql = `
             INSERT INTO items 
-            (unique_code, name, category_id, description, brand, \`value\`, sale_price, has_variants, quantity, purchase_price)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (unique_code, name, category_id, description, is_used, brand, \`value\`, sale_price, has_variants, quantity, purchase_price)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
     // Prepariamo i valori: se has_variants è true, forziamo quantity e purchase_price a NULL
@@ -160,6 +161,7 @@ app.post("/api/items", async (req, res) => {
       name,
       category_id,
       description,
+      is_used,
       brand,
       value,
       sale_price,
@@ -600,8 +602,7 @@ app.get("/api/items/category/:id", async (req, res) => {
                    IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
                    i.quantity
                 ) AS display_quantity,
-
-                -- (FIX 3) Aggiunge il percorso della prima thumbnail trovata
+                 i.is_used,
                 (SELECT p.thumbnail_path 
                  FROM photos p 
                  WHERE p.item_id = i.item_id 
@@ -1320,8 +1321,9 @@ app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
   const {
     name,
-    category_id, // Già aggiornato
+    category_id, 
     description,
+    is_used,
     brand,
     value,
     sale_price,
@@ -1341,6 +1343,7 @@ app.put("/api/items/:id", async (req, res) => {
     name,
     category_id,
     description,
+    is_used,
     brand,
     value,
     sale_price,
@@ -1358,7 +1361,7 @@ app.put("/api/items/:id", async (req, res) => {
     // Query 1: Aggiorniamo l'articolo (invariata)
     const updateSql = `
             UPDATE items SET 
-                name = ?, category_id = ?, description = ?, brand = ?, 
+                name = ?, category_id = ?, description = ?, is_used =?, brand = ?, 
                 \`value\` = ?, sale_price = ?, has_variants = ?, 
                 quantity = ?, purchase_price = ?
             WHERE item_id = ?

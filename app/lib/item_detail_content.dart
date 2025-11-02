@@ -53,7 +53,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   bool _isSalesLogOpen = false; // Stato per il Drawer Log
   bool _isDeleting = false;
 
-  // Colori 
+  // Colori
   final Color _soldColor = Colors.red[500]!;
   final Color _availableColor = Colors.green[500]!;
   final Color _headerTextColor = Colors.grey[600]!;
@@ -212,7 +212,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       ),
                       const SizedBox(height: 8),
                       _buildVariantsSection(),
-                      const SizedBox(height: 16), 
+                      const SizedBox(height: 16),
                       Align(
                         alignment: Alignment.center,
                         child: TextButton.icon(
@@ -267,7 +267,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                               ),
                     ),
                     const SizedBox(height: 48),
-                  ], 
+                  ],
                 ),
               ),
             ),
@@ -364,7 +364,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // Funzione helper per mostrare errori 
+  // Funzione helper per mostrare errori
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -541,11 +541,9 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       if (streamedResponse.statusCode != 201) {
         final response = await http.Response.fromStream(streamedResponse);
         print('Errore upload di ${pickedFile.name}: ${response.body}');
-
       }
     } catch (e) {
       print('Errore upload di ${pickedFile.name}: $e');
-
     }
   }
 
@@ -657,7 +655,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-
   Widget _buildPriceAndPurchaseInfo() {
     final String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}';
     final String estimatedValue = '€ ${_currentItem['value'] ?? 'N/D'}';
@@ -713,11 +710,18 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Widget _buildInfoDetailSection() { ... } (Invariato)
   Widget _buildInfoDetailSection() {
+    final String conditionDisplay =
+        (_currentItem['is_used'] == 0) ? 'Nuovo' : 'Usato';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildInfoRow(
+          'CONDIZIONE',
+          conditionDisplay, // <-- Usa la stringa determinata
+          Iconsax.shield_tick,
+        ),
         _buildInfoRow(
           'CATEGORIA',
           _currentItem['category_name'],
@@ -731,7 +735,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  
   Widget _buildInfoRow(String label, String? value, [IconData? icon]) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -758,16 +761,12 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             value ?? 'Non specificato',
             style: const TextStyle(fontSize: 16),
           ),
-          const Divider(
-            height: 1,
-            color: Color(0xFF2A2A2A),
-          ), 
+          const Divider(height: 1, color: Color(0xFF2A2A2A)),
         ],
       ),
     );
   }
 
- 
   Widget _buildStockAndSalePrice() {
     final int totalStock = _calculateTotalStock();
     final String salePrice = '€ ${_currentItem['sale_price'] ?? 'N/D'}';
@@ -838,7 +837,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-
   Widget _buildSalesLogDrawer() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,7 +850,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         const SizedBox(height: 8),
         // Testa del Drawer
         Card(
-          color: _logDrawerColor, 
+          color: _logDrawerColor,
           child: InkWell(
             onTap: () {
               setState(() {
@@ -901,7 +899,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       ],
     );
   }
-
 
   Widget _buildSalesLogSection() {
     if (_isLogLoading) {
@@ -994,15 +991,13 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     context: context,
                     builder:
                         (context) => ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxWidth: 600,
-                          ), 
+                          constraints: const BoxConstraints(maxWidth: 600),
                           child: EditSaleDialog(
                             sale: sale,
                             allPlatforms: _allPlatforms,
                             currentStock: currentStock!,
                           ),
-                        ), 
+                        ),
                   );
                   if (dataChanged == true) {
                     _markChanged();
@@ -1064,9 +1059,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                         context: context,
                         builder:
                             (context) => ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                maxWidth: 600,
-                              ), 
+                              constraints: const BoxConstraints(maxWidth: 600),
                               child: SellItemDialog(
                                 itemId: _currentItem['item_id'],
                                 variants: _variants,
@@ -1173,7 +1166,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           }).toList(),
     );
   }
-
 
   Widget _buildPhotoGallery() {
     final Color accentColor = Theme.of(context).colorScheme.primary;
@@ -1290,8 +1282,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                               thumbnailUrl, //  USA IL THUMBNAIL QUI
                               fit: BoxFit.cover,
                               gaplessPlayback: true,
-                              filterQuality:
-                                  FilterQuality.medium, 
+                              filterQuality: FilterQuality.medium,
                               cacheWidth: cacheW,
                               loadingBuilder: (context, child, progress) {
                                 if (progress == null) return child;
