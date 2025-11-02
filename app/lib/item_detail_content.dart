@@ -17,7 +17,8 @@ import 'package:app/api_config.dart'; // Importato
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
   final ValueChanged<bool>? onDataChanged;
-  const ItemDetailContent({super.key, required this.item, this.onDataChanged});
+  final bool showAppBar;
+  const ItemDetailContent({super.key, required this.item, this.onDataChanged, this.showAppBar = true});
 
   @override
   State<ItemDetailContent> createState() => _ItemDetailContentState();
@@ -26,9 +27,7 @@ class ItemDetailContent extends StatefulWidget {
 class _ItemDetailContentState extends State<ItemDetailContent> {
   void _markChanged() {
     _markChanged();
-    try {
-      widget.onDataChanged?.call(true);
-    } catch (_) {}
+    try { widget.onDataChanged?.call(true); } catch (_) {}
   }
 
   late Map<String, dynamic> _currentItem;
@@ -96,7 +95,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         return false;
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: widget.showAppBar ? AppBar(
           title: Text('Dettagli'),
           actions: [
             // FIX 1: Tasto Copia (Codice Univoco)
@@ -158,7 +157,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       : null, // Disabilita se stock è zero
             ),
           ],
-        ),
+        ) : null,
         body: RefreshIndicator(
           onRefresh: _refreshAllData,
           child: SingleChildScrollView(

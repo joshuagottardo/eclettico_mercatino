@@ -238,11 +238,11 @@ class _SellItemDialogState extends State<SellItemDialog> {
                               decoration: InputDecoration(
                                 labelText: 'Quantità',
                                 // (7 - NUOVO) Mostra lo stock disponibile
-                                helperText:
+                                /*helperText:
                                     _maxAvailableQuantity != null
                                         ? 'Disponibili: $_maxAvailableQuantity'
                                         : null,
-                                helperStyle: TextStyle(color: Colors.grey[400]),
+                                helperStyle: TextStyle(color: Colors.grey[400]),*/
                               ),
                               keyboardType: TextInputType.number,
                               // (8 - NUOVO) Validatore

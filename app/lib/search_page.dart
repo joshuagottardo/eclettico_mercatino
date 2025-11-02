@@ -1,3 +1,5 @@
+
+
 // lib/search_page.dart - AGGIORNATO CON MASTER-DETAIL
 
 import 'dart:convert';
@@ -112,6 +114,25 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
   
+  int availableQtyFromItem(Map<String, dynamic> item) {
+  final hasVariants = item['has_variants'] == 1 || item['has_variants'] == true;
+  if (!hasVariants) {
+    final q = item['quantity'];
+    if (q is int) return q;
+    if (q is num) return q.toInt();
+    return 0;
+  }
+  final variants = (item['variants'] as List?) ?? const [];
+  int sum = 0;
+  for (final v in variants) {
+    final q = v is Map ? v['quantity'] : null;
+    if (q is int) sum += q;
+    else if (q is num) sum += q.toInt();
+  }
+  return sum;
+}
+
+
   void _filterItems() {
     final searchTerm = _searchController.text.toLowerCase();
     List tempFilteredList = _allItems;
@@ -253,6 +274,7 @@ class _SearchPageState extends State<SearchPage> {
   // --- (FIX 1) NUOVO BUILD METHOD RESPONSIVO ---
   @override
   Widget build(BuildContext context) {
+    final bool isWide = MediaQuery.of(context).size.width >= 1024;
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isTablet = constraints.maxWidth >= kTabletBreakpoint;
@@ -300,6 +322,7 @@ class _SearchPageState extends State<SearchPage> {
                     // Usiamo UniqueKey per forzare il rebuild quando l'item cambia
                     key: UniqueKey(), 
                     item: _selectedItem!,
+                    showAppBar: false,
                     onDataChanged: (didChange) {
                       if (didChange) {
                         // Se i dati cambiano (es. modifica o delete)
@@ -455,7 +478,18 @@ class _SearchPageState extends State<SearchPage> {
         ),
         subtitle: null,
         trailing: Text(
-          (int.tryParse(item['display_quantity'].toString()) ?? 0).toString(),
+          (() {
+            final any = item['available_quantity'] ?? item['display_quantity'];
+            int q;
+            if (any is int) q = any;
+            else if (any is num) q = any.toInt();
+            else if (any is String) q = int.tryParse(any) ?? 0;
+            else q = 0;
+            if (q == 0) {
+              q = availableQtyFromItem(item);
+            }
+            return q.toString();
+          })(),
           style: TextStyle(
             color: Colors.grey[600], 
             fontSize: 14,
