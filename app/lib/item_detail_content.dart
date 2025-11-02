@@ -18,7 +18,12 @@ class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
   final ValueChanged<bool>? onDataChanged;
   final bool showAppBar;
-  const ItemDetailContent({super.key, required this.item, this.onDataChanged, this.showAppBar = true});
+  const ItemDetailContent({
+    super.key,
+    required this.item,
+    this.onDataChanged,
+    this.showAppBar = true,
+  });
 
   @override
   State<ItemDetailContent> createState() => _ItemDetailContentState();
@@ -26,8 +31,10 @@ class ItemDetailContent extends StatefulWidget {
 
 class _ItemDetailContentState extends State<ItemDetailContent> {
   void _markChanged() {
-    _markChanged();
-    try { widget.onDataChanged?.call(true); } catch (_) {}
+    _dataDidChange = true;
+    try {
+      widget.onDataChanged?.call(true);
+    } catch (_) {}
   }
 
   late Map<String, dynamic> _currentItem;
@@ -87,174 +94,174 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Torna indietro e indica se i dati sono cambiati per ricaricare la Home/Lista
-        widget.onDataChanged?.call(_dataDidChange);
-        Navigator.pop(context, _dataDidChange);
-        return false;
-      },
-      child: Scaffold(
-        appBar: widget.showAppBar ? AppBar(
-          title: Text('Dettagli'),
-          actions: [
-            // FIX 1: Tasto Copia (Codice Univoco)
-            IconButton(
-              tooltip: 'Copia Codice: ${_currentItem['unique_code'] ?? 'N/D'}',
-              icon: const Icon(Iconsax.copy),
-              onPressed:
-                  () =>
-                      _copyToClipboard(_currentItem['unique_code'].toString()),
-            ),
-
-            // FIX 2: RIMOSSO Tasto Aggiorna (Icons.refresh)
-
-            // Bottone Modifica Articolo
-            IconButton(
-              tooltip: 'Modifica Articolo',
-              icon: const Icon(Icons.edit),
-              onPressed: () async {
-                final bool? dataChanged = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (context) =>
-                            AddItemPage(itemId: _currentItem['item_id']),
+    // (FIX 3) Rimosso PopScope ridondante.
+    // La navigazione "indietro" è gestita dal wrapper (item_detail_page.dart)
+    return Scaffold(
+      appBar:
+          widget.showAppBar
+              ? AppBar(
+                title: Text('Dettagli'),
+                actions: [
+                  // FIX 1: Tasto Copia (Codice Univoco)
+                  IconButton(
+                    tooltip:
+                        'Copia Codice: ${_currentItem['unique_code'] ?? 'N/D'}',
+                    icon: const Icon(Iconsax.copy),
+                    onPressed:
+                        () => _copyToClipboard(
+                          _currentItem['unique_code'].toString(),
+                        ),
                   ),
-                );
-                if (dataChanged == true) {
-                  _markChanged();
-                  _refreshAllData();
-                }
-              },
-            ),
-            // Bottone Vendi Articolo
-            IconButton(
-              tooltip: 'Registra Vendita',
-              icon: const Icon(Icons.sell_outlined),
-              onPressed:
-                  _calculateTotalStock() > 0
-                      ? () async {
-                        final bool? dataChanged = await showDialog(
-                          context: context,
+
+                  // FIX 2: RIMOSSO Tasto Aggiorna (Icons.refresh)
+
+                  // Bottone Modifica Articolo
+                  IconButton(
+                    tooltip: 'Modifica Articolo',
+                    icon: const Icon(Icons.edit),
+                    onPressed: () async {
+                      final bool? dataChanged = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
                           builder:
-                              (context) => SellItemDialog(
-                                itemId: _currentItem['item_id'],
-                                variants: _variants,
-                                allPlatforms: _allPlatforms,
-                                hasVariants: _currentItem['has_variants'] == 1,
-                                mainItemQuantity:
-                                    (_currentItem['quantity'] as num?)
-                                        ?.toInt() ??
-                                    0,
-                              ),
-                        );
-                        if (dataChanged == true) {
-                          _markChanged();
-                          _refreshAllData();
-                        }
+                              (context) =>
+                                  AddItemPage(itemId: _currentItem['item_id']),
+                        ),
+                      );
+                      if (dataChanged == true) {
+                        _markChanged();
+                        _refreshAllData();
                       }
-                      : null, // Disabilita se stock è zero
-            ),
-          ],
-        ) : null,
-        body: RefreshIndicator(
-          onRefresh: _refreshAllData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // --- 1. PEZZI DISPONIBILI e PREZZO VENDITA (In cima) ---
-                _buildStockAndSalePrice(),
-                const SizedBox(height: 24),
-
-                // --- 2. DETTAGLI BASE (Categoria, Brand, Descrizione) ---
-                _buildInfoDetailSection(),
-                const SizedBox(height: 16),
-
-                // --- 3. VALORE STIMATO e PREZZO ACQUISTO (Affiancati) ---
-                _buildPriceAndPurchaseInfo(),
-                const SizedBox(height: 24),
-
-                // --- 4. PIATTAFORME COLLEGATE ---
-                if (_allPlatforms.isNotEmpty && !_platformsLoading)
-                  Text(
-                    'PIATTAFORME',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+                    },
                   ),
-                if (_allPlatforms.isNotEmpty && !_platformsLoading)
-                  _buildPlatformsSection(),
-                const SizedBox(height: 24),
-
-                // --- 5. VARIANTI (se presenti) ---
-                if (_currentItem['has_variants'] == 1) ...[
-                  Text(
-                    'VARIANTI',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+                  // Bottone Vendi Articolo
+                  IconButton(
+                    tooltip: 'Registra Vendita',
+                    icon: const Icon(Icons.sell_outlined),
+                    onPressed:
+                        _calculateTotalStock() > 0
+                            ? () async {
+                              final bool? dataChanged = await showDialog(
+                                context: context,
+                                builder:
+                                    (context) => SellItemDialog(
+                                      itemId: _currentItem['item_id'],
+                                      variants: _variants,
+                                      allPlatforms: _allPlatforms,
+                                      hasVariants:
+                                          _currentItem['has_variants'] == 1,
+                                      mainItemQuantity:
+                                          (_currentItem['quantity'] as num?)
+                                              ?.toInt() ??
+                                          0,
+                                    ),
+                              );
+                              if (dataChanged == true) {
+                                _markChanged();
+                                _refreshAllData();
+                              }
+                            }
+                            : null, // Disabilita se stock è zero
                   ),
-                  const SizedBox(height: 8),
-                  _buildVariantsSection(),
-                  const SizedBox(height: 16), // Spazio prima del bottone
-                  // FIX CHIAVE: Tasto Aggiungi Variante spostato in basso
-                  Align(
-                    alignment: Alignment.center,
-                    child: TextButton.icon(
-                      onPressed: _navigateToAddVariant,
-                      icon: const Icon(Iconsax.add_square),
-                      label: const Text('Aggiungi variante'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
                 ],
+              )
+              : null,
+      body: RefreshIndicator(
+        onRefresh: _refreshAllData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // --- 1. PEZZI DISPONIBILI e PREZZO VENDITA (In cima) ---
+              _buildStockAndSalePrice(),
+              const SizedBox(height: 24),
 
-                // --- 6. GALLERIA FOTO ---
+              // --- 2. DETTAGLI BASE (Categoria, Brand, Descrizione) ---
+              _buildInfoDetailSection(),
+              const SizedBox(height: 16),
+
+              // --- 3. VALORE STIMATO e PREZZO ACQUISTO (Affiancati) ---
+              _buildPriceAndPurchaseInfo(),
+              const SizedBox(height: 24),
+
+              // --- 4. PIATTAFORME COLLEGATE ---
+              if (_allPlatforms.isNotEmpty && !_platformsLoading)
                 Text(
-                  'GALLERIA FOTO',
+                  'PIATTAFORME',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+                ),
+              if (_allPlatforms.isNotEmpty && !_platformsLoading)
+                _buildPlatformsSection(),
+              const SizedBox(height: 24),
+
+              // --- 5. VARIANTI (se presenti) ---
+              if (_currentItem['has_variants'] == 1) ...[
+                Text(
+                  'VARIANTI',
                   style: Theme.of(
                     context,
                   ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                 ),
                 const SizedBox(height: 8),
-                _buildPhotoGallery(),
+                _buildVariantsSection(),
+                const SizedBox(height: 16), // Spazio prima del bottone
+                // FIX CHIAVE: Tasto Aggiungi Variante spostato in basso
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton.icon(
+                    onPressed: _navigateToAddVariant,
+                    icon: const Icon(Iconsax.add_square),
+                    label: const Text('Aggiungi variante'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 24),
+              ],
 
-                // --- 7. LOG VENDITE (Grigio scuro) ---
-                _buildSalesLogDrawer(),
-                const SizedBox(height: 24),
-                Center(
-                  child:
-                      _isDeleting
-                          ? const CircularProgressIndicator(color: Colors.red)
-                          : TextButton.icon(
-                            onPressed: _deleteItem,
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                            ),
-                            label: const Text(
-                              'Elimina Articolo',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
+              // --- 6. GALLERIA FOTO ---
+              Text(
+                'GALLERIA FOTO',
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+              ),
+              const SizedBox(height: 8),
+              _buildPhotoGallery(),
+              const SizedBox(height: 24),
+
+              // --- 7. LOG VENDITE (Grigio scuro) ---
+              _buildSalesLogDrawer(),
+              const SizedBox(height: 24),
+              Center(
+                child:
+                    _isDeleting
+                        ? const CircularProgressIndicator(color: Colors.red)
+                        : TextButton.icon(
+                          onPressed: _deleteItem,
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
+                          label: const Text(
+                            'Elimina Articolo',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
                             ),
                           ),
-                ),
-                const SizedBox(height: 48),
-              ],
-            ),
+                        ),
+              ),
+              const SizedBox(height: 48),
+            ],
           ),
         ),
       ),
@@ -483,7 +490,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       }
 
       // Se almeno un upload ha avuto successo, ricarica la galleria
-      _markChanged();
       _fetchPhotos();
 
       // Mostra un feedback di successo per il blocco di file
@@ -1165,7 +1171,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                           ),
                         );
                         if (photoDeleted == true) {
-                          _markChanged();
                           _fetchPhotos();
                         }
                       },
