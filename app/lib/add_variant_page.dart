@@ -174,7 +174,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
       final response = await http.delete(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        if (mounted) Navigator.pop(context, true); // Successo!
+        Navigator.pop(context, true); // Successo!
       } else {
         // Mostra l'errore specifico (es. "ha vendite associate")
         final error = jsonDecode(response.body);

@@ -346,6 +346,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
               backgroundColor: Colors.green,
             ),
           );
+          _markChanged();
           // Torna alla pagina precedente (Home/Search) e segnala il cambiamento (true)
           Navigator.pop(context, true);
         }

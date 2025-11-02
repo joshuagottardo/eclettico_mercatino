@@ -45,12 +45,6 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           item: widget.item,
           onDataChanged: (didChange) {
             _dataDidChange = didChange;
-
-            // Gestione eliminazione: se l'item è stato eliminato,
-            // chiudi questa pagina wrapper.
-            if (didChange && Navigator.canPop(context)) {
-              Navigator.pop(context, true);
-            }
           },
         ),
       ),

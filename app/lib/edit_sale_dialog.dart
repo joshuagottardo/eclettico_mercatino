@@ -82,7 +82,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       );
 
       if (response.statusCode == 200) {
-        if (mounted) Navigator.pop(context, true);
+        if (context.mounted) Navigator.pop(context, true);
       } else {
         // (MODIFICA) Mostra l'errore del server (es. "Quantità non valida")
         final error = jsonDecode(response.body);
@@ -130,7 +130,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       final url = '$kBaseUrl/api/sales/${widget.sale['sale_id']}';
       final response = await http.delete(Uri.parse(url));
       if (response.statusCode == 200) {
-        if (mounted) Navigator.pop(context, true);
+        if (context.mounted) Navigator.pop(context, true);
       } else {
         _showError('Errore server: ${response.statusCode}');
       }
