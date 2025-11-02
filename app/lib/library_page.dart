@@ -17,6 +17,7 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> {
   List _categories = [];
   bool _isLoading = true;
+  bool _dataDidChange = false;
 
   @override
   void initState() {
@@ -49,42 +50,57 @@ class _LibraryPageState extends State<LibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Libreria'),
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : GridView.builder(
-              padding: const EdgeInsets.all(16.0),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: _getCrossAxisCount(context),
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.5,
-              ),
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final category = _categories[index];
-                return _buildCategoryButton(
-                  context,
-                  label: category['name'],
-                  // (FIX 2) Passa l'icona corretta
-                  icon: getIconForCategory(category['name']),
-                  onTap: () {
-                    Navigator.push(
+    return PopScope(
+      // <-- (FIX) Aggiunto
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Libreria')),
+        body:
+            _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : GridView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: _getCrossAxisCount(context),
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.5,
+                  ),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final category = _categories[index];
+                    return _buildCategoryButton(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => ItemListPage(
-                          categoryId: category['category_id'],
-                          categoryName: category['name'],
-                        ),
-                      ),
+                      label: category['name'],
+                      // (FIX 2) Passa l'icona corretta
+                      icon: getIconForCategory(category['name']),
+                      onTap: () async {
+                        // <-- (FIX 1) Aggiunto async
+                        // (FIX 2) Aggiunto 'await' e salvato il risultato
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => ItemListPage(
+                                  categoryId: category['category_id'],
+                                  categoryName: category['name'],
+                                ),
+                          ),
+                        );
+
+                        // (FIX 3) Se il risultato è 'true', imposta il flag
+                        if (result == true) {
+                          _dataDidChange = true;
+                        }
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+      ),
     );
   }
 
@@ -109,7 +125,11 @@ class _LibraryPageState extends State<LibraryPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // (FIX 2) Mostra l'icona
-              Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                icon,
+                size: 32,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 12),
               // (FIX 1) Testo più piccolo e FittedBox
               FittedBox(

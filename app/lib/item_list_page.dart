@@ -26,6 +26,7 @@ class ItemListPage extends StatefulWidget {
 class _ItemListPageState extends State<ItemListPage> {
   List _items = [];
   bool _isLoading = true;
+  bool _dataDidChange = false;
 
   @override
   void initState() {
@@ -55,55 +56,70 @@ class _ItemListPageState extends State<ItemListPage> {
       MaterialPageRoute(builder: (context) => page),
     );
     if (result == true) {
+      _dataDidChange = true;
       _fetchItemsByCategory();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.categoryName)),
-      body:
-          _isLoading
-              ? _buildSkeletonList()
-              : _items.isEmpty
-              ? Center(child: Text('Nessun articolo in questa categoria.'))
-              : ListView.builder(
-                padding: const EdgeInsets.all(8.0),
-                itemCount: _items.length,
-                itemBuilder: (context, index) {
-                  final item = _items[index];
-                  // (FIX 3) Usa la nuova card
-                  return _buildItemCard(item);
-                },
-              ),
+    return PopScope(
+      // <-- (FIX) Aggiunto
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Text(widget.categoryName)),
+        body:
+            _isLoading
+                ? _buildSkeletonList()
+                : _items.isEmpty
+                ? Center(child: Text('Nessun articolo in questa categoria.'))
+                : ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: _items.length,
+                  itemBuilder: (context, index) {
+                    final item = _items[index];
+                    // (FIX 3) Usa la nuova card
+                    return _buildItemCard(item);
+                  },
+                ),
+      ),
     );
   }
 
-// (FIX) Nuovo widget per la thumbnail
-Widget _buildThumbnail(String? thumbnailPath) {
-  final double thumbSize = 80.0;
-  final Color placeholderColor = Colors.grey[850]!;
-  
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(12.0),
-    child: Container(
-      width: thumbSize,
-      height: thumbSize,
-      color: placeholderColor,
-      child: thumbnailPath != null
-          ? Image.network(
-              '$kBaseUrl/$thumbnailPath',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Icon(Iconsax.gallery_slash, size: 32, color: Colors.grey[600]);
-              },
-            )
-          // Icona placeholder se non c'è thumbnail
-          : Icon(Iconsax.gallery, size: 32, color: Colors.grey[600]),
-    ),
-  );
-}
+  // (FIX) Nuovo widget per la thumbnail
+  Widget _buildThumbnail(String? thumbnailPath) {
+    final double thumbSize = 80.0;
+    final Color placeholderColor = Colors.grey[850]!;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12.0),
+      child: Container(
+        width: thumbSize,
+        height: thumbSize,
+        color: placeholderColor,
+        child:
+            thumbnailPath != null
+                ? Image.network(
+                  '$kBaseUrl/$thumbnailPath',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Iconsax.gallery_slash,
+                      size: 32,
+                      color: Colors.grey[600],
+                    );
+                  },
+                )
+                // Icona placeholder se non c'è thumbnail
+                : Icon(Iconsax.gallery, size: 32, color: Colors.grey[600]),
+      ),
+    );
+  }
+
   // (FIX) Nuovo widget per l'animazione "skeleton" della lista
   Widget _buildSkeletonList() {
     final Color baseColor = Colors.grey[850]!;
@@ -159,69 +175,69 @@ Widget _buildThumbnail(String? thumbnailPath) {
     );
   }
 
-// (FIX) Sostituito: Widget Card AGGIORNATO con nuovo layout
-Widget _buildItemCard(Map<String, dynamic> item) {
-  final bool isSold = item['is_sold'] == 1;
+  // (FIX) Sostituito: Widget Card AGGIORNATO con nuovo layout
+  Widget _buildItemCard(Map<String, dynamic> item) {
+    final bool isSold = item['is_sold'] == 1;
 
-  Color cardColor =
-      isSold ? const Color(0xFF422B2B) : Theme.of(context).cardColor;
-  Color textColor =
-      isSold
-          ? Colors.grey[400]!
-          : Theme.of(context).textTheme.bodyLarge!.color!;
-          
-  final String brand = item['brand'] ?? 'N/D';
+    Color cardColor =
+        isSold ? const Color(0xFF422B2B) : Theme.of(context).cardColor;
+    Color textColor =
+        isSold
+            ? Colors.grey[400]!
+            : Theme.of(context).textTheme.bodyLarge!.color!;
 
-  return Card(
-    color: cardColor,
-    margin: const EdgeInsets.symmetric(vertical: 6.0),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: () {
-        _navigateAndReload(context, ItemDetailPage(item: item));
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Row(
-          children: [
-            // 1. Thumbnail
-            _buildThumbnail(item['thumbnail_path']?.toString()),
-            
-            const SizedBox(width: 16),
-            
-            // 2. Testo
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['name'] ?? 'Articolo senza nome',
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      decoration: isSold ? TextDecoration.lineThrough : null,
+    final String brand = item['brand'] ?? 'N/D';
+
+    return Card(
+      color: cardColor,
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          _navigateAndReload(context, ItemDetailPage(item: item));
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Row(
+            children: [
+              // 1. Thumbnail
+              _buildThumbnail(item['thumbnail_path']?.toString()),
+
+              const SizedBox(width: 16),
+
+              // 2. Testo
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['name'] ?? 'Articolo senza nome',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        decoration: isSold ? TextDecoration.lineThrough : null,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    brand,
-                    style: TextStyle(
-                      color: isSold ? Colors.grey[500] : Colors.grey[400],
-                      fontSize: 14,
+                    const SizedBox(height: 4),
+                    Text(
+                      brand,
+                      style: TextStyle(
+                        color: isSold ? Colors.grey[500] : Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

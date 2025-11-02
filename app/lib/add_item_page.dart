@@ -279,6 +279,8 @@ class _AddItemPageState extends State<AddItemPage> {
       final url = '$kBaseUrl/api/items/$itemId';
       final response = await http.get(Uri.parse(url));
 
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final itemData = jsonDecode(response.body);
 

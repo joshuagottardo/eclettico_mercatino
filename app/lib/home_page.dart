@@ -11,7 +11,7 @@ import 'package:app/add_item_page.dart';
 import 'package:app/item_list_page.dart';
 import 'package:app/item_detail_page.dart';
 import 'package:app/library_page.dart';
-import 'package:app/statistics_page.dart'; 
+import 'package:app/statistics_page.dart';
 import 'package:app/api_config.dart';
 
 class HomePage extends StatefulWidget {
@@ -123,15 +123,14 @@ class _HomePageState extends State<HomePage> {
               : ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: [
-                  
                   // --- (FIX 1 e 2) LAYOUT BOTTONI RESPONSIVO ---
                   _buildButtonLayout(context), // Nuovo widget helper
-                  
+
                   const SizedBox(height: 32),
 
                   // Card ULTIME VENDITE
                   Card(
-                    color: Colors.black, 
+                    color: Colors.black,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: _buildSalesList(),
@@ -142,7 +141,7 @@ class _HomePageState extends State<HomePage> {
 
                   // Card ULTIMI ARRIVI
                   Card(
-                    color: Colors.black, 
+                    color: Colors.black,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: _buildArrivalsList(),
@@ -157,16 +156,12 @@ class _HomePageState extends State<HomePage> {
   Widget _buildButtonLayout(BuildContext context) {
     // Definiamo le funzioni onTap per chiarezza
     final onTapSearch = () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SearchPage()),
-      );
+      // (FIX) Usa la funzione che fa l'await e il refresh
+      _navigateAndReload(const SearchPage());
     };
     final onTapLibrary = () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const LibraryPage()),
-      );
+      // (FIX) Usa la funzione che fa l'await e il refresh
+      _navigateAndReload(const LibraryPage());
     };
     final onTapInsert = () {
       _navigateAndReload(const AddItemPage());
@@ -181,7 +176,7 @@ class _HomePageState extends State<HomePage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Breakpoint per desktop (non iPad)
-        const double desktopBreakpoint = 900.0; 
+        const double desktopBreakpoint = 900.0;
 
         if (constraints.maxWidth > desktopBreakpoint) {
           // LAYOUT DESKTOP: 1 riga con 4 bottoni (tutti expanded)
@@ -224,7 +219,7 @@ class _HomePageState extends State<HomePage> {
           // LAYOUT MOBILE/TABLET: 3+1
           return Column(
             // Assicura che i figli (come il bottone 'Statistiche') si allarghino
-            crossAxisAlignment: CrossAxisAlignment.stretch, 
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
@@ -259,7 +254,8 @@ class _HomePageState extends State<HomePage> {
                 icon: Icons.auto_graph,
                 label: 'Statistiche',
                 onTap: onTapStats,
-                isExpanded: false, // <--- Non è in una Row, non deve essere Expanded
+                isExpanded:
+                    false, // <--- Non è in una Row, non deve essere Expanded
               ),
             ],
           );
@@ -301,7 +297,6 @@ class _HomePageState extends State<HomePage> {
     return isExpanded ? Expanded(child: buttonContent) : buttonContent;
   }
   // --- FINE FIX ---
-
 
   // Widget per la lista delle Vendite (Invariato)
   Widget _buildSalesList() {

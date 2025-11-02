@@ -37,6 +37,7 @@ class _SearchPageState extends State<SearchPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   // Breakpoint per tablet
   static const double kTabletBreakpoint = 800.0;
+  bool _dataDidChange = false;
 
   @override
   void initState() {
@@ -171,6 +172,7 @@ class _SearchPageState extends State<SearchPage> {
       MaterialPageRoute(builder: (context) => page),
     );
     if (result == true) {
+      _dataDidChange = true;
       _fetchPageData();
     }
   }
@@ -341,54 +343,70 @@ class _SearchPageState extends State<SearchPage> {
 
   // --- (FIX 1) LAYOUT MOBILE (Il vecchio build()) ---
   Widget _buildMobileLayout() {
-    return Scaffold(
-      key: _scaffoldKey, // Usa la chiave
-      appBar: _buildSearchAppBar(),
-      body: _buildBodyContent(isTablet: false),
-      floatingActionButton: _buildFloatingActionButton(),
+    return PopScope(
+      // <-- (FIX) Aggiunto
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        appBar: _buildSearchAppBar(),
+        body: _buildBodyContent(isTablet: false),
+        floatingActionButton: _buildFloatingActionButton(),
+      ),
     );
   }
 
   // --- (FIX 1) LAYOUT TABLET (Master-Detail) ---
   Widget _buildTabletLayout() {
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: _buildSearchAppBar(), // L'AppBar è condivisa
-      body: Row(
-        children: [
-          // Pannello MASTER (Lista)
-          Expanded(
-            flex: 1, // La lista occupa 1/3 dello spazio
-            child: _buildBodyContent(isTablet: true),
-          ),
+    return PopScope(
+      // <-- (FIX) Aggiunto
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        Navigator.pop(context, _dataDidChange); // <-- (FIX) Passa il flag
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        appBar: _buildSearchAppBar(), // L'AppBar è condivisa
+        body: Row(
+          children: [
+            // Pannello MASTER (Lista)
+            Expanded(
+              flex: 1, // La lista occupa 1/3 dello spazio
+              child: _buildBodyContent(isTablet: true),
+            ),
 
-          const VerticalDivider(width: 1),
+            const VerticalDivider(width: 1),
 
-          // Pannello DETAIL (Contenuto)
-          Expanded(
-            flex: 2, // Il dettaglio occupa 2/3 dello spazio
-            child:
-                _selectedItem == null
-                    ? const Center(
-                      child: Text('Seleziona un articolo dalla lista'),
-                    )
-                    : ItemDetailContent(
-                      // Usiamo UniqueKey per forzare il rebuild quando l'item cambia
-                      key: UniqueKey(),
-                      item: _selectedItem!,
-                      showAppBar: false,
-                      onDataChanged: (didChange) {
-                        if (didChange) {
-                          // Se i dati cambiano (es. modifica o delete)
-                          // ricarichiamo i dati della lista
-                          _fetchPageData();
-                        }
-                      },
-                    ),
-          ),
-        ],
+            // Pannello DETAIL (Contenuto)
+            Expanded(
+              flex: 2, // Il dettaglio occupa 2/3 dello spazio
+              child:
+                  _selectedItem == null
+                      ? const Center(
+                        child: Text('Seleziona un articolo dalla lista'),
+                      )
+                      : ItemDetailContent(
+                        // Usiamo UniqueKey per forzare il rebuild quando l'item cambia
+                        key: UniqueKey(),
+                        item: _selectedItem!,
+                        showAppBar: false,
+                        onDataChanged: (didChange) {
+                          if (didChange) {
+                            // Se i dati cambiano (es. modifica o delete)
+                            // ricarichiamo i dati della lista
+                            _fetchPageData();
+                          }
+                        },
+                      ),
+            ),
+          ],
+        ),
+        floatingActionButton: _buildFloatingActionButton(),
       ),
-      floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
