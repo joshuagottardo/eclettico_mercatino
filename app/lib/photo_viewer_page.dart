@@ -228,7 +228,14 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         },
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
-          final photoUrl = '$kBaseUrl/${photo['file_path']}';
+
+          // (FIX 1) Prendi l'ID della foto
+          final photoId = photo['photo_id'];
+
+          // (FIX 2) Crea il nuovo URL per l'immagine compressa
+          // Questo usa il nuovo endpoint /api/photos/compressed/:photoId
+          // che hai aggiunto al tuo index.js
+          final compressedPhotoUrl = '$kBaseUrl/api/photos/compressed/$photoId';
 
           // Mantiene lo zoom per ogni singola foto
           return InteractiveViewer(
@@ -236,23 +243,28 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
             minScale: 1.0,
             maxScale: 4.0,
             child: Center(
+              // Il tuo LayoutBuilder e cacheWidth vanno bene per ottimizzare
+              // il rendering, quindi li manteniamo.
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // larghezza reale del riquadro in cui stai mostrando la foto
                   final dpr = MediaQuery.devicePixelRatioOf(context);
-                  // limita per sicurezza (iOS ama avere un upper bound)
                   final cacheW = (constraints.maxWidth * dpr).round().clamp(
                     256,
                     4096,
                   );
 
                   return Image.network(
-                    photoUrl, // 👈 lascia la tua variabile/url
-                    fit: BoxFit.cover, // o quello che avevi (cover/contain)
+                    compressedPhotoUrl, // <-- (FIX 3) Usa l'URL compresso qui
+                    // NOTA: Ti consiglio 'contain' invece di 'cover'
+                    // per un visualizzatore di foto, altrimenti l'immagine
+                    // viene tagliata finché non fai zoom-out.
+                    fit: BoxFit.contain,
+
                     gaplessPlayback: true,
                     filterQuality: FilterQuality.medium,
-                    cacheWidth: cacheW, // 👈 la novità
-                    // 👇 incolla qui ESATTAMENTE i tuoi builder se li avevi già:
+                    cacheWidth: cacheW,
+
+                    // I tuoi builder originali:
                     loadingBuilder: (context, child, progress) {
                       if (progress == null) return child;
                       return const Center(

@@ -12,7 +12,8 @@ import 'package:app/add_item_page.dart';
 import 'package:app/edit_sale_dialog.dart';
 import 'package:app/icon_helper.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:app/api_config.dart'; // Importato
+import 'package:app/api_config.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -634,6 +635,37 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
+  // (FIX) Nuovo widget per lo skeleton della galleria
+  Widget _buildPhotoGallerySkeleton() {
+    final Color baseColor = Colors.grey[850]!;
+    final Color highlightColor = Colors.grey[700]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      period: const Duration(milliseconds: 1200),
+      child: SizedBox(
+        height: 140, // Altezza fissa della galleria
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: 4, // Mostra 4 box finti
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Card(
+                clipBehavior: Clip.antiAlias,
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Container(color: baseColor), // Box pieno
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   // Widget _buildPriceAndPurchaseInfo() { ... } (Invariato)
   Widget _buildPriceAndPurchaseInfo() {
     final String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}';
@@ -1182,19 +1214,19 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Widget _buildPhotoGallery() { ... } (Invariato)
+  // (FIX) Funzione AGGIORNATA con Skeleton e Thumbnail
   Widget _buildPhotoGallery() {
     final Color accentColor = Theme.of(context).colorScheme.primary;
+
+    // --- (FIX 1) Gestione SKELETON LOADER ---
     if (_isPhotosLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return _buildPhotoGallerySkeleton(); // Mostra lo skeleton
     }
+    // --- Fine Skeleton ---
+
     if (_photos.isEmpty) {
       return Center(
+        // ... (gestione "Nessuna foto", invariata) ...
         child: Column(
           children: [
             const Padding(
@@ -1211,6 +1243,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         ),
       );
     }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1221,9 +1254,25 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             itemCount: _photos.length,
             itemBuilder: (context, index) {
               final photo = _photos[index];
-              final photoUrl = '$kBaseUrl/${photo['file_path']}';
+
+              // --- (FIX 2) Logica THUMBNAIL ---
+              // L'onTap che apre PhotoViewerPage è GIÀ CORRETTO.
+              // Userà la lista _photos, e PhotoViewerPage userà
+              // l'URL compresso (come da fix precedente).
+
+              // 1. Prendi il percorso full-res (per fallback)
+              final fullResUrl = '$kBaseUrl/${photo['file_path']}';
+
+              // 2. Prendi il thumbnail. Se non esiste (vecchie foto), usa il full-res.
+              final thumbnailUrl =
+                  photo['thumbnail_path'] != null
+                      ? '$kBaseUrl/${photo['thumbnail_path']}'
+                      : fullResUrl;
+              // --- Fine Logica Thumbnail ---
+
               String targetName = 'Articolo Principale';
               if (photo['variant_id'] != null) {
+                // ... (logica 'targetName' invariata) ...
                 final matchingVariant = _variants.firstWhere(
                   (v) =>
                       (v['variant_id'] as num?)?.toInt() ==
@@ -1244,6 +1293,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     aspectRatio: 1,
                     child: InkWell(
                       onTap: () async {
+                        // Questa navigazione è corretta
                         final bool? photoDeleted = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -1251,17 +1301,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                             builder:
                                 (context) => PhotoViewerPage(
                                   photos: _photos.cast<Map<String, dynamic>>(),
-                                  // (FIX) Passa l'indice della foto cliccata
                                   initialIndex: index,
                                 ),
                           ),
                         );
                         if (photoDeleted == true) {
-                          _fetchPhotos();
+                          _fetchPhotos(); // Ricarica la galleria
                         }
                       },
                       child: GridTile(
                         footer: Container(
+                          // ... (footer invariato) ...
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 4,
@@ -1279,22 +1329,18 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                         ),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            // larghezza reale del riquadro in cui stai mostrando la foto
                             final dpr = MediaQuery.devicePixelRatioOf(context);
-                            // limita per sicurezza (iOS ama avere un upper bound)
                             final cacheW = (constraints.maxWidth * dpr)
                                 .round()
                                 .clamp(256, 4096);
 
                             return Image.network(
-                              photoUrl, // 👈 lascia la tua variabile/url
-                              fit:
-                                  BoxFit
-                                      .cover, // o quello che avevi (cover/contain)
+                              thumbnailUrl, // <-- (FIX 3) USA IL THUMBNAIL QUI
+                              fit: BoxFit.cover,
                               gaplessPlayback: true,
-                              filterQuality: FilterQuality.medium,
-                              cacheWidth: cacheW, // 👈 la novità
-                              // 👇 incolla qui ESATTAMENTE i tuoi builder se li avevi già:
+                              filterQuality:
+                                  FilterQuality.medium, // Va bene per thumbnail
+                              cacheWidth: cacheW,
                               loadingBuilder: (context, child, progress) {
                                 if (progress == null) return child;
                                 return const Center(
@@ -1320,6 +1366,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             },
           ),
         ),
+        // ... (resto della funzione, 'Aggiungi foto', invariato) ...
         if (_isUploading)
           const Padding(
             padding: EdgeInsets.only(top: 16.0),
