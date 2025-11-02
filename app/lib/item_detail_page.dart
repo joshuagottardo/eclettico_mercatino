@@ -23,24 +23,36 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       onPopInvoked: (bool didPop) {
         // didPop è true se il sistema *ha tentato* di chiudere la pagina
         if (didPop) return;
-        
+
         // Passa il risultato (se i dati sono cambiati) alla pagina precedente
         Navigator.pop(context, _dataDidChange);
       },
       // Il figlio è DIRETTAMENTE il contenuto.
       // ItemDetailContent creerà il proprio Scaffold e AppBar (con i bottoni)
       // perché 'showAppBar' è true di default.
-      child: ItemDetailContent(
-        item: widget.item,
-        onDataChanged: (didChange) {
-          _dataDidChange = didChange;
-
-          // Gestione eliminazione: se l'item è stato eliminato,
-          // chiudi questa pagina wrapper.
-          if (didChange && Navigator.canPop(context)) {
-            Navigator.pop(context, true);
+      child: GestureDetector(
+        // Rileva lo swipe orizzontale
+        onHorizontalDragEnd: (DragEndDetails details) {
+          // Se lo swipe va da sinistra a destra (velocità positiva)
+          // e supera una certa soglia di velocità, chiudi la pagina.
+          if (details.primaryVelocity != null &&
+              details.primaryVelocity! > 100) {
+            // Esegui la stessa logica del PopScope
+            Navigator.pop(context, _dataDidChange);
           }
         },
+        child: ItemDetailContent(
+          item: widget.item,
+          onDataChanged: (didChange) {
+            _dataDidChange = didChange;
+
+            // Gestione eliminazione: se l'item è stato eliminato,
+            // chiudi questa pagina wrapper.
+            if (didChange && Navigator.canPop(context)) {
+              Navigator.pop(context, true);
+            }
+          },
+        ),
       ),
     );
   }
