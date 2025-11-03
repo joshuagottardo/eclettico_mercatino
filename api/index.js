@@ -87,9 +87,9 @@ app.get("/api/items", async (req, res) => {
 
     FROM items i
     LEFT JOIN categories c ON i.category_id = c.category_id
-    ORDER BY i.created_at DESC
-    LIMIT 20 -- (FIX 2) Limita ai 20 risultati più recenti
-`);
+    ORDER BY i.created_at DESC`
+    //LIMIT 20 -- (FIX 2) Limita ai 20 risultati più recenti
+);
 
     // Inviamo i risultati all'app come JSON
     res.json(items);
