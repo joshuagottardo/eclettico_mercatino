@@ -728,29 +728,6 @@ app.post("/api/sales", async (req, res) => {
       return res.status(400).json({ error: "quantity_sold non valido" });
     }
 
-    // 5. AGGIORNA I CONTATORI (sales_counter)
-    // Aggiorna Categoria
-    if (itemCategoryId) {
-      await connection.query(
-        `INSERT INTO sales_counter (category_id, sales_count) 
-                 VALUES (?, ?) 
-                 ON DUPLICATE KEY UPDATE sales_count = sales_count + ?`,
-        [itemCategoryId, qty, qty] // <-- FIX: era 1
-      );
-    }
-
-    // Aggiorna Brand
-    if (itemBrand) {
-      await connection.query(
-        `INSERT INTO sales_counter (brand, sales_count) 
-                 VALUES (?, ?) 
-                 ON DUPLICATE KEY UPDATE sales_count = sales_count + ?`,
-        [itemBrand, qty, qty] // <-- FIX: era 1
-      );
-    }
-
-    // (FIX 2) Blocco validazione quantità rimosso da qui (già eseguito sopra)
-
     // Decremento stock in transazione, con guardia anti-negativo
     if (variant_id) {
       // Variante
@@ -932,20 +909,6 @@ app.delete("/api/sales/:id", async (req, res) => {
       [oldTotal, netGain, soldCost]
     );
 
-    // 5) Aggiorna contatori (se li usi)
-    // (La variabile 'qty' è già stata definita correttamente sopra)
-    if (sale.category_id) {
-      await connection.query(
-        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - ? WHERE category_id = ?`,
-        [qty, sale.category_id] // <-- FIX: era - 1
-      );
-    }
-    if (sale.brand) {
-      await connection.query(
-        `UPDATE sales_counter SET sales_count = COALESCE(sales_count,0) - ? WHERE brand = ?`,
-        [qty, sale.brand] // <-- FIX: era - 1
-      );
-    }
     // 6) Elimina la vendita dal log
     await connection.query(`DELETE FROM sales_log WHERE sale_id = ?`, [
       sale_id,
@@ -1089,20 +1052,6 @@ app.put("/api/sales/:id", async (req, res) => {
       [old_total_price, old_netGain, old_soldCost]
     );
 
-    // Aggiorna brand/categoria (Decremento VECCHIO)
-    if (itemCategoryId) {
-      await connection.query(
-        `UPDATE sales_counter SET sales_count = sales_count - ? WHERE category_id = ?`,
-        [old_quantity, itemCategoryId]
-      );
-    }
-    if (itemBrand) {
-      await connection.query(
-        `UPDATE sales_counter SET sales_count = sales_count - ? WHERE brand = ?`,
-        [old_quantity, itemBrand]
-      );
-    }
-
     // 2. STOCK CHECK & AGGIORNAMENTO
 
     // (B) Calcola la differenza per lo stock: Vecchio stock da rimettere + Nuovo stock da togliere
@@ -1197,20 +1146,6 @@ app.put("/api/sales/:id", async (req, res) => {
       [total_price, new_netGain, new_soldCost]
     );
 
-    // Aggiorna brand/categoria (Incremento NUOVO)
-    if (itemCategoryId) {
-      await connection.query(
-        `UPDATE sales_counter SET sales_count = sales_count + ? WHERE category_id = ?`,
-        [new_quantity, itemCategoryId]
-      );
-    }
-    if (itemBrand) {
-      await connection.query(
-        `UPDATE sales_counter SET sales_count = sales_count + ? WHERE brand = ?`,
-        [new_quantity, itemBrand]
-      );
-    }
-
     // Query 7: Ricontrolla e imposta is_sold = 1 se il nuovo stock è <= 0
     if (variant_id) {
       await connection.query(
@@ -1251,19 +1186,26 @@ app.get("/api/statistics/summary", async (req, res) => {
 
     // 2. Categoria Più Venduta (Top 1)
     const [topCategory] = await pool.query(`
-            SELECT sc.sales_count, c.name as category_name
-            FROM sales_counter sc
-            JOIN categories c ON sc.category_id = c.category_id
-            WHERE sc.category_id IS NOT NULL 
-            ORDER BY sc.sales_count DESC
+            SELECT 
+                SUM(s.quantity_sold) as sales_count, 
+                c.name as category_name
+            FROM sales_log s
+            JOIN items i ON s.item_id = i.item_id
+            LEFT JOIN categories c ON i.category_id = c.category_id
+            WHERE c.category_id IS NOT NULL
+            GROUP BY c.category_id, c.name
+            ORDER BY sales_count DESC
             LIMIT 1
         `);
 
-    // 3. Brand Più Venduto (Top 1)
     const [topBrand] = await pool.query(`
-            SELECT brand, sales_count
-            FROM sales_counter
-            WHERE brand IS NOT NULL 
+            SELECT 
+                SUM(s.quantity_sold) as sales_count, 
+                i.brand
+            FROM sales_log s
+            JOIN items i ON s.item_id = i.item_id
+            WHERE i.brand IS NOT NULL AND i.brand != ''
+            GROUP BY i.brand
             ORDER BY sales_count DESC
             LIMIT 1
         `);
