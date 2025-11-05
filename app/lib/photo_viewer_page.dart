@@ -219,95 +219,120 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     final bool actionInProgress = _isDownloading || _isDeleting;
     final bool hasPhotos = widget.photos.isNotEmpty;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: actionInProgress ? null : () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon:
-                _isDeleting
-                    ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.red,
-                      ),
-                    )
-                    : const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: actionInProgress || !hasPhotos ? null : _deletePhoto,
-            tooltip: 'Elimina foto',
-          ),
-          IconButton(
-            icon:
-                _isDownloading
-                    ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                    : const Icon(Icons.download_outlined),
-            onPressed: actionInProgress || !hasPhotos ? null : _downloadPhoto,
-            tooltip: 'Scarica foto',
-          ),
-        ],
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.photos.length,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        itemBuilder: (context, index) {
-          final photo = widget.photos[index];
-          final photoId = photo['photo_id'];
-          final compressedPhotoUrl = '$kBaseUrl/api/photos/compressed/$photoId';
+    // --- INIZIO MODIFICA ---
 
-          return InteractiveViewer(
-            panEnabled: true,
-            minScale: 1.0,
-            maxScale: 4.0,
-            child: Center(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final dpr = MediaQuery.devicePixelRatioOf(context);
-                  final cacheW = (constraints.maxWidth * dpr).round().clamp(
-                    256,
-                    4096,
-                  );
+    // 1. Avvolgiamo tutto in un GestureDetector
+    return GestureDetector(
+      onVerticalDragEnd: (DragEndDetails details) {
+        // 2. Definiamo una "soglia" di velocità
+        // (puoi aggiustare questo valore se sembra troppo o troppo poco sensibile)
+        const double minSwipeVelocity = 350.0;
 
-                  return Image.network(
-                    compressedPhotoUrl,
-                    fit: BoxFit.contain,
-                    gaplessPlayback: true,
-                    filterQuality: FilterQuality.medium,
-                    cacheWidth: cacheW,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.broken_image, color: Colors.grey);
-                    },
-                  );
-                },
-              ),
+        // 3. Controlliamo se la velocità dello swipe (in qualsiasi direzione)
+        //    è maggiore della nostra soglia.
+        if (details.primaryVelocity != null &&
+            details.primaryVelocity!.abs() > minSwipeVelocity) {
+          // 4. Non chiudiamo se stiamo già scaricando o eliminando
+          if (actionInProgress) return;
+
+          // 5. Chiudiamo la pagina
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: actionInProgress ? null : () => Navigator.pop(context),
+          ),
+          actions: [
+            IconButton(
+              icon:
+                  _isDeleting
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.red,
+                        ),
+                      )
+                      : const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: actionInProgress || !hasPhotos ? null : _deletePhoto,
+              tooltip: 'Elimina foto',
             ),
-          );
-        },
+            IconButton(
+              icon:
+                  _isDownloading
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : const Icon(Icons.download_outlined),
+              onPressed: actionInProgress || !hasPhotos ? null : _downloadPhoto,
+              tooltip: 'Scarica foto',
+            ),
+          ],
+        ),
+        body: PageView.builder(
+          controller: _pageController,
+          itemCount: widget.photos.length,
+          onPageChanged: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          itemBuilder: (context, index) {
+            final photo = widget.photos[index];
+            final photoId = photo['photo_id'];
+            final compressedPhotoUrl =
+                '$kBaseUrl/api/photos/compressed/$photoId';
+
+            return InteractiveViewer(
+              panEnabled: true,
+              minScale: 1.0,
+              maxScale: 4.0,
+              child: Center(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final dpr = MediaQuery.devicePixelRatioOf(context);
+                    final cacheW = (constraints.maxWidth * dpr).round().clamp(
+                      256,
+                      4096,
+                    );
+
+                    return Image.network(
+                      compressedPhotoUrl,
+                      fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                      filterQuality: FilterQuality.medium,
+                      cacheWidth: cacheW,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.broken_image,
+                          color: Colors.grey,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
