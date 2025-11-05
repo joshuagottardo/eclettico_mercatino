@@ -1,9 +1,15 @@
-import 'dart:io';
+// NUOVO: Importa i pacchetti per i permessi e la galleria
+import 'dart:typed_data';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+// Import esistenti
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:app/api_config.dart';
+
+// RIMOSSO: 'dart:io' e 'path_provider.dart' (non più necessari per questa funzione)
 
 class PhotoViewerPage extends StatefulWidget {
   final List<Map<String, dynamic>> photos;
@@ -39,48 +45,101 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     super.dispose();
   }
 
+  Future<PermissionStatus> _requestMediaPermission() async {
+    // iOS: usa add-only per salvare in Libreria senza leggere
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      final status = await Permission.photosAddOnly.request();
+      return status;
+    }
+
+    // Android: prova prima "photos" (API 33+ -> READ_MEDIA_IMAGES), fallback a "storage"
+    var status = await Permission.photos.request();
+    if (!status.isGranted) {
+      status = await Permission.storage.request();
+    }
+    return status;
+  }
+
   Future<void> _downloadPhoto() async {
-    if (widget.photos.isEmpty) return;
+    if (widget.photos.isEmpty || _isDownloading) return;
 
-    setState(() {
-      _isDownloading = true;
-    });
-
-    // Prende l'URL della foto corrente
-    final currentPhoto = widget.photos[_currentIndex];
-    final photoUrl = '$kBaseUrl/${currentPhoto['file_path']}';
-
+    setState(() => _isDownloading = true);
     try {
-      Directory? downloadsDir;
-      if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-        downloadsDir = await getDownloadsDirectory();
-      } else {
-        downloadsDir = await getApplicationDocumentsDirectory();
-      }
-      if (downloadsDir == null) {
+      // 1) Permessi
+      final status = await _requestMediaPermission();
+
+      if (status.isPermanentlyDenied) {
         _showFeedback(
           success: false,
-          message: 'Cartella download non trovata.',
+          message:
+              'Permesso negato in modo permanente. Apri Impostazioni e abilitalo.',
+        );
+        await openAppSettings();
+        return;
+      }
+      if (!status.isGranted && !status.isLimited) {
+        _showFeedback(
+          success: false,
+          message: 'Permesso per salvare nelle Foto non concesso.',
         );
         return;
       }
-      final String fileName = Uri.parse(photoUrl).pathSegments.last;
-      final String savePath = '${downloadsDir.path}/$fileName';
-      Dio dio = Dio();
-      await dio.download(photoUrl, savePath);
-      _showFeedback(success: true, message: 'Foto salvata in Download!');
-    } catch (e) {
-      print('Errore download: $e');
-      _showFeedback(success: false, message: 'Download fallito.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isDownloading = false;
-        });
+
+      // 2) Dati immagine
+      final currentPhoto = widget.photos[_currentIndex];
+      final String filePath = (currentPhoto['file_path'] ?? '').toString();
+      if (filePath.isEmpty) {
+        _showFeedback(success: false, message: 'Percorso immagine non valido.');
+        return;
       }
+      final String photoUrl = '$kBaseUrl/$filePath';
+
+      // ricava un nome file “pulito” ed assicurati di avere un’estensione
+      String name = photoUrl.split('/').last.split('?').first;
+      if (!name.contains('.')) {
+        // fallback: imposta jpg se manca estensione
+        name = '$name.jpg';
+      }
+      final String nameWithoutExt = name.replaceAll(RegExp(r'\.[^.]+$'), '');
+
+      // 3) Download bytes
+      final dio = Dio();
+      final resp = await dio.get<List<int>>(
+        photoUrl,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      if (resp.statusCode != 200 || resp.data == null) {
+        throw Exception('Download fallito (${resp.statusCode})');
+      }
+      final bytes = Uint8List.fromList(resp.data!);
+
+      // 4) Salvataggio in galleria
+      final result = await ImageGallerySaver.saveImage(
+        bytes,
+        quality: 100,
+        name:
+            nameWithoutExt, // il plugin aggiunge estensione dal mime quando può
+        isReturnImagePathOfIOS: true, // utile su iOS
+      );
+
+      final bool ok =
+          (result is Map) &&
+          (result['isSuccess'] == true ||
+              result['filePath'] != null ||
+              result['savedPath'] != null);
+
+      _showFeedback(
+        success: ok,
+        message: ok ? 'Foto salvata in Libreria.' : 'Salvataggio non riuscito.',
+      );
+    } catch (e) {
+      _showFeedback(success: false, message: 'Errore: $e');
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
     }
   }
 
+  // La tua funzione _deletePhoto (INVARIATA)
   Future<void> _deletePhoto() async {
     if (widget.photos.isEmpty) return;
 
@@ -113,7 +172,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       _isDeleting = true;
     });
 
-    // Prende l'ID della foto corrente
     final currentPhoto = widget.photos[_currentIndex];
     final photoId = currentPhoto['photo_id'];
 
@@ -124,7 +182,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       if (response.statusCode == 200) {
         if (mounted) {
           _showFeedback(success: true, message: 'Foto eliminata.');
-          // Chiudi la pagina e passa "true" per ricaricare la galleria
           Navigator.pop(context, true);
         }
       } else {
@@ -144,7 +201,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     }
   }
 
-  // Helper per mostrare un messaggio
+  // La tua funzione _showFeedback (INVARIATA)
   void _showFeedback({required bool success, required String message}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -156,10 +213,10 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     }
   }
 
+  // Il tuo metodo build() (INVARIATO)
   @override
   Widget build(BuildContext context) {
     final bool actionInProgress = _isDownloading || _isDeleting;
-    //  Controllo se ci sono foto
     final bool hasPhotos = widget.photos.isNotEmpty;
 
     return Scaffold(
@@ -184,7 +241,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                       ),
                     )
                     : const Icon(Icons.delete_outline, color: Colors.red),
-            // Disabilita se non ci sono foto
             onPressed: actionInProgress || !hasPhotos ? null : _deletePhoto,
             tooltip: 'Elimina foto',
           ),
@@ -200,17 +256,14 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                       ),
                     )
                     : const Icon(Icons.download_outlined),
-            // Disabilita se non ci sono foto
             onPressed: actionInProgress || !hasPhotos ? null : _downloadPhoto,
             tooltip: 'Scarica foto',
           ),
         ],
       ),
-      //  Sostituito il body con un PageView.builder
       body: PageView.builder(
         controller: _pageController,
         itemCount: widget.photos.length,
-        // Aggiorna l'indice corrente quando la pagina cambia
         onPageChanged: (index) {
           setState(() {
             _currentIndex = index;
@@ -218,9 +271,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         },
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
-
           final photoId = photo['photo_id'];
-
           final compressedPhotoUrl = '$kBaseUrl/api/photos/compressed/$photoId';
 
           return InteractiveViewer(
@@ -239,11 +290,9 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                   return Image.network(
                     compressedPhotoUrl,
                     fit: BoxFit.contain,
-
                     gaplessPlayback: true,
                     filterQuality: FilterQuality.medium,
                     cacheWidth: cacheW,
-
                     loadingBuilder: (context, child, progress) {
                       if (progress == null) return child;
                       return const Center(
