@@ -87,9 +87,8 @@ app.get("/api/items", async (req, res) => {
 
     FROM items i
     LEFT JOIN categories c ON i.category_id = c.category_id
-    ORDER BY i.created_at DESC`
+    ORDER BY i.created_at DESC`);
     //LIMIT 20 -- (FIX 2) Limita ai 20 risultati più recenti
-);
 
     // Inviamo i risultati all'app come JSON
     res.json(items);
@@ -338,7 +337,8 @@ app.put("/api/variants/:id", async (req, res) => {
     // Query 1: Aggiorna i dati principali della variante
     const variantSql = `
             UPDATE variants SET 
-                variant_name = ?, purchase_price = ?, quantity = ?, description = ?
+                variant_name = ?, purchase_price = ?, quantity = ?, description = ?,
+                is_sold = CASE WHEN ? <= 0 THEN 1 ELSE 0 END
             WHERE variant_id = ?
         `;
     await connection.query(variantSql, [
@@ -346,6 +346,7 @@ app.put("/api/variants/:id", async (req, res) => {
       purchase_price,
       quantity,
       description,
+      quantity, // Passiamo 'quantity' una seconda volta per la condizione CASE WHEN
       id,
     ]);
 
@@ -909,12 +910,12 @@ app.delete("/api/sales/:id", async (req, res) => {
     // - altrimenti aggiorno items.quantity
     if (sale.variant_id) {
       await connection.query(
-        `UPDATE variants SET quantity = COALESCE(quantity,0) + ? WHERE variant_id = ?`,
+        `UPDATE variants SET quantity = COALESCE(quantity,0) + ?, is_sold = 0 WHERE variant_id = ?`,
         [qty, sale.variant_id]
       );
     } else {
       await connection.query(
-        `UPDATE items SET quantity = COALESCE(quantity,0) + ? WHERE item_id = ?`,
+        `UPDATE items SET quantity = COALESCE(quantity,0) + ?, is_sold = 0 WHERE item_id = ?`,
         [qty, sale.item_id]
       );
     }
@@ -1321,7 +1322,7 @@ app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
   const {
     name,
-    category_id, 
+    category_id,
     description,
     is_used,
     brand,
@@ -1339,34 +1340,46 @@ app.put("/api/items/:id", async (req, res) => {
       .json({ error: 'Campi "name" e "has_variants" sono obbligatori' });
   }
 
-  const itemValues = [
-    name,
-    category_id,
-    description,
-    is_used,
-    brand,
-    value,
-    sale_price,
-    has_variants,
-    has_variants ? null : quantity,
-    has_variants ? null : purchase_price,
-    id,
-  ];
-
   let connection;
   try {
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // Query 1: Aggiorniamo l'articolo (invariata)
+    const finalQuantity = has_variants ? null : quantity;
+    const finalPurchasePrice = has_variants ? null : purchase_price;
+
+    // Se l'articolo ha varianti, is_sold = 0.
+    // Se non le ha, is_sold = 1 SOLO SE la quantità è 0 o meno.
+    const newIsSold =
+      has_variants === true || has_variants === 1 ? 0 : quantity <= 0 ? 1 : 0;
+
+    // Query 1: Aggiorniamo l'articolo E ANCHE is_sold
     const updateSql = `
             UPDATE items SET 
                 name = ?, category_id = ?, description = ?, is_used =?, brand = ?, 
                 \`value\` = ?, sale_price = ?, has_variants = ?, 
-                quantity = ?, purchase_price = ?
+                quantity = ?, purchase_price = ?,
+                is_sold = ? 
             WHERE item_id = ?
         `;
-    await connection.query(updateSql, itemValues);
+
+    // Aggiorniamo i valori da passare alla query
+    const updatedItemValues = [
+      name,
+      category_id,
+      description,
+      is_used,
+      brand,
+      value,
+      sale_price,
+      has_variants,
+      finalQuantity, // quantity (può essere null)
+      finalPurchasePrice, // purchase_price (può essere null)
+      newIsSold, // Il nuovo valore per is_sold
+      id,
+    ];
+
+    await connection.query(updateSql, updatedItemValues);
 
     // Query 2: Aggiorniamo le piattaforme
     if (has_variants) {
