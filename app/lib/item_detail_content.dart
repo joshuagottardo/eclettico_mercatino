@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:app/add_variant_page.dart';
 import 'package:app/sell_item_dialog.dart';
@@ -14,6 +13,12 @@ import 'package:app/icon_helper.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:app/api_config.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:typed_data';
+import 'package:barcode/barcode.dart' as bc;
+import 'package:image/image.dart' as img;
+import 'package:barcode_image/barcode_image.dart' as bci;
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -100,15 +105,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
               ? AppBar(
                 title: Text('Dettagli'),
                 actions: [
-                  // FIX 1: Tasto Copia (Codice Univoco)
+                  // Bottone Mostra Barcode
                   IconButton(
-                    tooltip:
-                        'Copia Codice: ${_currentItem['unique_code'] ?? 'N/D'}',
-                    icon: const Icon(Iconsax.copy),
-                    onPressed:
-                        () => _copyToClipboard(
-                          _currentItem['unique_code'].toString(),
-                        ),
+                    tooltip: 'Salva Barcode',
+                    icon: const Icon(Iconsax.barcode),
+                    onPressed: _saveBarcodeImage,
                   ),
 
                   // Bottone Modifica Articolo
@@ -287,6 +288,84 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   }
 
   // --- FUNZIONI DI CARICAMENTO DATI  ---
+
+  // --- FUNZIONE PER I PERMESSI (copiata da photo_viewer_page) ---
+  Future<PermissionStatus> _requestMediaPermission() async {
+    // iOS: usa add-only per salvare in Libreria senza leggere
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      final status = await Permission.photosAddOnly.request();
+      return status;
+    }
+
+    // Android: prova prima "photos" (API 33+), fallback a "storage"
+    var status = await Permission.photos.request();
+    if (!status.isGranted) {
+      status = await Permission.storage.request();
+    }
+    return status;
+  }
+
+  // --- NUOVA FUNZIONE PER SALVARE IL BARCODE ---
+  Future<void> _saveBarcodeImage() async {
+    final String? uniqueCode = _currentItem['unique_code']?.toString();
+    if (uniqueCode == null || uniqueCode.isEmpty) {
+      _showError('Codice univoco non disponibile.');
+      return;
+    }
+
+    // 1. Chiedi i permessi (come per le foto)
+    final status = await _requestMediaPermission();
+    if (!status.isGranted && !status.isLimited) {
+      _showError('Permesso per salvare nelle Foto non concesso.');
+      if (status.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+      return;
+    }
+
+    // Mostra feedback di avvio
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Salvataggio codice a barre...')),
+    );
+
+    try {
+      // 2. Prepara il barcode e un'immagine vuota (con sfondo bianco)
+      final barcode = bc.Barcode.code128();
+      final image = img.Image(width: 400, height: 150);
+      img.fill(image, color: img.ColorRgb8(255, 255, 255)); // Sfondo bianco
+
+      // 3. Disegna il barcode sull'immagine (con testo nero)
+      bci.drawBarcode(
+        image,
+        barcode,
+        uniqueCode,
+        font: img.arial24
+      );
+
+      // 4. Codifica l'immagine in formato PNG (come lista di bytes)
+      final Uint8List pngBytes = Uint8List.fromList(img.encodePng(image));
+
+      // 5. Salva i bytes nella galleria
+      final result = await ImageGallerySaver.saveImage(
+        pngBytes,
+        quality: 100,
+        name: 'barcode_$uniqueCode', // Nome del file
+      );
+
+      if (result['isSuccess'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Codice a barre salvato in galleria!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        _showError('Salvataggio non riuscito.');
+      }
+    } catch (e) {
+      _showError('Errore durante la creazione del barcode: $e');
+    }
+  }
 
   Future<void> _refreshAllData() async {
     if (mounted) {
@@ -610,13 +689,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           },
         );
       },
-    );
-  }
-
-  void _copyToClipboard(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Codice copiato negli appunti!')),
     );
   }
 
@@ -1056,12 +1128,10 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end, // Allinea i bottoni a destra
         children: [
-          // Tasto Copia (Codice Univoco)
           IconButton(
-            tooltip: 'Copia Codice: ${_currentItem['unique_code'] ?? 'N/D'}',
-            icon: const Icon(Iconsax.copy),
-            onPressed:
-                () => _copyToClipboard(_currentItem['unique_code'].toString()),
+            tooltip: 'Mostra Barcode',
+            icon: const Icon(Iconsax.barcode), // Nuova icona
+            onPressed: _saveBarcodeImage, // Nuova funzione
           ),
 
           // Bottone Modifica Articolo
@@ -1120,6 +1190,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   }
 
   // --- WIDGET VARIANTE ---
+  // --- WIDGET VARIANTE ---
   Widget _buildVariantsSection() {
     final Color soldColor = Colors.red[500]!;
     final Color availableColor =
@@ -1149,6 +1220,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             final Color statusColor =
                 isVariantSold ? soldColor : availableColor;
 
+            // --- INIZIO MODIFICA ---
             return Card(
               color:
                   isVariantSold
@@ -1156,6 +1228,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       : Theme.of(context).cardColor,
               margin: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
+                // 1. Il titolo (ora centrato verticalmente)
                 title: Text(
                   variant['variant_name'] ?? 'Senza nome',
                   style: TextStyle(
@@ -1164,22 +1237,18 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                         isVariantSold ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Pezzi: ${(variant['quantity'] as num?)?.toInt() ?? 0} | Prezzo Acq: € ${variant['purchase_price']}',
-                      style: TextStyle(
-                        color:
-                            isVariantSold
-                                ? Colors.grey[400]
-                                : Colors.grey[300], // Colore del sottotitolo
-                      ),
-                    ),
-                    //  RIMOSSO _buildVariantPlatformsList(variant['platforms'] ?? []),
-                  ],
+
+                // 2. Sottotitolo (RIMOSSO)
+
+                // 3. Trailing (Sostituito con il numero di pezzi)
+                trailing: Text(
+                  ((variant['quantity'] as num?)?.toInt() ?? 0).toString(),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Stessa dimensione del titolo
+                  ),
                 ),
-                trailing: Icon(Iconsax.arrow_right_3, color: statusColor),
                 onTap: () async {
                   final bool? dataChanged = await Navigator.push(
                     context,
@@ -1198,13 +1267,12 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 },
               ),
             );
+            // --- FINE MODIFICA ---
           }).toList(),
     );
   }
 
   Widget _buildPhotoGallery() {
-    final Color accentColor = Theme.of(context).colorScheme.primary;
-
     // --- Gestione SKELETON LOADER ---
     if (_isPhotosLoading) {
       return _buildPhotoGallerySkeleton(); // Mostra lo skeleton
@@ -1222,10 +1290,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             if (!_isUploading)
               ElevatedButton.icon(
                 onPressed: _pickAndUploadImage,
-                icon: const Icon(
-                  Iconsax.image,
-                  color: Colors.black, // <-- IMPOSTA IL COLORE QUI
-                ),
+                icon: const Icon(Iconsax.image, color: Colors.black),
                 label: const Text('Aggiungi foto'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey[300], // Bianco "sporco"

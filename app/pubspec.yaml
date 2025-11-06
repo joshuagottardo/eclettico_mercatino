@@ -44,7 +44,11 @@ dependencies:
   shimmer: ^3.0.0
   logger: ^2.6.2
   image_gallery_saver: ^2.0.3
-  permission_handler: ^11.3.1 
+  permission_handler: ^11.3.1
+  barcode_widget: ^2.0.4
+  barcode: ^2.2.8
+  image: ^4.1.7
+  barcode_image: ^2.0.0
 
 dev_dependencies:
   flutter_test:
