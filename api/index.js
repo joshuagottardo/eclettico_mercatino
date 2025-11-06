@@ -1146,13 +1146,11 @@ app.put("/api/sales/:id", async (req, res) => {
 
     // Query 6: Aggiorna le statistiche totali (Aggiunge i nuovi valori)
     await connection.query(
-      `
-            UPDATE statistics SET 
-                gross_profit_total = gross_profit_total + ?,
-                net_profit_total = net_profit_total + ?,
-                total_spent = total_spent + ?
-            WHERE stats_id = 1 
-        `,
+      `UPDATE statistics SET 
+      gross_profit_total = gross_profit_total + ?,
+      net_profit_total = net_profit_total + ?,
+      total_spent = total_spent + ?
+      WHERE stats_id = 1`,
       [total_price, new_netGain, new_soldCost]
     );
 
@@ -1190,63 +1188,68 @@ app.put("/api/sales/:id", async (req, res) => {
 app.get("/api/statistics/summary", async (req, res) => {
   try {
     // 1. Statistiche Totali (Single row)
-    const [totals] = await pool.query(
-      "SELECT * FROM statistics WHERE stats_id = 1"
-    );
+    const [totalsQuery] = await pool.query(`
+      SELECT 
+          SUM(total_price) AS gross_profit_total,
+          SUM(purchase_price_snapshot * quantity_sold) AS total_spent,
+          SUM(total_price - (purchase_price_snapshot * quantity_sold)) AS net_profit_total
+      FROM sales_log
+    `);
 
     // 2. Categoria Più Venduta (Top 1)
     const [topCategory] = await pool.query(`
-            SELECT 
-                SUM(s.quantity_sold) as sales_count, 
-                c.name as category_name
-            FROM sales_log s
-            JOIN items i ON s.item_id = i.item_id
-            LEFT JOIN categories c ON i.category_id = c.category_id
-            WHERE c.category_id IS NOT NULL
-            GROUP BY c.category_id, c.name
-            ORDER BY sales_count DESC
-            LIMIT 1
-        `);
+      SELECT 
+          SUM(s.quantity_sold) as sales_count, 
+          c.name as category_name
+      FROM sales_log s
+      JOIN items i ON s.item_id = i.item_id
+      LEFT JOIN categories c ON i.category_id = c.category_id
+      WHERE c.category_id IS NOT NULL
+      GROUP BY c.category_id, c.name
+      ORDER BY sales_count DESC
+      LIMIT 1
+    `);
 
     const [topBrand] = await pool.query(`
-            SELECT 
-                SUM(s.quantity_sold) as sales_count, 
-                i.brand
-            FROM sales_log s
-            JOIN items i ON s.item_id = i.item_id
-            WHERE i.brand IS NOT NULL AND i.brand != ''
-            GROUP BY i.brand
-            ORDER BY sales_count DESC
-            LIMIT 1
-        `);
+      SELECT 
+          SUM(s.quantity_sold) as sales_count, 
+          i.brand
+      FROM sales_log s
+      JOIN items i ON s.item_id = i.item_id
+      WHERE i.brand IS NOT NULL AND i.brand != ''
+      GROUP BY i.brand
+      ORDER BY sales_count DESC
+      LIMIT 1
+    `);
 
     const [estimatedProfitRows] = await pool.query(`
-        SELECT SUM(total_value) AS estimated_profit
-        FROM (
-            -- 1. Articoli semplici (valore * quantità)
-            SELECT (value * quantity) AS total_value
-            FROM items
-            WHERE has_variants = 0 AND is_sold = 0 AND value IS NOT NULL AND quantity IS NOT NULL
+      SELECT SUM(total_value) AS estimated_profit
+      FROM (
+          -- 1. Articoli semplici (usa sale_price)
+          SELECT (sale_price * quantity) AS total_value
+          FROM items
+          WHERE has_variants = 0 AND is_sold = 0 AND sale_price IS NOT NULL AND quantity IS NOT NULL
 
-            UNION ALL
+          UNION ALL
 
-            -- 2. Articoli con varianti (valore_articolo * SOMMA(quantità_varianti))
-            SELECT (i.value * IFNULL(v_sum.total_qty, 0)) AS total_value
-            FROM items i
-            JOIN (
-                SELECT item_id, SUM(quantity) AS total_qty
-                FROM variants
-                WHERE is_sold = 0 AND quantity > 0
-                GROUP BY item_id
-            ) v_sum ON i.item_id = v_sum.item_id
-            WHERE i.has_variants = 1 AND i.value IS NOT NULL
-        ) AS combined_values;
+          -- 2. Articoli con varianti (usa sale_price)
+          SELECT (i.sale_price * IFNULL(v_sum.total_qty, 0)) AS total_value
+          FROM items i
+          JOIN (
+              SELECT item_id, SUM(quantity) AS total_qty
+              FROM variants
+              WHERE is_sold = 0 AND quantity > 0
+              GROUP BY item_id
+          ) v_sum ON i.item_id = v_sum.item_id
+          WHERE i.has_variants = 1 AND i.sale_price IS NOT NULL
+      ) AS combined_values;
     `);
 
     // Estrai il valore, o 0 se nullo
     const estimated_profit = estimatedProfitRows[0]?.estimated_profit || 0;
 
-    const totalsData = totals[0] || {
+    const totalsData = totalsQuery[0] || {
+      // Usa il risultato della NUOVA query
       gross_profit_total: 0,
       net_profit_total: 0,
       total_spent: 0,
@@ -1413,15 +1416,7 @@ app.get("/api/items/:id/photos", async (req, res) => {
 
 /*
  * POST /api/photos/upload
- * Carica una nuova foto e la salva nel database
- */
-/*
- * POST /api/photos/upload
- * (MODIFICATO) Carica una foto, crea un thumbnail e salva entrambi
- */
-/*
- * POST /api/photos/upload
- * (MODIFICATO) Salva in una cartella specifica per item_id
+ * Salva in una cartella specifica per item_id
  */
 app.post("/api/photos/upload", upload.single("photo"), async (req, res) => {
   if (!req.file) {
