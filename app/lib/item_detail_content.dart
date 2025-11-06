@@ -790,14 +790,24 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    totalStock.toString(),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: totalStock > 0 ? _availableColor : _soldColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 34,
+
+                  // --- INIZIO MODIFICA ---
+                  // Aggiunto FittedBox per ridimensionare il testo se necessario
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      totalStock.toString(),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(
+                        color: totalStock > 0 ? _availableColor : _soldColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 34,
+                      ),
                     ),
                   ),
+                  // --- FINE MODIFICA ---
                 ],
               ),
             ),
@@ -820,14 +830,24 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    salePrice,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: accentColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 34,
+
+                  // --- INIZIO MODIFICA ---
+                  // Aggiunto FittedBox per ridimensionare il testo se necessario
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      salePrice,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(
+                        color: accentColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 34,
+                      ),
                     ),
                   ),
+                  // --- FINE MODIFICA ---
                 ],
               ),
             ),

@@ -172,10 +172,14 @@ class _HomePageState extends State<HomePage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Breakpoint per desktop (non iPad)
+        // --- INIZIO MODIFICA ---
+        // Definiamo i nostri breakpoint
         const double desktopBreakpoint = 900.0;
+        const double narrowBreakpoint = 500.0; // Breakpoint per telefoni
+        // --- FINE MODIFICA ---
 
         if (constraints.maxWidth > desktopBreakpoint) {
+          // --- LAYOUT DESKTOP (4 in fila) ---
           return Row(
             children: [
               _buildDashboardButton(
@@ -183,7 +187,7 @@ class _HomePageState extends State<HomePage> {
                 icon: Icons.search,
                 label: 'Ricerca',
                 onTap: onTapSearch,
-                isExpanded: true, // <---
+                isExpanded: true,
               ),
               const SizedBox(width: 16),
               _buildDashboardButton(
@@ -191,7 +195,7 @@ class _HomePageState extends State<HomePage> {
                 icon: Icons.inventory_2,
                 label: 'Libreria',
                 onTap: onTapLibrary,
-                isExpanded: true, // <---
+                isExpanded: true,
               ),
               const SizedBox(width: 16),
               _buildDashboardButton(
@@ -199,7 +203,7 @@ class _HomePageState extends State<HomePage> {
                 icon: Icons.add,
                 label: 'Inserisci',
                 onTap: onTapInsert,
-                isExpanded: true, // <---
+                isExpanded: true,
               ),
               const SizedBox(width: 16),
               _buildDashboardButton(
@@ -207,12 +211,13 @@ class _HomePageState extends State<HomePage> {
                 icon: Icons.auto_graph,
                 label: 'Statistiche',
                 onTap: onTapStats,
-                isExpanded: true, // <---
+                isExpanded: true,
               ),
             ],
           );
-        } else {
-          // LAYOUT MOBILE/TABLET: 3+1
+        } else if (constraints.maxWidth > narrowBreakpoint) {
+          // --- LAYOUT TABLET (3+1) ---
+          // Questo era il tuo vecchio layout 'else'
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -223,7 +228,7 @@ class _HomePageState extends State<HomePage> {
                     icon: Icons.search,
                     label: 'Ricerca',
                     onTap: onTapSearch,
-                    isExpanded: true, // <---
+                    isExpanded: true,
                   ),
                   const SizedBox(width: 16),
                   _buildDashboardButton(
@@ -231,7 +236,7 @@ class _HomePageState extends State<HomePage> {
                     icon: Icons.inventory_2,
                     label: 'Libreria',
                     onTap: onTapLibrary,
-                    isExpanded: true, // <---
+                    isExpanded: true,
                   ),
                   const SizedBox(width: 16),
                   _buildDashboardButton(
@@ -239,7 +244,7 @@ class _HomePageState extends State<HomePage> {
                     icon: Icons.add,
                     label: 'Inserisci',
                     onTap: onTapInsert,
-                    isExpanded: true, // <---
+                    isExpanded: true,
                   ),
                 ],
               ),
@@ -250,6 +255,52 @@ class _HomePageState extends State<HomePage> {
                 label: 'Statistiche',
                 onTap: onTapStats,
                 isExpanded: false,
+              ),
+            ],
+          );
+        } else {
+          // --- LAYOUT TELEFONO (2+2) ---
+          // Questo nuovo layout risolve il problema su schermi stretti
+          return Column(
+            children: [
+              Row(
+                children: [
+                  _buildDashboardButton(
+                    context,
+                    icon: Icons.search,
+                    label: 'Ricerca',
+                    onTap: onTapSearch,
+                    isExpanded: true,
+                  ),
+                  const SizedBox(width: 16),
+                  _buildDashboardButton(
+                    context,
+                    icon: Icons.inventory_2,
+                    label: 'Libreria',
+                    onTap: onTapLibrary,
+                    isExpanded: true,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _buildDashboardButton(
+                    context,
+                    icon: Icons.add,
+                    label: 'Inserisci',
+                    onTap: onTapInsert,
+                    isExpanded: true,
+                  ),
+                  const SizedBox(width: 16),
+                  _buildDashboardButton(
+                    context,
+                    icon: Icons.auto_graph,
+                    label: 'Statistiche',
+                    onTap: onTapStats,
+                    isExpanded: true,
+                  ),
+                ],
               ),
             ],
           );
