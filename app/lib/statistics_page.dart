@@ -334,12 +334,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 children: [
                   Icon(icon, size: 24, color: color),
                   const SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
