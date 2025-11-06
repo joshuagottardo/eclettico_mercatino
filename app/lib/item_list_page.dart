@@ -241,6 +241,15 @@ class _ItemListPageState extends State<ItemListPage> {
                   ],
                 ),
               ),
+              if (item['has_variants'] == 1)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Icon(
+                    Iconsax.add,
+                    size: 18,
+                    color: Colors.grey[600], // Sottile e non rumoroso
+                  ),
+                ),
             ],
           ),
         ),

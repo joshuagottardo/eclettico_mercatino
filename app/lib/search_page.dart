@@ -399,20 +399,27 @@ class _SearchPageState extends State<SearchPage> {
 
   AppBar _buildSearchAppBar() {
     return AppBar(
-      title: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Cerca per nome o codice...',
-          prefixIcon: Icon(Iconsax.search_normal_1, color: Colors.grey[600]),
-          suffixIcon:
-              _searchController.text.isNotEmpty
-                  ? IconButton(
-                    icon: const Icon(Iconsax.close_square),
-                    onPressed: () => _searchController.clear(),
-                  )
-                  : null,
+      title: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: 8.0,
+        ), // Aggiunge spazio sopra e sotto
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Cerca per nome o codice...',
+            prefixIcon: Icon(Iconsax.search_normal_1, color: Colors.grey[600]),
+            suffixIcon:
+                _searchController.text.isNotEmpty
+                    ? IconButton(
+                      icon: const Icon(Iconsax.close_square),
+                      onPressed: () => _searchController.clear(),
+                    )
+                    : null,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
+          ),
+          onSubmitted: (value) => _filterItems(),
         ),
-        onSubmitted: (value) => _filterItems(),
       ),
       actions: [
         IconButton(
@@ -598,6 +605,15 @@ class _SearchPageState extends State<SearchPage> {
                   ],
                 ),
               ),
+              if (item['has_variants'] == 1)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Icon(
+                    Iconsax.add,
+                    size: 18,
+                    color: Colors.grey[600], // Sottile e non rumoroso
+                  ),
+                ),
             ],
           ),
         ),

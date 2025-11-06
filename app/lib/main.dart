@@ -50,6 +50,7 @@ class MagazzinoApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF1E1E1E),
           elevation: 0,
+          surfaceTintColor: Color.fromARGB(255, 46, 46, 46),
         ),
 
         elevatedButtonTheme: ElevatedButtonThemeData(
