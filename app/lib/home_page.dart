@@ -277,7 +277,7 @@ class _HomePageState extends State<HomePage> {
                   _buildDashboardButton(
                     context,
                     icon: Iconsax.box,
-                    label: 'Libreria',
+                    label: 'Magazzino',
                     onTap: onTapLibrary,
                     isExpanded: true,
                   ),
@@ -368,6 +368,10 @@ class _HomePageState extends State<HomePage> {
     String title =
         '${sale['item_name']} ${sale['variant_name'] != null ? '(${sale['variant_name']})' : ''}';
 
+    // --- AGGIUNGI QUESTA RIGA ---
+    final String brand = sale['brand'] ?? 'N/D';
+    // -------------------------
+
     String price = '€ 0.00';
     if (sale['total_price'] != null) {
       final num? totalPrice = num.tryParse(sale['total_price'].toString());
@@ -390,11 +394,21 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyLarge,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  // Aggiunto il sottotitolo
+                  Text(
+                    brand, // Ora questa variabile esiste ed è corretta
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
             ),
             Text(
@@ -426,15 +440,14 @@ class _HomePageState extends State<HomePage> {
         if (_latestItems.isEmpty)
           const Text('Nessun articolo aggiunto di recente.')
         else
-          ListView.separated(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            itemCount: _latestItems.length,
-            separatorBuilder: (context, index) => const Divider(height: 16),
-            itemBuilder: (context, index) {
-              final item = _latestItems[index];
-              return _buildArrivalTile(item);
-            },
+          Column(
+            children:
+                _latestItems.map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: _buildArrivalTile(item),
+                  );
+                }).toList(),
           ),
       ],
     );
@@ -459,7 +472,7 @@ class _HomePageState extends State<HomePage> {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 Text(
-                  item['category_name'] ?? 'N/D',
+                  item['brand'] ?? 'N/D',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

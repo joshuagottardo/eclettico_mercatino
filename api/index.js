@@ -1575,7 +1575,8 @@ app.get("/api/dashboard/latest-sale", async (req, res) => {
                 p.name AS platform_name, 
                 v.variant_name,
                 i.name AS item_name,
-                i.item_id  -- Includiamo item_id per la navigazione!
+                i.item_id,
+                i.brand
             FROM sales_log s
             JOIN items i ON s.item_id = i.item_id
             JOIN platforms p ON s.platform_id = p.platform_id
@@ -1592,13 +1593,13 @@ app.get("/api/dashboard/latest-sale", async (req, res) => {
 });
 
 /*
- * GET /api/dashboard/latest-item (CORRETTO)
+ * GET /api/dashboard/latest-item
  * Recupera gli ULTIMI 3 articoli aggiunti
  */
 app.get("/api/dashboard/latest-item", async (req, res) => {
   try {
     const [items] = await pool.query(`
-            SELECT i.item_id, i.name, i.unique_code, c.name as category_name 
+            SELECT i.item_id, i.name, i.unique_code, c.name as category_name, i.brand
             FROM items i
             LEFT JOIN categories c ON i.category_id = c.category_id
             ORDER BY i.item_id DESC
