@@ -515,14 +515,26 @@ class _SearchPageState extends State<SearchPage> {
         _selectedItem != null &&
         _selectedItem!['item_id'] == item['item_id'];
 
+    // --- INIZIO MODIFICA ---
+    // 1. Leggiamo il nuovo flag dall'API
+    final bool isPublished =
+        item['is_published'] == 1 || item['is_published'] == true;
+
     Color cardColor;
     if (isSelected) {
+      // Priorità 1: Se è selezionato su tablet, ha il colore di selezione
       cardColor = Theme.of(context).colorScheme.primary.withAlpha(77);
     } else if (isSold) {
+      // Priorità 2: Se è venduto, è rosso
       cardColor = const Color(0xFF422B2B);
+    } else if (!isPublished) {
+      // Priorità 3: Se non venduto E non pubblicato, è sbiadito
+      cardColor = Theme.of(context).cardColor.withOpacity(0.6);
     } else {
+      // Altrimenti, è normale
       cardColor = Theme.of(context).cardColor;
     }
+    // --- FINE MODIFICA ---
 
     Color textColor =
         isSold
@@ -532,7 +544,7 @@ class _SearchPageState extends State<SearchPage> {
     final String brand = item['brand'] ?? 'N/D';
 
     return Card(
-      color: cardColor,
+      color: cardColor, // Usa il colore calcolato
       margin: const EdgeInsets.symmetric(vertical: 6.0),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

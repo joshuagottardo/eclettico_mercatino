@@ -172,9 +172,22 @@ class _ItemListPageState extends State<ItemListPage> {
 
   Widget _buildItemCard(Map<String, dynamic> item) {
     final bool isSold = item['is_sold'] == 1;
+    final bool isPublished =
+        item['is_published'] == 1 || item['is_published'] == true;
 
-    Color cardColor =
-        isSold ? const Color(0xFF422B2B) : Theme.of(context).cardColor;
+    Color cardColor;
+    if (isSold) {
+      // Priorità 1: Se è venduto, è rosso
+      cardColor = const Color(0xFF422B2B);
+    } else if (!isPublished) {
+      // Priorità 2: Se non venduto E non pubblicato, è sbiadito
+      cardColor = Theme.of(context).cardColor.withOpacity(0.6);
+    } else {
+      // Altrimenti, è normale
+      cardColor = Theme.of(context).cardColor;
+    }
+    // --- FINE MODIFICA ---
+
     Color textColor =
         isSold
             ? Colors.grey[400]!

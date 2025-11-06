@@ -69,8 +69,6 @@ app.get("/api/test", async (req, res) => {
  */
 app.get("/api/items", async (req, res) => {
   try {
-    // Usiamo il pool per eseguire la query SQL
-    // Ordiniamo per i più recenti (created_at)
     const [items] = await pool.query(`
     SELECT 
         i.*, 
@@ -79,16 +77,23 @@ app.get("/api/items", async (req, res) => {
            IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
            i.quantity
         ) AS display_quantity,
-         i.is_used,
+        i.is_used,
         (SELECT p.thumbnail_path 
          FROM photos p 
          WHERE p.item_id = i.item_id 
-         LIMIT 1) AS thumbnail_path 
+         LIMIT 1) AS thumbnail_path,
+         
+        /* --- INIZIO MODIFICA --- */
+        IF(
+            i.has_variants = 0,
+            EXISTS (SELECT 1 FROM item_platforms ip WHERE ip.item_id = i.item_id),
+            EXISTS (SELECT 1 FROM variants v JOIN variant_platforms vp ON v.variant_id = vp.variant_id WHERE v.item_id = i.item_id)
+        ) AS is_published
+        /* --- FINE MODIFICA --- */
 
     FROM items i
     LEFT JOIN categories c ON i.category_id = c.category_id
     ORDER BY i.created_at DESC`);
-    //LIMIT 20 -- (FIX 2) Limita ai 20 risultati più recenti
 
     // Inviamo i risultati all'app come JSON
     res.json(items);
@@ -603,11 +608,16 @@ app.get("/api/items/category/:id", async (req, res) => {
                    IFNULL((SELECT SUM(v.quantity) FROM variants v WHERE v.item_id = i.item_id AND v.is_sold = 0), 0), 
                    i.quantity
                 ) AS display_quantity,
-                 i.is_used,
+                i.is_used,
                 (SELECT p.thumbnail_path 
-                 FROM photos p 
-                 WHERE p.item_id = i.item_id 
-                 LIMIT 1) AS thumbnail_path 
+                FROM photos p 
+                WHERE p.item_id = i.item_id 
+                LIMIT 1) AS thumbnail_path,
+                IF(
+                  i.has_variants = 0,
+                  EXISTS (SELECT 1 FROM item_platforms ip WHERE ip.item_id = i.item_id),
+                  EXISTS (SELECT 1 FROM variants v JOIN variant_platforms vp ON v.variant_id = vp.variant_id WHERE v.item_id = i.item_id)
+                ) AS is_published
 
             FROM items i
             LEFT JOIN categories c ON i.category_id = c.category_id
