@@ -176,95 +176,103 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final double dialogWidth = (MediaQuery.of(context).size.width * 0.9).clamp(
+      0.0,
+      500.0,
+    );
+
     return AlertDialog(
       backgroundColor: const Color(0xFF1E1E1E),
       actionsAlignment: MainAxisAlignment.spaceBetween,
       title: const Text('Modifica Vendita'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Piattaforma'),
-              value: _selectedPlatformId,
-              items:
-                  widget.allPlatforms.map<DropdownMenuItem<int>>((platform) {
-                    return DropdownMenuItem<int>(
-                      value: platform['platform_id'],
-                      child: Text(platform['name']),
-                    );
-                  }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedPlatformId = value;
-                });
-              },
-              validator: (value) => value == null ? 'Obbligatorio' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _dateController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: 'Data Vendita'),
-              onTap: () => _selectDate(context),
-            ),
-            const SizedBox(height: 16),
-
-            // --- Quantità e Prezzo ---
-            Row(
-              children: [
-                Expanded(
-                  //  Campo Quantità
-                  child: TextFormField(
-                    controller: _quantityController,
-                    decoration: InputDecoration(
-                      labelText: 'Quantità',
-                      //  Mostra lo stock
-                      helperText:
-                          _maxAvailableQuantity != null
-                              ? 'Disponibili: $_maxAvailableQuantity'
-                              : null,
-                      helperStyle: TextStyle(color: Colors.grey[400]),
-                    ),
-                    keyboardType: TextInputType.number,
-                    // Validatore
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Obbl.';
-                      final int? enteredQuantity = int.tryParse(value);
-                      if (enteredQuantity == null) return 'Num.';
-                      if (enteredQuantity <= 0) return '> 0';
-
-                      if (_maxAvailableQuantity != null &&
-                          enteredQuantity > _maxAvailableQuantity!) {
-                        return 'Max: $_maxAvailableQuantity';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Prezzo Totale (€)',
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (v) => v!.isEmpty ? 'Obbl.' : null,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: _userController,
-              decoration: const InputDecoration(
-                labelText: 'Utente (opzionale)',
+      content: SizedBox(
+        width: dialogWidth,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                decoration: const InputDecoration(labelText: 'Piattaforma'),
+                value: _selectedPlatformId,
+                items:
+                    widget.allPlatforms.map<DropdownMenuItem<int>>((platform) {
+                      return DropdownMenuItem<int>(
+                        value: platform['platform_id'],
+                        child: Text(platform['name']),
+                      );
+                    }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedPlatformId = value;
+                  });
+                },
+                validator: (value) => value == null ? 'Obbligatorio' : null,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _dateController,
+                readOnly: true,
+                decoration: const InputDecoration(labelText: 'Data Vendita'),
+                onTap: () => _selectDate(context),
+              ),
+              const SizedBox(height: 16),
+
+              // --- Quantità e Prezzo ---
+              Row(
+                children: [
+                  Expanded(
+                    //  Campo Quantità
+                    child: TextFormField(
+                      controller: _quantityController,
+                      decoration: InputDecoration(
+                        labelText: 'Quantità',
+                        //  Mostra lo stock
+                        helperText:
+                            _maxAvailableQuantity != null
+                                ? 'Disponibili: $_maxAvailableQuantity'
+                                : null,
+                        helperStyle: TextStyle(color: Colors.grey[400]),
+                      ),
+                      keyboardType: TextInputType.number,
+                      // Validatore
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Obbl.';
+                        final int? enteredQuantity = int.tryParse(value);
+                        if (enteredQuantity == null) return 'Num.';
+                        if (enteredQuantity <= 0) return '> 0';
+
+                        if (_maxAvailableQuantity != null &&
+                            enteredQuantity > _maxAvailableQuantity!) {
+                          return 'Max: $_maxAvailableQuantity';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _priceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Prezzo Totale (€)',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _userController,
+                decoration: const InputDecoration(
+                  labelText: 'Utente (opzionale)',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       actions: [

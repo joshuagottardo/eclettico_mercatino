@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:app/api_config.dart';
 
 class SellItemDialog extends StatefulWidget {
   final int itemId;
@@ -36,6 +37,9 @@ class _SellItemDialogState extends State<SellItemDialog> {
   final _priceController = TextEditingController();
   final _userController = TextEditingController();
 
+  final TextEditingController _dateController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+
   int? _maxAvailableQuantity;
 
   @override
@@ -43,14 +47,32 @@ class _SellItemDialogState extends State<SellItemDialog> {
     super.initState();
     _fetchPlatforms();
 
+    _selectedDate = DateTime.now();
+    _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+
     if (!widget.hasVariants) {
       _maxAvailableQuantity = widget.mainItemQuantity;
     }
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+      });
+    }
+  }
+
   Future<void> _fetchPlatforms() async {
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/platforms';
+      const url = '$kBaseUrl/api/platforms';
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         if (mounted) {
@@ -92,7 +114,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
       "item_id": widget.itemId,
       "variant_id": _selectedVariantId,
       "platform_id": _selectedPlatformId,
-      "sale_date": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      "sale_date": DateFormat('yyyy-MM-dd').format(_selectedDate),
       "quantity_sold": int.tryParse(_quantityController.text),
       "total_price": double.tryParse(_priceController.text),
       "sold_by_user":
@@ -100,7 +122,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
     };
 
     try {
-      const url = 'http://trentin-nas.synology.me:4000/api/sales';
+      const url = '$kBaseUrl/api/sales';
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -109,7 +131,8 @@ class _SellItemDialogState extends State<SellItemDialog> {
       if (response.statusCode == 201) {
         if (mounted) Navigator.pop(context, true);
       } else {
-        _showError('Errore server: ${response.statusCode}');
+        final error = jsonDecode(response.body);
+        _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
       }
     } catch (e) {
       _showError('Errore di rete: $e');
@@ -135,147 +158,184 @@ class _SellItemDialogState extends State<SellItemDialog> {
     _quantityController.dispose();
     _priceController.dispose();
     _userController.dispose();
+    _dateController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final double dialogWidth = (MediaQuery.of(context).size.width * 0.9).clamp(
+      0.0,
+      500.0,
+    );
+
     return AlertDialog(
       backgroundColor: const Color(0xFF1E1E1E),
       title: const Text('Registra Vendita'),
-      content:
-          _platformsLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // --- Piattaforme ---
-                      DropdownButtonFormField<int>(
-                        decoration: const InputDecoration(
-                          labelText: 'Piattaforma',
-                        ),
-                        value: _selectedPlatformId,
-                        items:
-                            _platforms.map<DropdownMenuItem<int>>((platform) {
-                              return DropdownMenuItem<int>(
-                                value: platform['platform_id'],
-                                child: Text(platform['name']),
-                              );
-                            }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedPlatformId = value;
-                          });
-                        },
-                        validator:
-                            (value) => value == null ? 'Obbligatorio' : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // --- Varianti (Condizionale) ---
-                      if (widget.hasVariants)
+      content: SizedBox(
+        width: dialogWidth,
+        child:
+            _platformsLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Form(
+                  key: _formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // --- Piattaforme ---
                         DropdownButtonFormField<int>(
                           decoration: const InputDecoration(
-                            labelText: 'Variante',
+                            labelText: 'Piattaforma',
                           ),
-                          value: _selectedVariantId,
+                          value: _selectedPlatformId,
                           items:
-                              widget.variants.map<DropdownMenuItem<int>>((
-                                variant,
-                              ) {
+                              _platforms.map<DropdownMenuItem<int>>((platform) {
                                 return DropdownMenuItem<int>(
-                                  value: variant['variant_id'],
-                                  // Mostra lo stock disponibile nel menu
-                                  child: Text(
-                                    '${variant['variant_name']} (Pz: ${variant['quantity']})',
-                                  ),
+                                  value: platform['platform_id'],
+                                  child: Text(platform['name']),
                                 );
                               }).toList(),
                           onChanged: (value) {
-                            //  Aggiorna lo stock max
                             setState(() {
-                              _selectedVariantId = value;
-                              if (value != null) {
-                                final selectedVariant = widget.variants
-                                    .firstWhere(
-                                      (v) => v['variant_id'] == value,
-                                      orElse: () => null,
-                                    );
-                                if (selectedVariant != null) {
-                                  _maxAvailableQuantity =
-                                      selectedVariant['quantity'];
-                                }
-                              } else {
-                                _maxAvailableQuantity = null;
-                              }
-                              _formKey.currentState
-                                  ?.validate(); // Riconvalida il form
+                              _selectedPlatformId = value;
                             });
                           },
                           validator:
                               (value) => value == null ? 'Obbligatorio' : null,
                         ),
+                        const SizedBox(height: 16),
 
-                      if (widget.hasVariants) const SizedBox(height: 16),
-
-                      // --- Quantità e Prezzo ---
-                      Row(
-                        children: [
-                          Expanded(
-                            //  Campo Quantità
-                            child: TextFormField(
-                              controller: _quantityController,
-                              decoration: InputDecoration(
-                                labelText: 'Quantità',
-                              ),
-                              keyboardType: TextInputType.number,
-
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Obbl.';
-                                }
-                                final int? enteredQuantity = int.tryParse(
-                                  value,
-                                );
-                                if (enteredQuantity == null) return 'Num.';
-                                if (enteredQuantity <= 0) return '> 0';
-
-                                if (_maxAvailableQuantity != null &&
-                                    enteredQuantity > _maxAvailableQuantity!) {
-                                  return 'Max: $_maxAvailableQuantity';
-                                }
-                                return null;
-                              },
-                            ),
+                        TextFormField(
+                          controller: _dateController,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Data Vendita',
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _priceController,
-                              decoration: const InputDecoration(
-                                labelText: 'Acquisto (€)',
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (v) => v!.isEmpty ? 'Obbl.' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        controller: _userController,
-                        decoration: const InputDecoration(
-                          labelText: 'Utente (opzionale)',
+                          onTap: () => _selectDate(context),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+
+                        // --- Varianti (Condizionale) ---
+                        if (widget.hasVariants)
+                          DropdownButtonFormField<int>(
+                            decoration: const InputDecoration(
+                              labelText: 'Variante',
+                            ),
+                            value: _selectedVariantId,
+                            items:
+                                widget.variants
+                                    // 1. Assicura che la lista sia di tipo Mappa
+                                    .cast<Map<String, dynamic>>()
+                                    // 2. Dichiara ESPLICITAMENTE il tipo di 'v'
+                                    .where((Map<String, dynamic> v) {
+                                      final q = v['quantity'];
+                                      final qty =
+                                          q is num
+                                              ? q.toInt()
+                                              : int.tryParse(
+                                                    q?.toString() ?? '',
+                                                  ) ??
+                                                  0;
+                                      return qty > 0;
+                                    })
+                                    // 3. Dichiara esplicitamente anche qui per coerenza
+                                    .map<DropdownMenuItem<int>>((
+                                      Map<String, dynamic> variant,
+                                    ) {
+                                      return DropdownMenuItem<int>(
+                                        value: variant['variant_id'],
+                                        // Mostra lo stock disponibile nel menu
+                                        child: Text(
+                                          '${variant['variant_name']} (Pz: ${variant['quantity']})',
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
+                            onChanged: (value) {
+                              //  Aggiorna lo stock max
+                              setState(() {
+                                _selectedVariantId = value;
+                                if (value != null) {
+                                  final selectedVariant = widget.variants
+                                      .firstWhere(
+                                        (v) => v['variant_id'] == value,
+                                        orElse: () => null,
+                                      );
+                                  _maxAvailableQuantity =
+                                      (selectedVariant?['quantity'] as num?)
+                                          ?.toInt();
+                                } else {
+                                  _maxAvailableQuantity = null;
+                                }
+                                _formKey.currentState
+                                    ?.validate(); // Riconvalida il form
+                              });
+                            },
+                            validator:
+                                (value) =>
+                                    value == null ? 'Obbligatorio' : null,
+                          ),
+
+                        if (widget.hasVariants) const SizedBox(height: 16),
+
+                        // --- Quantità e Prezzo ---
+                        Row(
+                          children: [
+                            Expanded(
+                              //  Campo Quantità
+                              child: TextFormField(
+                                controller: _quantityController,
+                                decoration: InputDecoration(
+                                  labelText: 'Quantità',
+                                ),
+                                keyboardType: TextInputType.number,
+
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Obbl.';
+                                  }
+                                  final int? enteredQuantity = int.tryParse(
+                                    value,
+                                  );
+                                  if (enteredQuantity == null) return 'Num.';
+                                  if (enteredQuantity <= 0) return '> 0';
+
+                                  if (_maxAvailableQuantity != null &&
+                                      enteredQuantity >
+                                          _maxAvailableQuantity!) {
+                                    return 'Max: $_maxAvailableQuantity';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _priceController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Acquisto (€)',
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _userController,
+                          decoration: const InputDecoration(
+                            labelText: 'Utente (opzionale)',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
