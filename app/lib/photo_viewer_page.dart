@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:app/api_config.dart';
+import 'package:iconsax/iconsax.dart';
 
 // RIMOSSO: 'dart:io' e 'path_provider.dart' (non più necessari per questa funzione)
 
@@ -245,7 +246,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Iconsax.close_square),
             onPressed: actionInProgress ? null : () => Navigator.pop(context),
           ),
           actions: [
@@ -260,7 +261,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                           color: Colors.red,
                         ),
                       )
-                      : const Icon(Icons.delete_outline, color: Colors.red),
+                      : const Icon(Iconsax.trash, color: Colors.red),
               onPressed: actionInProgress || !hasPhotos ? null : _deletePhoto,
               tooltip: 'Elimina foto',
             ),
@@ -275,7 +276,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                           color: Colors.white,
                         ),
                       )
-                      : const Icon(Icons.download_outlined),
+                      : const Icon(Iconsax.document_download),
               onPressed: actionInProgress || !hasPhotos ? null : _downloadPhoto,
               tooltip: 'Scarica foto',
             ),
@@ -322,7 +323,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                       },
                       errorBuilder: (context, error, stackTrace) {
                         return const Icon(
-                          Icons.broken_image,
+                          Iconsax.gallery_slash,
                           color: Colors.grey,
                         );
                       },

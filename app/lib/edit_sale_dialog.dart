@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:app/api_config.dart';
+import 'package:iconsax/iconsax.dart';
 
 class EditSaleDialog extends StatefulWidget {
   final Map<String, dynamic> sale;
@@ -279,7 +280,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
         IconButton(
           onPressed: _isLoading ? null : _deleteSale,
           icon: Icon(
-            Icons.delete_outline,
+            Iconsax.trash,
             color: _isLoading ? Colors.grey : Colors.red,
           ),
           tooltip: 'Elimina Vendita',

@@ -403,11 +403,11 @@ class _SearchPageState extends State<SearchPage> {
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'Cerca per nome o codice...',
-          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+          prefixIcon: Icon(Iconsax.search_normal_1, color: Colors.grey[600]),
           suffixIcon:
               _searchController.text.isNotEmpty
                   ? IconButton(
-                    icon: const Icon(Icons.clear),
+                    icon: const Icon(Iconsax.close_square),
                     onPressed: () => _searchController.clear(),
                   )
                   : null,
@@ -417,7 +417,7 @@ class _SearchPageState extends State<SearchPage> {
       actions: [
         IconButton(
           icon: Icon(
-            Icons.filter_list,
+            Iconsax.filter,
             color:
                 (_selectedCategoryId != null ||
                         _selectedBrand != null ||
@@ -439,7 +439,7 @@ class _SearchPageState extends State<SearchPage> {
       },
       tooltip: 'Aggiungi articolo',
       backgroundColor: Theme.of(context).colorScheme.primary,
-      child: const Icon(Icons.add, color: Colors.black),
+      child: const Icon(Iconsax.add, color: Colors.black),
     );
   }
 

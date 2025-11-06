@@ -7,6 +7,7 @@ import 'package:app/item_detail_page.dart';
 import 'package:app/library_page.dart';
 import 'package:app/statistics_page.dart';
 import 'package:app/api_config.dart';
+import 'package:iconsax/iconsax.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -102,7 +103,7 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Iconsax.refresh),
             onPressed: _isLoading ? null : _fetchDashboardData,
             tooltip: 'Aggiorna',
           ),
@@ -184,7 +185,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               _buildDashboardButton(
                 context,
-                icon: Icons.search,
+                icon: Iconsax.search_normal_1,
                 label: 'Ricerca',
                 onTap: onTapSearch,
                 isExpanded: true,
@@ -192,7 +193,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 16),
               _buildDashboardButton(
                 context,
-                icon: Icons.inventory_2,
+                icon: Iconsax.box,
                 label: 'Libreria',
                 onTap: onTapLibrary,
                 isExpanded: true,
@@ -200,7 +201,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 16),
               _buildDashboardButton(
                 context,
-                icon: Icons.add,
+                icon: Iconsax.add,
                 label: 'Inserisci',
                 onTap: onTapInsert,
                 isExpanded: true,
@@ -208,7 +209,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 16),
               _buildDashboardButton(
                 context,
-                icon: Icons.auto_graph,
+                icon: Iconsax.status_up,
                 label: 'Statistiche',
                 onTap: onTapStats,
                 isExpanded: true,
@@ -225,7 +226,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _buildDashboardButton(
                     context,
-                    icon: Icons.search,
+                    icon: Iconsax.search_normal_1,
                     label: 'Ricerca',
                     onTap: onTapSearch,
                     isExpanded: true,
@@ -233,7 +234,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 16),
                   _buildDashboardButton(
                     context,
-                    icon: Icons.inventory_2,
+                    icon: Iconsax.box,
                     label: 'Libreria',
                     onTap: onTapLibrary,
                     isExpanded: true,
@@ -241,7 +242,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 16),
                   _buildDashboardButton(
                     context,
-                    icon: Icons.add,
+                    icon: Iconsax.add,
                     label: 'Inserisci',
                     onTap: onTapInsert,
                     isExpanded: true,
@@ -251,7 +252,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 16),
               _buildDashboardButton(
                 context,
-                icon: Icons.auto_graph,
+                icon: Iconsax.status_up,
                 label: 'Statistiche',
                 onTap: onTapStats,
                 isExpanded: false,
@@ -267,7 +268,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _buildDashboardButton(
                     context,
-                    icon: Icons.search,
+                    icon: Iconsax.search_normal_1,
                     label: 'Ricerca',
                     onTap: onTapSearch,
                     isExpanded: true,
@@ -275,7 +276,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 16),
                   _buildDashboardButton(
                     context,
-                    icon: Icons.inventory_2,
+                    icon: Iconsax.box,
                     label: 'Libreria',
                     onTap: onTapLibrary,
                     isExpanded: true,
@@ -287,7 +288,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _buildDashboardButton(
                     context,
-                    icon: Icons.add,
+                    icon: Iconsax.add,
                     label: 'Inserisci',
                     onTap: onTapInsert,
                     isExpanded: true,
@@ -295,7 +296,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 16),
                   _buildDashboardButton(
                     context,
-                    icon: Icons.auto_graph,
+                    icon: Iconsax.status_up,
                     label: 'Statistiche',
                     onTap: onTapStats,
                     isExpanded: true,

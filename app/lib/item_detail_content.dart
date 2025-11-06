@@ -114,7 +114,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   // Bottone Modifica Articolo
                   IconButton(
                     tooltip: 'Modifica Articolo',
-                    icon: const Icon(Icons.edit),
+                    icon: const Icon(Iconsax.edit),
                     onPressed: () async {
                       final bool? dataChanged = await Navigator.push(
                         context,
@@ -133,7 +133,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   // Bottone Vendi Articolo
                   IconButton(
                     tooltip: 'Registra Vendita',
-                    icon: const Icon(Icons.sell_outlined),
+                    icon: const Icon(Iconsax.receipt),
                     onPressed:
                         _calculateTotalStock() > 0
                             ? () async {
@@ -190,17 +190,22 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     _buildPriceAndPurchaseInfo(),
                     const SizedBox(height: 24),
 
-                    // --- 4. PIATTAFORME COLLEGATE ---
-                    if (_allPlatforms.isNotEmpty && !_platformsLoading)
-                      Text(
-                        'PIATTAFORME',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: _headerTextColor,
+                    // --- 4. PIATTAFORME COLLEGATE (Solo se non ha varianti) ---
+                    if (_currentItem['has_variants'] != 1) ...[
+                      // Mostra il titolo solo se ci sono piattaforme da mostrare
+                      if (_allPlatforms.isNotEmpty && !_platformsLoading)
+                        Text(
+                          'PIATTAFORME',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: _headerTextColor),
                         ),
-                      ),
-                    if (_allPlatforms.isNotEmpty && !_platformsLoading)
-                      _buildPlatformsSection(),
-                    const SizedBox(height: 24),
+
+                      // Mostra le piattaforme
+                      if (_allPlatforms.isNotEmpty && !_platformsLoading)
+                        _buildPlatformsSection(),
+
+                      const SizedBox(height: 24),
+                    ],
 
                     // --- 5. VARIANTI (se presenti) ---
                     if (_currentItem['has_variants'] == 1) ...[
@@ -215,13 +220,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       const SizedBox(height: 16),
                       Align(
                         alignment: Alignment.center,
-                        child: TextButton.icon(
+                        child: ElevatedButton.icon(
                           onPressed: _navigateToAddVariant,
-                          icon: const Icon(Iconsax.add_square),
+                          icon: const Icon(
+                            Iconsax.add_square,
+                            color: Colors.black, // <-- IMPOSTA IL COLORE QUI
+                          ),
                           label: const Text('Aggiungi variante'),
-                          style: TextButton.styleFrom(
-                            foregroundColor:
-                                Theme.of(context).colorScheme.primary,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Colors.grey[300], // Bianco "sporco"
+                            foregroundColor: Colors.black, // Icona e testo neri
                           ),
                         ),
                       ),
@@ -656,12 +665,13 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   }
 
   Widget _buildPriceAndPurchaseInfo() {
-    final String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}';
+    // String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}'; // Non più usato qui
     final String estimatedValue = '€ ${_currentItem['value'] ?? 'N/D'}';
+    final bool hasVariants = _currentItem['has_variants'] == 1; // Controllo
 
     return Row(
       children: [
-        // Valore Stimato
+        // Valore Stimato (Sempre visibile)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,29 +693,34 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             ],
           ),
         ),
-        const SizedBox(width: 16),
-        // Prezzo Acquisto
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'PREZZO ACQUISTO',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                purchasePrice,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.grey[300],
-                  fontWeight: FontWeight.bold,
+
+        // --- INIZIO MODIFICA ---
+        // Mostra il Prezzo Acquisto SOLO SE l'articolo NON ha varianti
+        if (!hasVariants) ...[
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PREZZO ACQUISTO',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  '€ ${_currentItem['purchase_price'] ?? 'N/D'}', // Calcolato qui
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.grey[300],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
+        // --- FINE MODIFICA ---
       ],
     );
   }
@@ -1205,10 +1220,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
               child: Text('Nessuna foto trovata.'),
             ),
             if (!_isUploading)
-              TextButton.icon(
+              ElevatedButton.icon(
                 onPressed: _pickAndUploadImage,
-                icon: const Icon(Iconsax.image),
+                icon: const Icon(
+                  Iconsax.image,
+                  color: Colors.black, // <-- IMPOSTA IL COLORE QUI
+                ),
                 label: const Text('Aggiungi foto'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[300], // Bianco "sporco"
+                  foregroundColor: Colors.black, // Icona e testo neri
+                ),
               ),
           ],
         ),
@@ -1344,18 +1366,24 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         else
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton.icon(
+            child: ElevatedButton.icon(
               onPressed: _pickAndUploadImage,
-              icon: const Icon(Iconsax.add_square),
+              icon: const Icon(
+                Iconsax.add_square,
+                color: Colors.black, // <-- IMPOSTA IL COLORE QUI
+              ),
               label: const Text('Aggiungi foto'),
-              style: TextButton.styleFrom(foregroundColor: accentColor),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey[300], // Bianco "sporco"
+                foregroundColor: Colors.black, // Icona e testo neri
+              ),
             ),
           ),
       ],
     );
   }
 
-  // Widget _buildPlatformsSection() { ... } (Invariato)
+  // Widget _buildPlatformsSection()
   Widget _buildPlatformsSection() {
     final Color accentColor = Theme.of(context).colorScheme.primary;
     final List<dynamic> selectedIds = _currentItem['platforms'] ?? [];

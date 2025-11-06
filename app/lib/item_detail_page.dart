@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:app/item_detail_content.dart';
 
+
 class ItemDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
   const ItemDetailPage({super.key, required this.item});

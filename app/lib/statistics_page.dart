@@ -92,7 +92,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         title: const Text('Statistiche'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Iconsax.refresh),
             onPressed: _isLoading ? null : _fetchStatistics,
             tooltip: 'Aggiorna Statistiche',
           ),

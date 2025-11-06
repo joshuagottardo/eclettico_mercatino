@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:iconsax/iconsax.dart';
 
 import 'package:app/item_detail_page.dart';
 import 'package:app/api_config.dart';
@@ -331,7 +332,7 @@ class _AddItemPageState extends State<AddItemPage> {
                         color: Colors.white,
                       ),
                     )
-                    : const Icon(Icons.save),
+                    : const Icon(Iconsax.save_2),
             onPressed: _isLoading ? null : _submitForm,
             tooltip: 'Salva',
           ),

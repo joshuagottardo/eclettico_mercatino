@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:app/api_config.dart';
+import 'package:iconsax/iconsax.dart';
 
 class AddVariantPage extends StatefulWidget {
   final int itemId;
@@ -239,7 +240,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
           //  Bottone Elimina (solo in Modifica)
           if (_isEditMode)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              icon: const Icon(Iconsax.trash, color: Colors.red),
               onPressed: _isLoading ? null : _deleteVariant,
               tooltip: 'Elimina Variante',
             ),
@@ -254,7 +255,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                         color: Colors.white,
                       ),
                     )
-                    : const Icon(Icons.save),
+                    : const Icon(Iconsax.save_2),
             onPressed: _isLoading ? null : _submitForm,
             tooltip: 'Salva',
           ),
