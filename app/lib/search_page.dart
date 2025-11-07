@@ -1,12 +1,12 @@
 import 'dart:convert';
-import 'package:app/add_item_page.dart';
-import 'package:app/item_detail_content.dart';
-import 'package:app/item_detail_page.dart';
+import 'package:eclettico/add_item_page.dart';
+import 'package:eclettico/item_detail_content.dart';
+import 'package:eclettico/item_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:app/api_config.dart';
+import 'package:eclettico/api_config.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});

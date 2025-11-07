@@ -7,7 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/api_config.dart';
+import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
 
 // RIMOSSO: 'dart:io' e 'path_provider.dart' (non più necessari per questa funzione)

@@ -1,7 +1,7 @@
 // lib/item_detail_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:app/item_detail_content.dart';
+import 'package:eclettico/item_detail_content.dart';
 
 
 class ItemDetailPage extends StatefulWidget {

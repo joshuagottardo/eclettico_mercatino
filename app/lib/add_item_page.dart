@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
 
-import 'package:app/item_detail_page.dart';
-import 'package:app/api_config.dart';
+import 'package:eclettico/item_detail_page.dart';
+import 'package:eclettico/api_config.dart';
 import 'package:shimmer/shimmer.dart';
 
 class AddItemPage extends StatefulWidget {

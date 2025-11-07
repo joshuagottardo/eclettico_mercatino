@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/search_page.dart';
-import 'package:app/add_item_page.dart';
-import 'package:app/item_detail_page.dart';
-import 'package:app/library_page.dart';
-import 'package:app/statistics_page.dart';
-import 'package:app/api_config.dart';
+import 'package:eclettico/search_page.dart';
+import 'package:eclettico/add_item_page.dart';
+import 'package:eclettico/item_detail_page.dart';
+import 'package:eclettico/library_page.dart';
+import 'package:eclettico/statistics_page.dart';
+import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
 
 class HomePage extends StatefulWidget {

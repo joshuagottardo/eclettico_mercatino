@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:app/api_config.dart';
+import 'package:eclettico/api_config.dart';
 
 class SellItemDialog extends StatefulWidget {
   final int itemId;

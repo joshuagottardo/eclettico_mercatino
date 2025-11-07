@@ -1,12 +1,12 @@
 // lib/item_list_page.dart
 
 import 'dart:convert';
-import 'package:app/item_detail_page.dart';
+import 'package:eclettico/item_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:app/api_config.dart';
+import 'package:eclettico/api_config.dart';
 
 class ItemListPage extends StatefulWidget {
   final int categoryId;

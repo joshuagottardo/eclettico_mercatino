@@ -3,9 +3,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:app/item_list_page.dart';
-import 'package:app/icon_helper.dart';
-import 'package:app/api_config.dart';
+import 'package:eclettico/item_list_page.dart';
+import 'package:eclettico/icon_helper.dart';
+import 'package:eclettico/api_config.dart';
 
 
 class LibraryPage extends StatefulWidget {

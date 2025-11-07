@@ -5,7 +5,7 @@ import 'dart:developer';
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
-import 'package:app/home_page.dart';
+import 'package:eclettico/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
