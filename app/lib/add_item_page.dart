@@ -43,7 +43,7 @@ class _AddItemPageState extends State<AddItemPage> {
   bool _isLoading = false;
   bool _isPageLoading = false;
   bool _hasVariants = false;
-  bool _isUsed = true;
+  bool _isUsed = false; // MODIFICA: Default impostato a 'false' (Nuovo)
 
   int _variantCount = 0;
   bool _isCheckingVariants = false;
@@ -397,9 +397,7 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
         SwitchListTile.adaptive(
           title: const Text('L\'articolo è USATO?'),
-          subtitle: const Text(
-            'Attiva se l\'articolo è di seconda mano (altrimenti è Nuovo)',
-          ),
+          // MODIFICA: Sottotitolo rimosso
           value: _isUsed,
           onChanged: (bool value) {
             setState(() {
@@ -439,11 +437,14 @@ class _AddItemPageState extends State<AddItemPage> {
           ],
         ),
         const SizedBox(height: 24),
+
+        // MODIFICA: Spostato il Divider qui (da sotto)
+        const Divider(),
+        const SizedBox(height: 16),
+
         SwitchListTile.adaptive(
           title: const Text('L\'articolo ha varianti?'),
-          subtitle: const Text(
-            'Se sì, quantità e prezzi saranno gestiti per ogni variante',
-          ),
+          // MODIFICA: Sottotitolo rimosso
           value: _hasVariants,
           onChanged: (bool value) {
             if (_isEditMode && !value) {
@@ -471,8 +472,7 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
 
         if (!_hasVariants) ...[
-          const Divider(),
-          const SizedBox(height: 16),
+          // MODIFICA: Divider rimosso da qui
           Row(
             children: [
               Expanded(
@@ -496,21 +496,44 @@ class _AddItemPageState extends State<AddItemPage> {
 
           Text('Piattaforme', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          _PlatformsSection(
-            platforms: _platforms,
-            selectedIds: _selectedPlatformIds,
-            onToggle: (platformId) {
-              setState(() {
-                if (_selectedPlatformIds.contains(platformId)) {
-                  _selectedPlatformIds.remove(platformId);
-                } else {
-                  _selectedPlatformIds.add(platformId);
-                }
-              });
-            },
-          ),
+          
+          // MODIFICA: Sostituito il vecchio widget con i nuovi Chip
+          _buildPlatformChips(),
         ],
       ],
+    );
+  }
+
+  // MODIFICA: Nuovo widget per le Piattaforme (sostituisce _PlatformsSection)
+  Widget _buildPlatformChips() {
+    if (_platforms.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 8.0, // Spazio orizzontale tra i chip
+      runSpacing: 4.0, // Spazio verticale tra le righe
+      children: _platforms.map((platform) {
+        final platformId = platform['platform_id'] as int;
+        final isSelected = _selectedPlatformIds.contains(platformId);
+
+        return FilterChip(
+          label: Text(platform['name'].toString()),
+          selected: isSelected,
+          onSelected: (bool selected) {
+            setState(() {
+              if (selected) {
+                _selectedPlatformIds.add(platformId);
+              } else {
+                _selectedPlatformIds.remove(platformId);
+              }
+            });
+          },
+          // Stile per farlo sembrare più "moderno"
+          selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          checkmarkColor: Theme.of(context).colorScheme.primary,
+          showCheckmark: true,
+          side: isSelected ? BorderSide.none : BorderSide(color: Colors.grey[700]!),
+        );
+      }).toList(),
     );
   }
 }
@@ -559,48 +582,4 @@ Widget _buildFormSkeleton() {
       ],
     ),
   );
-}
-
-class _PlatformsSection extends StatefulWidget {
-  final List platforms;
-  final Set<int> selectedIds;
-  final ValueChanged<int> onToggle;
-
-  const _PlatformsSection({
-    required this.platforms,
-    required this.selectedIds,
-    required this.onToggle,
-  });
-
-  @override
-  State<_PlatformsSection> createState() => _PlatformsSectionState();
-}
-
-class _PlatformsSectionState extends State<_PlatformsSection>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return RepaintBoundary(
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: widget.platforms.length,
-        itemBuilder: (context, i) {
-          final platform = widget.platforms[i];
-          final platformId = platform['platform_id'] as int;
-          final checked = widget.selectedIds.contains(platformId);
-          return CheckboxListTile(
-            title: Text(platform['name'].toString()),
-            value: checked,
-            onChanged: (bool? v) => widget.onToggle(platformId),
-            activeColor: Theme.of(context).colorScheme.primary,
-          );
-        },
-      ),
-    );
-  }
 }

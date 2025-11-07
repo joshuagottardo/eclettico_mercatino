@@ -134,41 +134,43 @@ class _StatisticsPageState extends State<StatisticsPage> {
         const double desktopBreakpoint = 900.0;
 
         if (constraints.maxWidth >= desktopBreakpoint) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStatCard(
-                'VALORE MAGAZZINO',
-                _formatCurrency(estimatedProfit),
-                Iconsax.box,
-                _estimatedProfitColor,
-                estimatedProfit,
-              ),
-              const SizedBox(width: 16),
-              _buildStatCard(
-                'MARGINE DI PROFITTO',
-                _formatCurrency(netProfit),
-                Iconsax.money_send,
-                _netProfitColor,
-                netProfit,
-              ),
-              const SizedBox(width: 16),
-              _buildStatCard(
-                'GUADAGNO LORDO',
-                _formatCurrency(grossProfit),
-                Iconsax.archive_add,
-                _grossProfitColor,
-                grossProfit,
-              ),
-              const SizedBox(width: 16),
-              _buildStatCard(
-                'SPESA TOTALE',
-                _formatCurrency(totalSpent),
-                Iconsax.card_slash,
-                _spentColor,
-                totalSpent,
-              ),
-            ],
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildStatCard(
+                  'VALORE MAGAZZINO',
+                  _formatCurrency(estimatedProfit),
+                  Iconsax.box,
+                  _estimatedProfitColor,
+                  estimatedProfit,
+                ),
+                const SizedBox(width: 16),
+                _buildStatCard(
+                  'MARGINE DI PROFITTO',
+                  _formatCurrency(netProfit),
+                  Iconsax.money_send,
+                  _netProfitColor,
+                  netProfit,
+                ),
+                const SizedBox(width: 16),
+                _buildStatCard(
+                  'GUADAGNO LORDO',
+                  _formatCurrency(grossProfit),
+                  Iconsax.archive_add,
+                  _grossProfitColor,
+                  grossProfit,
+                ),
+                const SizedBox(width: 16),
+                _buildStatCard(
+                  'SPESA TOTALE',
+                  _formatCurrency(totalSpent),
+                  Iconsax.card_slash,
+                  _spentColor,
+                  totalSpent,
+                ),
+              ],
+            ),
           );
         } else {
           return Column(
@@ -186,24 +188,26 @@ class _StatisticsPageState extends State<StatisticsPage> {
               ),
               const SizedBox(height: 16),
 
-              Row(
-                children: [
-                  _buildStatCard(
-                    'MARGINE DI PROFITTO',
-                    _formatCurrency(netProfit),
-                    Iconsax.money_send,
-                    _netProfitColor,
-                    netProfit,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildStatCard(
-                    'SPESA TOTALE',
-                    _formatCurrency(totalSpent),
-                    Iconsax.card_slash,
-                    _spentColor,
-                    totalSpent,
-                  ),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    _buildStatCard(
+                      'MARGINE DI PROFITTO',
+                      _formatCurrency(netProfit),
+                      Iconsax.money_send,
+                      _netProfitColor,
+                      netProfit,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildStatCard(
+                      'SPESA TOTALE',
+                      _formatCurrency(totalSpent),
+                      Iconsax.card_slash,
+                      _spentColor,
+                      totalSpent,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 

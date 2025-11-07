@@ -327,7 +327,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
-                      ..._buildPlatformCheckboxes(),
+                      ..._buildPlatformChips(),
                     ],
                   ),
                 ),
@@ -335,23 +335,44 @@ class _AddVariantPageState extends State<AddVariantPage> {
     );
   }
 
-  List<Widget> _buildPlatformCheckboxes() {
-    return _platforms.map((platform) {
-      final platformId = platform['platform_id'];
-      return CheckboxListTile(
-        title: Text(platform['name']),
-        value: _selectedPlatformIds.contains(platformId),
-        onChanged: (bool? value) {
-          setState(() {
-            if (value == true) {
-              _selectedPlatformIds.add(platformId);
-            } else {
-              _selectedPlatformIds.remove(platformId);
-            }
-          });
-        },
-        activeColor: Theme.of(context).colorScheme.primary,
-      );
-    }).toList();
+  // MODIFICA: Sostituito CheckboxListTile con FilterChip
+  List<Widget> _buildPlatformChips() {
+    if (_platforms.isEmpty) return [const SizedBox.shrink()];
+
+    return [
+      Wrap(
+        spacing: 8.0, // Spazio orizzontale
+        runSpacing: 4.0, // Spazio verticale
+        children:
+            _platforms.map((platform) {
+              final platformId = platform['platform_id'] as int;
+              final isSelected = _selectedPlatformIds.contains(platformId);
+
+              return FilterChip(
+                label: Text(platform['name'].toString()),
+                selected: isSelected,
+                onSelected: (bool selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedPlatformIds.add(platformId);
+                    } else {
+                      _selectedPlatformIds.remove(platformId);
+                    }
+                  });
+                },
+                // Stile
+                selectedColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withAlpha(77),
+                checkmarkColor: Theme.of(context).colorScheme.primary,
+                showCheckmark: true,
+                side:
+                    isSelected
+                        ? BorderSide.none
+                        : BorderSide(color: Colors.grey[700]!),
+              );
+            }).toList(),
+      ),
+    ];
   }
 }

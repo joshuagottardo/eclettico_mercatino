@@ -181,73 +181,80 @@ class _HomePageState extends State<HomePage> {
 
         if (constraints.maxWidth > desktopBreakpoint) {
           // --- LAYOUT DESKTOP (4 in fila) ---
-          return Row(
-            children: [
-              _buildDashboardButton(
-                context,
-                icon: Iconsax.search_normal_1,
-                label: 'Ricerca',
-                onTap: onTapSearch,
-                isExpanded: true,
-              ),
-              const SizedBox(width: 16),
-              _buildDashboardButton(
-                context,
-                icon: Iconsax.box,
-                label: 'Libreria',
-                onTap: onTapLibrary,
-                isExpanded: true,
-              ),
-              const SizedBox(width: 16),
-              _buildDashboardButton(
-                context,
-                icon: Iconsax.add,
-                label: 'Inserisci',
-                onTap: onTapInsert,
-                isExpanded: true,
-              ),
-              const SizedBox(width: 16),
-              _buildDashboardButton(
-                context,
-                icon: Iconsax.status_up,
-                label: 'Statistiche',
-                onTap: onTapStats,
-                isExpanded: true,
-              ),
-            ],
+          // Aggiunto IntrinsicHeight e stretch per sicurezza
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildDashboardButton(
+                  context,
+                  icon: Iconsax.search_normal_1,
+                  label: 'Ricerca',
+                  onTap: onTapSearch,
+                  isExpanded: true,
+                ),
+                const SizedBox(width: 16),
+                _buildDashboardButton(
+                  context,
+                  icon: Iconsax.box,
+                  label: 'Libreria',
+                  onTap: onTapLibrary,
+                  isExpanded: true,
+                ),
+                const SizedBox(width: 16),
+                _buildDashboardButton(
+                  context,
+                  icon: Iconsax.add,
+                  label: 'Inserisci',
+                  onTap: onTapInsert,
+                  isExpanded: true,
+                ),
+                const SizedBox(width: 16),
+                _buildDashboardButton(
+                  context,
+                  icon: Iconsax.status_up,
+                  label: 'Statistiche',
+                  onTap: onTapStats,
+                  isExpanded: true,
+                ),
+              ],
+            ),
           );
         } else if (constraints.maxWidth > narrowBreakpoint) {
           // --- LAYOUT TABLET (3+1) ---
-          // Questo era il tuo vecchio layout 'else'
+          // Aggiunto IntrinsicHeight e stretch alla riga da 3
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  _buildDashboardButton(
-                    context,
-                    icon: Iconsax.search_normal_1,
-                    label: 'Ricerca',
-                    onTap: onTapSearch,
-                    isExpanded: true,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildDashboardButton(
-                    context,
-                    icon: Iconsax.box,
-                    label: 'Libreria',
-                    onTap: onTapLibrary,
-                    isExpanded: true,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildDashboardButton(
-                    context,
-                    icon: Iconsax.add,
-                    label: 'Inserisci',
-                    onTap: onTapInsert,
-                    isExpanded: true,
-                  ),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildDashboardButton(
+                      context,
+                      icon: Iconsax.search_normal_1,
+                      label: 'Ricerca',
+                      onTap: onTapSearch,
+                      isExpanded: true,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildDashboardButton(
+                      context,
+                      icon: Iconsax.box,
+                      label: 'Libreria',
+                      onTap: onTapLibrary,
+                      isExpanded: true,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildDashboardButton(
+                      context,
+                      icon: Iconsax.add,
+                      label: 'Inserisci',
+                      onTap: onTapInsert,
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               _buildDashboardButton(
@@ -261,47 +268,53 @@ class _HomePageState extends State<HomePage> {
           );
         } else {
           // --- LAYOUT TELEFONO (2+2) ---
-          // Questo nuovo layout risolve il problema su schermi stretti
+          // Aggiunto IntrinsicHeight e stretch alle due righe
           return Column(
             children: [
-              Row(
-                children: [
-                  _buildDashboardButton(
-                    context,
-                    icon: Iconsax.search_normal_1,
-                    label: 'Ricerca',
-                    onTap: onTapSearch,
-                    isExpanded: true,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildDashboardButton(
-                    context,
-                    icon: Iconsax.box,
-                    label: 'Magazzino',
-                    onTap: onTapLibrary,
-                    isExpanded: true,
-                  ),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildDashboardButton(
+                      context,
+                      icon: Iconsax.search_normal_1,
+                      label: 'Ricerca',
+                      onTap: onTapSearch,
+                      isExpanded: true,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildDashboardButton(
+                      context,
+                      icon: Iconsax.box,
+                      label: 'Magazzino',
+                      onTap: onTapLibrary,
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  _buildDashboardButton(
-                    context,
-                    icon: Iconsax.add,
-                    label: 'Inserisci',
-                    onTap: onTapInsert,
-                    isExpanded: true,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildDashboardButton(
-                    context,
-                    icon: Iconsax.status_up,
-                    label: 'Statistiche',
-                    onTap: onTapStats,
-                    isExpanded: true,
-                  ),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildDashboardButton(
+                      context,
+                      icon: Iconsax.add,
+                      label: 'Inserisci',
+                      onTap: onTapInsert,
+                      isExpanded: true,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildDashboardButton(
+                      context,
+                      icon: Iconsax.status_up,
+                      label: 'Statistiche',
+                      onTap: onTapStats,
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
               ),
             ],
           );
