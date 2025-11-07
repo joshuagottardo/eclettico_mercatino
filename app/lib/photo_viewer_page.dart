@@ -1,16 +1,13 @@
-// NUOVO: Importa i pacchetti per i permessi e la galleria
-import 'dart:typed_data';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
-
-// Import esistenti
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
-
-// RIMOSSO: 'dart:io' e 'path_provider.dart' (non più necessari per questa funzione)
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 
 class PhotoViewerPage extends StatefulWidget {
   final List<Map<String, dynamic>> photos;
@@ -47,13 +44,11 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   }
 
   Future<PermissionStatus> _requestMediaPermission() async {
-    // iOS: usa add-only per salvare in Libreria senza leggere
     if (Theme.of(context).platform == TargetPlatform.iOS) {
       final status = await Permission.photosAddOnly.request();
       return status;
     }
 
-    // Android: prova prima "photos" (API 33+ -> READ_MEDIA_IMAGES), fallback a "storage"
     var status = await Permission.photos.request();
     if (!status.isGranted) {
       status = await Permission.storage.request();
@@ -65,28 +60,12 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     if (widget.photos.isEmpty || _isDownloading) return;
 
     setState(() => _isDownloading = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Download in corso...')),
+    );
+
     try {
-      // 1) Permessi
-      final status = await _requestMediaPermission();
-
-      if (status.isPermanentlyDenied) {
-        _showFeedback(
-          success: false,
-          message:
-              'Permesso negato in modo permanente. Apri Impostazioni e abilitalo.',
-        );
-        await openAppSettings();
-        return;
-      }
-      if (!status.isGranted && !status.isLimited) {
-        _showFeedback(
-          success: false,
-          message: 'Permesso per salvare nelle Foto non concesso.',
-        );
-        return;
-      }
-
-      // 2) Dati immagine
+      // 1) Dati immagine (comune a entrambi)
       final currentPhoto = widget.photos[_currentIndex];
       final String filePath = (currentPhoto['file_path'] ?? '').toString();
       if (filePath.isEmpty) {
@@ -95,15 +74,13 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       }
       final String photoUrl = '$kBaseUrl/$filePath';
 
-      // ricava un nome file “pulito” ed assicurati di avere un’estensione
       String name = photoUrl.split('/').last.split('?').first;
       if (!name.contains('.')) {
-        // fallback: imposta jpg se manca estensione
         name = '$name.jpg';
       }
-      final String nameWithoutExt = name.replaceAll(RegExp(r'\.[^.]+$'), '');
+      // NOTA: NON rimuoviamo l'estensione qui, la usiamo per il file picker
 
-      // 3) Download bytes
+      // 2) Download bytes (comune a entrambi)
       final dio = Dio();
       final resp = await dio.get<List<int>>(
         photoUrl,
@@ -114,33 +91,82 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       }
       final bytes = Uint8List.fromList(resp.data!);
 
-      // 4) Salvataggio in galleria
-      final result = await ImageGallerySaver.saveImage(
-        bytes,
-        quality: 100,
-        name:
-            nameWithoutExt, // il plugin aggiunge estensione dal mime quando può
-        isReturnImagePathOfIOS: true, // utile su iOS
-      );
+      // 3) Logica di salvataggio diversa per piattaforma
+      final bool isMobile = Theme.of(context).platform == TargetPlatform.iOS;
 
-      final bool ok =
-          (result is Map) &&
-          (result['isSuccess'] == true ||
-              result['filePath'] != null ||
-              result['savedPath'] != null);
+      if (isMobile) {
+        // --- SALVATAGGIO MOBILE (iOS / Android) ---
 
-      _showFeedback(
-        success: ok,
-        message: ok ? 'Foto salvata in Libreria.' : 'Salvataggio non riuscito.',
-      );
+        // 3a) Permessi
+        final status = await _requestMediaPermission();
+
+        if (status.isPermanentlyDenied) {
+          _showFeedback(
+            success: false,
+            message:
+                'Permesso negato. Apri Impostazioni e abilitalo.',
+          );
+          await openAppSettings();
+          return;
+        }
+        if (!status.isGranted && !status.isLimited) {
+          _showFeedback(
+            success: false,
+            message: 'Permesso per salvare nelle Foto non concesso.',
+          );
+          return;
+        }
+
+        // 3b) Salvataggio in galleria
+        final result = await ImageGallerySaver.saveImage(
+          bytes,
+          quality: 100,
+          name: name.replaceAll(RegExp(r'\.[^.]+$'), ''), // Rimuovi estensione solo qui
+          isReturnImagePathOfIOS: true,
+        );
+
+        final bool ok =
+            (result is Map) &&
+            (result['isSuccess'] == true ||
+                result['filePath'] != null ||
+                result['savedPath'] != null);
+
+        _showFeedback(
+          success: ok,
+          message: ok ? 'Foto salvata in Libreria.' : 'Salvataggio non riuscito.',
+        );
+
+      } else {
+        // --- SALVATAGGIO DESKTOP (Windows / macOS / Linux) ---
+
+        // 3a) Apri "Salva con nome..."
+        final String? outputFile = await FilePicker.platform.saveFile(
+          dialogTitle: 'Salva foto',
+          fileName: name, // Usa il nome file completo di estensione
+        );
+
+        // 3b) Se l'utente ha scelto un percorso
+        if (outputFile != null) {
+          final file = File(outputFile);
+          await file.writeAsBytes(bytes);
+          _showFeedback(success: true, message: 'Foto salvata!');
+        } else {
+          // L'utente ha premuto "Annulla"
+          _showFeedback(success: false, message: 'Salvataggio annullato.');
+        }
+      }
+
     } catch (e) {
-      _showFeedback(success: false, message: 'Errore: $e');
+      if (e is MissingPluginException) {
+        _showFeedback(success: false, message: 'Salvataggio non supportato su questa piattaforma.');
+      } else {
+        _showFeedback(success: false, message: 'Errore: $e');
+      }
     } finally {
       if (mounted) setState(() => _isDownloading = false);
     }
   }
 
-  // La tua funzione _deletePhoto (INVARIATA)
   Future<void> _deletePhoto() async {
     if (widget.photos.isEmpty) return;
 

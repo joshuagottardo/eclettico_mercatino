@@ -302,7 +302,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
                             child: TextFormField(
                               controller: _purchasePriceController,
                               decoration: const InputDecoration(
-                                labelText: 'Vendita (€)',
+                                labelText: 'Acquisto (€)',
                               ),
                               keyboardType: TextInputType.numberWithOptions(decimal: true),
                               validator: (v) => v!.isEmpty ? 'Obbl.' : null,
