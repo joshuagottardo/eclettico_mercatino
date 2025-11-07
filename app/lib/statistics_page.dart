@@ -112,9 +112,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
                     const SizedBox(height: 32),
 
-                    _buildTopCategoryCard(),
-                    const SizedBox(height: 16),
-                    _buildTopBrandCard(),
+                    _buildResponsiveTopPerformers(),
                   ],
                 ),
               ),
@@ -435,6 +433,38 @@ class _StatisticsPageState extends State<StatisticsPage> {
       name: topBrand?['brand'] ?? 'N/D',
       count: _parseCount(topBrand?['sales_count']), // <-- FIX
       icon: Iconsax.tag,
+    );
+  }
+
+  Widget _buildResponsiveTopPerformers() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        
+        const double desktopBreakpoint = 900.0;
+
+        if (constraints.maxWidth >= desktopBreakpoint) {
+          
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildTopCategoryCard()),
+                const SizedBox(width: 16),
+                Expanded(child: _buildTopBrandCard()),
+              ],
+            ),
+          );
+        } else {
+          
+          return Column(
+            children: [
+              _buildTopCategoryCard(),
+              const SizedBox(height: 16),
+              _buildTopBrandCard(),
+            ],
+          );
+        }
+      },
     );
   }
 }
