@@ -218,7 +218,7 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(labelText: 'Categoria'),
-                    value: _selectedCategoryId,
+                    initialValue: _selectedCategoryId,
                     items: [
                       const DropdownMenuItem<int>(
                         value: null,
@@ -241,7 +241,7 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Brand'),
-                    value: _selectedBrand,
+                    initialValue: _selectedBrand,
                     items: [
                       const DropdownMenuItem<String>(
                         value: null,

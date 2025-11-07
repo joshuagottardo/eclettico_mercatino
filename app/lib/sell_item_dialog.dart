@@ -188,7 +188,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
                           decoration: const InputDecoration(
                             labelText: 'Piattaforma',
                           ),
-                          value: _selectedPlatformId,
+                          initialValue: _selectedPlatformId,
                           items:
                               _platforms.map<DropdownMenuItem<int>>((platform) {
                                 return DropdownMenuItem<int>(
@@ -222,7 +222,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
                             decoration: const InputDecoration(
                               labelText: 'Variante',
                             ),
-                            value: _selectedVariantId,
+                            initialValue: _selectedVariantId,
                             items:
                                 widget.variants
                                     // 1. Assicura che la lista sia di tipo Mappa

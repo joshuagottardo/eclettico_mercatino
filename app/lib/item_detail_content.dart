@@ -15,10 +15,12 @@ import 'package:eclettico/api_config.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:typed_data';
 import 'package:barcode/barcode.dart' as bc;
 import 'package:image/image.dart' as img;
 import 'package:barcode_image/barcode_image.dart' as bci;
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -305,21 +307,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     return status;
   }
 
-  // --- NUOVA FUNZIONE PER SALVARE IL BARCODE ---
+// --- FUNZIONE PER SALVARE IL BARCODE (AGGIORNATA PER DESKTOP) ---
   Future<void> _saveBarcodeImage() async {
     final String? uniqueCode = _currentItem['unique_code']?.toString();
     if (uniqueCode == null || uniqueCode.isEmpty) {
       _showError('Codice univoco non disponibile.');
-      return;
-    }
-
-    // 1. Chiedi i permessi (come per le foto)
-    final status = await _requestMediaPermission();
-    if (!status.isGranted && !status.isLimited) {
-      _showError('Permesso per salvare nelle Foto non concesso.');
-      if (status.isPermanentlyDenied) {
-        await openAppSettings();
-      }
       return;
     }
 
@@ -329,41 +321,90 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
 
     try {
-      // 2. Prepara il barcode e un'immagine vuota (con sfondo bianco)
+      // --- LOGICA DI GENERAZIONE IMMAGINE (invariata) ---
       final barcode = bc.Barcode.code128();
       final image = img.Image(width: 400, height: 150);
       img.fill(image, color: img.ColorRgb8(255, 255, 255)); // Sfondo bianco
-
-      // 3. Disegna il barcode sull'immagine (con testo nero)
       bci.drawBarcode(
         image,
         barcode,
         uniqueCode,
-        font: img.arial24
+        font: img.arial24,
       );
-
-      // 4. Codifica l'immagine in formato PNG (come lista di bytes)
       final Uint8List pngBytes = Uint8List.fromList(img.encodePng(image));
+      // --- FINE GENERAZIONE ---
 
-      // 5. Salva i bytes nella galleria
-      final result = await ImageGallerySaver.saveImage(
-        pngBytes,
-        quality: 100,
-        name: 'barcode_$uniqueCode', // Nome del file
-      );
 
-      if (result['isSuccess'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Codice a barre salvato in galleria!'),
-            backgroundColor: Colors.green,
-          ),
+      // --- LOGICA DI SALVATAGGIO (DIVERSA PER PIATTAFORMA) ---
+      final bool isMobile = Theme.of(context).platform == TargetPlatform.iOS;
+
+      if (isMobile) {
+        // --- SALVATAGGIO SU MOBILE (iOS / Android) ---
+        
+        // 1. Chiedi i permessi
+        final status = await _requestMediaPermission();
+        if (!status.isGranted && !status.isLimited) {
+          _showError('Permesso per salvare nelle Foto non concesso.');
+          if (status.isPermanentlyDenied) {
+            await openAppSettings();
+          }
+          return;
+        }
+
+        // 2. Salva in galleria
+        final result = await ImageGallerySaver.saveImage(
+          pngBytes,
+          quality: 100,
+          name: 'barcode_$uniqueCode',
         );
+
+        if (result['isSuccess'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Codice a barre salvato in galleria!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          _showError('Salvataggio non riuscito.');
+        }
+
       } else {
-        _showError('Salvataggio non riuscito.');
+        // --- SALVATAGGIO SU DESKTOP (Windows / macOS / Linux) ---
+        
+        // 1. Apri il dialog "Salva con nome..."
+        final String? outputFile = await FilePicker.platform.saveFile(
+          dialogTitle: 'Salva codice a barre',
+          fileName: 'barcode_$uniqueCode.png',
+          type: FileType.custom,
+          allowedExtensions: ['png'],
+        );
+
+        // 2. Se l'utente ha scelto un percorso e premuto "Salva"
+        if (outputFile != null) {
+          // 3. Scrivi i bytes del PNG nel file
+          final file = File(outputFile);
+          await file.writeAsBytes(pngBytes);
+
+          // 4. Mostra feedback
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Codice a barre salvato!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          // L'utente ha premuto "Annulla"
+          _showError('Salvataggio annullato.');
+        }
       }
     } catch (e) {
-      _showError('Errore durante la creazione del barcode: $e');
+      // L'errore che ricevevi prima ora è gestito
+      if (e is MissingPluginException) {
+        _showError('Questa piattaforma non è supportata per il salvataggio automatico.');
+      } else {
+        _showError('Errore durante la creazione del barcode: $e');
+      }
     }
   }
 
