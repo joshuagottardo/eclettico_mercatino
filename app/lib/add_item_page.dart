@@ -215,12 +215,18 @@ class _AddItemPageState extends State<AddItemPage> {
       "description": _descriptionController.text,
       "is_used": _isUsed,
       "brand": cleanBrand,
-      "value": double.tryParse(_valueController.text),
-      "sale_price": double.tryParse(_salePriceController.text),
+      "value": double.tryParse(_valueController.text.replaceAll(',', '.')),
+      "sale_price": double.tryParse(
+        _salePriceController.text.replaceAll(',', '.'),
+      ),
       "has_variants": _hasVariants,
       "quantity": _hasVariants ? null : int.tryParse(_quantityController.text),
       "purchase_price":
-          _hasVariants ? null : double.tryParse(_purchasePriceController.text),
+          _hasVariants
+              ? null
+              : double.tryParse(
+                _purchasePriceController.text.replaceAll(',', '.'),
+              ),
       "platforms": _selectedPlatformIds.toList(),
     };
 
@@ -423,7 +429,7 @@ class _AddItemPageState extends State<AddItemPage> {
               child: TextFormField(
                 controller: _valueController,
                 decoration: const InputDecoration(labelText: 'Valore (€)'),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),
             ),
             const SizedBox(width: 16),
@@ -431,7 +437,7 @@ class _AddItemPageState extends State<AddItemPage> {
               child: TextFormField(
                 controller: _salePriceController,
                 decoration: const InputDecoration(labelText: 'Vendita (€)'),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),
             ),
           ],
@@ -487,7 +493,7 @@ class _AddItemPageState extends State<AddItemPage> {
                 child: TextFormField(
                   controller: _purchasePriceController,
                   decoration: const InputDecoration(labelText: 'Acquisto (€)'),
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
                 ),
               ),
             ],
@@ -496,7 +502,7 @@ class _AddItemPageState extends State<AddItemPage> {
 
           Text('Piattaforme', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          
+
           // MODIFICA: Sostituito il vecchio widget con i nuovi Chip
           _buildPlatformChips(),
         ],
@@ -511,29 +517,35 @@ class _AddItemPageState extends State<AddItemPage> {
     return Wrap(
       spacing: 8.0, // Spazio orizzontale tra i chip
       runSpacing: 4.0, // Spazio verticale tra le righe
-      children: _platforms.map((platform) {
-        final platformId = platform['platform_id'] as int;
-        final isSelected = _selectedPlatformIds.contains(platformId);
+      children:
+          _platforms.map((platform) {
+            final platformId = platform['platform_id'] as int;
+            final isSelected = _selectedPlatformIds.contains(platformId);
 
-        return FilterChip(
-          label: Text(platform['name'].toString()),
-          selected: isSelected,
-          onSelected: (bool selected) {
-            setState(() {
-              if (selected) {
-                _selectedPlatformIds.add(platformId);
-              } else {
-                _selectedPlatformIds.remove(platformId);
-              }
-            });
-          },
-          // Stile per farlo sembrare più "moderno"
-          selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-          checkmarkColor: Theme.of(context).colorScheme.primary,
-          showCheckmark: true,
-          side: isSelected ? BorderSide.none : BorderSide(color: Colors.grey[700]!),
-        );
-      }).toList(),
+            return FilterChip(
+              label: Text(platform['name'].toString()),
+              selected: isSelected,
+              onSelected: (bool selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedPlatformIds.add(platformId);
+                  } else {
+                    _selectedPlatformIds.remove(platformId);
+                  }
+                });
+              },
+              // Stile per farlo sembrare più "moderno"
+              selectedColor: Theme.of(
+                context,
+              ).colorScheme.primary.withOpacity(0.3),
+              checkmarkColor: Theme.of(context).colorScheme.primary,
+              showCheckmark: true,
+              side:
+                  isSelected
+                      ? BorderSide.none
+                      : BorderSide(color: Colors.grey[700]!),
+            );
+          }).toList(),
     );
   }
 }

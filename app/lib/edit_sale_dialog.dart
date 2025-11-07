@@ -65,7 +65,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       "platform_id": _selectedPlatformId,
       "sale_date": DateFormat('yyyy-MM-dd').format(_selectedDate),
       "quantity_sold": int.tryParse(_quantityController.text),
-      "total_price": double.tryParse(_priceController.text),
+      "total_price": double.tryParse(_priceController.text.replaceAll(',', '.')),
       "sold_by_user":
           _userController.text.isNotEmpty ? _userController.text : null,
     };
@@ -256,9 +256,9 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
                     child: TextFormField(
                       controller: _priceController,
                       decoration: const InputDecoration(
-                        labelText: 'Prezzo Totale (€)',
+                        labelText: 'Totale (€)',
                       ),
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                     ),
                   ),

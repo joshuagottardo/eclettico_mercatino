@@ -113,7 +113,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
 
     final body = {
       "variant_name": _nameController.text,
-      "purchase_price": double.tryParse(_purchasePriceController.text),
+      "purchase_price": double.tryParse(_purchasePriceController.text.replaceAll(',', '.')),
       "quantity": int.tryParse(_quantityController.text),
       "description": _descriptionController.text,
       "platforms": _selectedPlatformIds.toList(),
@@ -302,9 +302,9 @@ class _AddVariantPageState extends State<AddVariantPage> {
                             child: TextFormField(
                               controller: _purchasePriceController,
                               decoration: const InputDecoration(
-                                labelText: 'Acquisto (€)',
+                                labelText: 'Vendita (€)',
                               ),
-                              keyboardType: TextInputType.number,
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
                               validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                             ),
                           ),
