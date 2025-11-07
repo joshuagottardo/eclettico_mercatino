@@ -228,11 +228,6 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
                       controller: _quantityController,
                       decoration: InputDecoration(
                         labelText: 'Quantità',
-                        //  Mostra lo stock
-                        helperText:
-                            _maxAvailableQuantity != null
-                                ? 'Disponibili: $_maxAvailableQuantity'
-                                : null,
                         helperStyle: TextStyle(color: Colors.grey[400]),
                       ),
                       keyboardType: TextInputType.number,
