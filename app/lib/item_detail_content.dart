@@ -1510,7 +1510,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Variante: $variantName',
+                variantName,
                 style: TextStyle(
                   color: _headerTextColor,
                   fontWeight: FontWeight.bold,
