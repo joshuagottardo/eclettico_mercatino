@@ -1465,14 +1465,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       children: [
         // --- SEZIONE ARTICOLO PRINCIPALE (SOLO SE NON HA VARIANTI) ---
         if (_currentItem['has_variants'] != 1) ...[
-          Text(
-            'Foto Articolo Principale',
-            style: TextStyle(
-              color: _headerTextColor,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
           const SizedBox(height: 8),
           SizedBox(
             height: 140, // Altezza fissa per la riga
