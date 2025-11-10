@@ -21,6 +21,7 @@ import 'package:barcode_image/barcode_image.dart' as bci;
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -1461,61 +1462,69 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // --- MODIFICATA: Widget galleria a sezioni ---
+// --- MODIFICATA: Widget galleria a sezioni (con SCROLL PC) ---
   Widget _buildPhotoGallery() {
     if (_isPhotosLoading) {
       return _buildPhotoGallerySkeleton();
     }
 
     // 1. Filtra le foto dell'articolo principale (quelle senza variant_id)
-    final List<Map<String, dynamic>> mainPhotos =
-        _photos
-            .where((p) => p['variant_id'] == null)
-            .cast<Map<String, dynamic>>()
-            .toList();
+    final List<Map<String, dynamic>> mainPhotos = _photos
+        .where((p) => p['variant_id'] == null)
+        .cast<Map<String, dynamic>>()
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- SEZIONE ARTICOLO PRINCIPALE ---
-        Text(
-          'Foto Articolo Principale',
-          style: TextStyle(
-            color: _headerTextColor,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+        // --- SEZIONE ARTICOLO PRINCIPALE (SOLO SE NON HA VARIANTI) ---
+        if (_currentItem['has_variants'] != 1) ...[
+          Text(
+            'Foto Articolo Principale',
+            style: TextStyle(
+              color: _headerTextColor,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 140, // Altezza fissa per la riga
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: mainPhotos.length + 1, // +1 per il bottone "Aggiungi"
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                // Bottone "Aggiungi" per l'articolo (target = null)
-                return _buildAddPhotoButton(targetVariantId: null);
-              }
-              // Mostra la foto
-              final photo = mainPhotos[index - 1];
-              return _buildPhotoTile(photo: photo);
-            },
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 140, // Altezza fissa per la riga
+            // --- INIZIO MODIFICA PC ---
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(
+                // Abilita il drag-to-scroll con il mouse
+                dragDevices: {
+                  PointerDeviceKind.touch,
+                  PointerDeviceKind.mouse,
+                },
+              ),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: mainPhotos.length + 1, // +1 per il bottone "Aggiungi"
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return _buildAddPhotoButton(targetVariantId: null);
+                  }
+                  final photo = mainPhotos[index - 1];
+                  return _buildPhotoTile(photo: photo);
+                },
+              ),
+            ),
+            // --- FINE MODIFICA PC ---
           ),
-        ),
-        const SizedBox(height: 24), // Spazio tra le sezioni
+          const SizedBox(height: 24), // Spazio tra le sezioni
+        ],
+
         // --- SEZIONI VARIANTI ---
-        // Itera su ogni variante e crea una sezione per lei
         ..._variants.map((variant) {
           final int variantId = variant['variant_id'];
           final String variantName = variant['variant_name'] ?? 'Variante';
 
-          // Filtra le foto solo per QUESTA variante
-          final List<Map<String, dynamic>> variantPhotos =
-              _photos
-                  .where((p) => p['variant_id'] == variantId)
-                  .cast<Map<String, dynamic>>()
-                  .toList();
+          final List<Map<String, dynamic>> variantPhotos = _photos
+              .where((p) => p['variant_id'] == variantId)
+              .cast<Map<String, dynamic>>()
+              .toList();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1531,18 +1540,28 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
               const SizedBox(height: 8),
               SizedBox(
                 height: 140,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: variantPhotos.length + 1, // +1 per il bottone
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      // Bottone "Aggiungi" per QUESTA variante
-                      return _buildAddPhotoButton(targetVariantId: variantId);
-                    }
-                    final photo = variantPhotos[index - 1];
-                    return _buildPhotoTile(photo: photo);
-                  },
+                // --- INIZIO MODIFICA PC ---
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    // Abilita il drag-to-scroll con il mouse
+                    dragDevices: {
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.mouse,
+                    },
+                  ),
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: variantPhotos.length + 1, // +1 per il bottone
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return _buildAddPhotoButton(targetVariantId: variantId);
+                      }
+                      final photo = variantPhotos[index - 1];
+                      return _buildPhotoTile(photo: photo);
+                    },
+                  ),
                 ),
+                // --- FINE MODIFICA PC ---
               ),
               const SizedBox(height: 24), // Spazio tra le varianti
             ],
