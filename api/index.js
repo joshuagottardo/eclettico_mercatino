@@ -268,7 +268,7 @@ app.get("/api/items/:id", async (req, res) => {
 app.get("/api/categories", async (req, res) => {
   try {
     const [categories] = await pool.query(
-      "SELECT * FROM categories ORDER BY category_id ASC"
+      "SELECT * FROM categories ORDER BY ordering ASC"
     );
     res.json(categories);
   } catch (error) {

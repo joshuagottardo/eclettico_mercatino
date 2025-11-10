@@ -14,6 +14,8 @@ IconData getIconForCategory(String? categoryName) {
       return Iconsax.bag_2;
     case 'intrattenimento':
       return Iconsax.gameboy;
+    case 'accessori':
+      return Iconsax.watch;
     case 'altro':
       return Iconsax.box_1;
     default: // Per "altro" o categorie non specificate
