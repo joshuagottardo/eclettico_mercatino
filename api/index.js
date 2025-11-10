@@ -1462,20 +1462,34 @@ app.post("/api/photos/upload", upload.single("photo"), async (req, res) => {
     const originalUrlPath = `uploads/${unique_code}/${originalFilename}`;
     const thumbUrlPath = `uploads/${unique_code}/thumbnails/${thumbFilename}`;
 
-    // --- (FIX 3) Crea le cartelle e sposta il file ---
-
-    // Crea le cartelle (ricorsivo le crea entrambe)
+    // --- (FIX 3) Crea le cartelle di destinazione ---
     if (!fs.existsSync(thumbDir)) {
       fs.mkdirSync(thumbDir, { recursive: true });
     }
 
-    // Sposta il file dalla cartella /temp alla destinazione finale
-    fs.renameSync(req.file.path, finalOriginalPath);
+    // --- (FIX 4) Processa l'immagine (con rotazione) e crea la thumbnail ---
 
-    // --- (FIX 4) Crea la thumbnail (dal nuovo percorso) ---
-    await sharp(finalOriginalPath)
-      .resize(300, 300, { fit: "cover" })
-      .toFile(finalThumbPath);
+    // Carica l'immagine temp in sharp
+    const imageProcessor = sharp(req.file.path);
+
+    // Avvia entrambe le operazioni in parallelo
+    await Promise.all([
+      // Operazione 1: Salva l'ORIGINALE corretto
+      imageProcessor
+        .clone() // Clona il processore
+        .rotate() // <-- LA SOLUZIONE: Auto-ruota in base a EXIF
+        .toFile(finalOriginalPath),
+
+      // Operazione 2: Salva la THUMBNAIL corretta
+      imageProcessor
+        .clone() // Clona il processore
+        .rotate() // <-- LA SOLUZIONE: Auto-ruota in base a EXIF
+        .resize(300, 300, { fit: "cover" })
+        .toFile(finalThumbPath),
+    ]);
+
+    // Il file temp in req.file.path viene gestito e cancellato da multer
+    // non c'è bisogno di fs.renameSync o fs.unlinkSync
 
     // --- (FIX 5) Salva i nuovi percorsi nel DB ---
     const sql = `
