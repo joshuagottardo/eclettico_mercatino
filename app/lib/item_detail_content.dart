@@ -474,18 +474,26 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // --- NUOVA FUNZIONE PER COPIARE LA DESCRIZIONE ---
+  String _capitalizeFirst(String? text) {
+    if (text == null || text.isEmpty) return '';
+    return text[0].toUpperCase() + text.substring(1).toLowerCase();
+  }
+
   Future<void> _copyDescriptionToClipboard() async {
-    final String name = _currentItem['name'] ?? 'Senza nome';
-    final String brand = _currentItem['brand'] ?? 'N/D';
+    // --- INIZIO MODIFICA ---
+    final String name = _capitalizeFirst(_currentItem['name']);
+    final String brand = _capitalizeFirst(_currentItem['brand']);
     final String description =
         _currentItem['description'] ?? 'Nessuna descrizione';
     final String condition = (_currentItem['is_used'] == 0) ? 'Nuovo' : 'Usato';
 
     // Formatta il testo come richiesto
-    final String textToCopy = '$name | $brand\n- $description\n- $condition';
+    final String textToCopy =
+        '$name | $brand\n$description\nCONDIZIONE: $condition';
+    // --- FINE MODIFICA ---
 
     await Clipboard.setData(ClipboardData(text: textToCopy));
+    // ...
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
