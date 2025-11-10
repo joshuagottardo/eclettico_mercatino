@@ -22,6 +22,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
+// ... (tutti gli import)
+import 'package:flutter/gestures.dart';
+import 'package:eclettico/sales_log_page.dart'; // <-- AGGIUNGI QUESTO
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -265,8 +268,49 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     _buildPhotoGallery(),
                     const SizedBox(height: 24),
 
-                    // --- 7. LOG VENDITE (Grigio scuro) ---
-                    _buildSalesLogDrawer(),
+                    // --- 7. LOG VENDITE (Nuovo Link) ---
+                    Card(
+                      color: Theme.of(context).cardColor,
+                      margin: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: ListTile(
+                        leading: Icon(
+                          Iconsax.receipt_search,
+                          color: Colors.grey[600],
+                        ),
+                        title: Text('Storico Vendite'),
+                        subtitle:
+                            _isLogLoading
+                                ? Text(
+                                  'Caricamento...',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                )
+                                : Text(
+                                  '${_salesLog.length} vendite registrate',
+                                ),
+                        trailing: Icon(Iconsax.arrow_right_3),
+                        onTap: () {
+                          // Naviga alla nuova pagina
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => SalesLogPage(
+                                    salesLog: _salesLog,
+                                    allPlatforms: _allPlatforms,
+                                    variants: _variants,
+                                    item: _currentItem,
+                                  ),
+                            ),
+                          ).then((dataChanged) {
+                            // Se la pagina di log segnala un cambiamento (es. delete)
+                            if (dataChanged == true) {
+                              _markChanged();
+                              _refreshAllData();
+                            }
+                          });
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     Center(
                       child:
@@ -1078,69 +1122,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   // --- FINE MODIFICA ---
                 ],
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSalesLogDrawer() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'LOG VENDITE',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
-        ),
-        const SizedBox(height: 8),
-        // Testa del Drawer
-        Card(
-          color: _logDrawerColor,
-          child: InkWell(
-            onTap: () {
-              setState(() {
-                _isSalesLogOpen = !_isSalesLogOpen; // Inverti lo stato
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _isSalesLogOpen
-                        ? 'Chiudi Storico'
-                        : 'Apri Storico Vendite (${_salesLog.length})',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  // Icona dinamica con rotazione
-                  AnimatedRotation(
-                    turns: _isSalesLogOpen ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Icon(
-                      Iconsax.arrow_down_1,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Corpo del Drawer
-        AnimatedSize(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          child: Container(
-            height: _isSalesLogOpen ? null : 0, // Altezza dinamica
-            color: _logDrawerColor,
-            child: Visibility(
-              visible: _isSalesLogOpen,
-              child: _buildSalesLogSection(),
             ),
           ),
         ),
