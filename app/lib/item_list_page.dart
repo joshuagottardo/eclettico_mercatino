@@ -181,7 +181,7 @@ class _ItemListPageState extends State<ItemListPage> {
       cardColor = const Color(0xFF422B2B);
     } else if (!isPublished) {
       // Priorità 2: Se non venduto E non pubblicato, è sbiadito
-      cardColor = Theme.of(context).cardColor.withOpacity(0.6);
+      cardColor = const Color(0xFF4E3F2A);
     } else {
       // Altrimenti, è normale
       cardColor = Theme.of(context).cardColor;

@@ -195,7 +195,7 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
             children: [
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Piattaforma'),
-                initialValue: _selectedPlatformId,
+                
                 items:
                     widget.allPlatforms.map<DropdownMenuItem<int>>((platform) {
                       return DropdownMenuItem<int>(

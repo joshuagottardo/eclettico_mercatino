@@ -377,7 +377,6 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
         DropdownButtonFormField<int>(
           decoration: const InputDecoration(labelText: 'Categoria'),
-          initialValue: _selectedCategoryId,
           items:
               _categories.map<DropdownMenuItem<int>>((category) {
                 return DropdownMenuItem<int>(

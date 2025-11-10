@@ -218,7 +218,7 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(labelText: 'Categoria'),
-                    initialValue: _selectedCategoryId,
+                    
                     items: [
                       const DropdownMenuItem<int>(
                         value: null,
@@ -241,7 +241,7 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Brand'),
-                    initialValue: _selectedBrand,
+                    
                     items: [
                       const DropdownMenuItem<String>(
                         value: null,
@@ -536,7 +536,7 @@ class _SearchPageState extends State<SearchPage> {
       cardColor = const Color(0xFF422B2B);
     } else if (!isPublished) {
       // Priorità 3: Se non venduto E non pubblicato, è sbiadito
-      cardColor = Theme.of(context).cardColor.withOpacity(0.6);
+      cardColor = const Color(0xFF4E3F2A);
     } else {
       // Altrimenti, è normale
       cardColor = Theme.of(context).cardColor;
