@@ -356,8 +356,12 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // --- NUOVO WIDGET: La singola foto nella galleria ---
-  Widget _buildPhotoTile({required Map<String, dynamic> photo}) {
+// --- NUOVO WIDGET: La singola foto nella galleria (MODIFICATO) ---
+  Widget _buildPhotoTile({
+    required Map<String, dynamic> photo,
+    required List<Map<String, dynamic>> photoList, // <-- AGGIUNTO
+    required int indexInList, // <-- AGGIUNTO
+  }) {
     // Logica per trovare l'URL (presa dalla vecchia funzione)
     final fullResUrl = '$kBaseUrl/${photo['file_path']}';
     final thumbnailUrl =
@@ -373,33 +377,27 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           aspectRatio: 1,
           child: InkWell(
             onTap: () async {
-              // Trova l'indice di questa foto nella lista _photos GLOBALE
-              final int globalIndex = _photos.indexWhere(
-                (p) => p['photo_id'] == photo['photo_id'],
-              );
-
-              if (globalIndex == -1) {
-                _showError("Errore: foto non trovata.");
-                return;
-              }
-
-              // Apri il visualizzatore
+              // --- INIZIO MODIFICA ONTAP ---
+              // Ora passiamo la lista filtrata e l'indice locale,
+              // invece della lista globale.
               final bool? photoDeleted = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   fullscreenDialog: true,
                   builder:
                       (context) => PhotoViewerPage(
-                        photos: _photos.cast<Map<String, dynamic>>(),
-                        initialIndex: globalIndex, // Passa l'indice globale
+                        photos: photoList, // <-- MODIFICATO (lista filtrata)
+                        initialIndex: indexInList, // <-- MODIFICATO (indice locale)
                       ),
                 ),
               );
               if (photoDeleted == true) {
                 _fetchPhotos();
+                _markChanged(); // Aggiunto per notificare la lista
               }
+              // --- FINE MODIFICA ONTAP ---
             },
-            // Logica per mostrare l'immagine (presa dalla vecchia funzione)
+            // Logica per mostrare l'immagine (invariata)
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final dpr = MediaQuery.devicePixelRatioOf(context);
@@ -1490,10 +1488,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           const SizedBox(height: 8),
           SizedBox(
             height: 140, // Altezza fissa per la riga
-            // --- INIZIO MODIFICA PC ---
             child: ScrollConfiguration(
               behavior: ScrollConfiguration.of(context).copyWith(
-                // Abilita il drag-to-scroll con il mouse
                 dragDevices: {
                   PointerDeviceKind.touch,
                   PointerDeviceKind.mouse,
@@ -1506,12 +1502,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   if (index == 0) {
                     return _buildAddPhotoButton(targetVariantId: null);
                   }
+                  // --- INIZIO MODIFICA CHIAMATA ---
                   final photo = mainPhotos[index - 1];
-                  return _buildPhotoTile(photo: photo);
+                  return _buildPhotoTile(
+                    photo: photo,
+                    photoList: mainPhotos,
+                    indexInList: index - 1,
+                  );
+                  // --- FINE MODIFICA CHIAMATA ---
                 },
               ),
             ),
-            // --- FINE MODIFICA PC ---
           ),
           const SizedBox(height: 24), // Spazio tra le sezioni
         ],
@@ -1540,10 +1541,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
               const SizedBox(height: 8),
               SizedBox(
                 height: 140,
-                // --- INIZIO MODIFICA PC ---
                 child: ScrollConfiguration(
                   behavior: ScrollConfiguration.of(context).copyWith(
-                    // Abilita il drag-to-scroll con il mouse
                     dragDevices: {
                       PointerDeviceKind.touch,
                       PointerDeviceKind.mouse,
@@ -1556,12 +1555,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       if (index == 0) {
                         return _buildAddPhotoButton(targetVariantId: variantId);
                       }
+                      // --- INIZIO MODIFICA CHIAMATA ---
                       final photo = variantPhotos[index - 1];
-                      return _buildPhotoTile(photo: photo);
+                      return _buildPhotoTile(
+                        photo: photo,
+                        photoList: variantPhotos,
+                        indexInList: index - 1,
+                      );
+                      // --- FINE MODIFICA CHIAMATA ---
                     },
                   ),
                 ),
-                // --- FINE MODIFICA PC ---
               ),
               const SizedBox(height: 24), // Spazio tra le varianti
             ],
