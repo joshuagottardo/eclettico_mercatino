@@ -319,6 +319,118 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
+  // --- NUOVO WIDGET: Il bottone "+" per aggiungere foto ---
+  Widget _buildAddPhotoButton({dynamic targetVariantId}) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        // Un colore leggermente diverso per far capire che è un bottone
+        color: Colors.grey[850],
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: InkWell(
+            // Disabilita il tap se stiamo già caricando
+            onTap:
+                _isUploading
+                    ? null
+                    : () =>
+                        _pickAndUploadImage(targetVariantId: targetVariantId),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Iconsax.add_square, size: 32, color: Colors.grey[600]),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Aggiungi Foto',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- NUOVO WIDGET: La singola foto nella galleria ---
+  Widget _buildPhotoTile({required Map<String, dynamic> photo}) {
+    // Logica per trovare l'URL (presa dalla vecchia funzione)
+    final fullResUrl = '$kBaseUrl/${photo['file_path']}';
+    final thumbnailUrl =
+        photo['thumbnail_path'] != null
+            ? '$kBaseUrl/${photo['thumbnail_path']}'
+            : fullResUrl;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: InkWell(
+            onTap: () async {
+              // Trova l'indice di questa foto nella lista _photos GLOBALE
+              final int globalIndex = _photos.indexWhere(
+                (p) => p['photo_id'] == photo['photo_id'],
+              );
+
+              if (globalIndex == -1) {
+                _showError("Errore: foto non trovata.");
+                return;
+              }
+
+              // Apri il visualizzatore
+              final bool? photoDeleted = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder:
+                      (context) => PhotoViewerPage(
+                        photos: _photos.cast<Map<String, dynamic>>(),
+                        initialIndex: globalIndex, // Passa l'indice globale
+                      ),
+                ),
+              );
+              if (photoDeleted == true) {
+                _fetchPhotos();
+              }
+            },
+            // Logica per mostrare l'immagine (presa dalla vecchia funzione)
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final dpr = MediaQuery.devicePixelRatioOf(context);
+                final cacheW = (constraints.maxWidth * dpr).round().clamp(
+                  256,
+                  4096,
+                );
+
+                return Image.network(
+                  thumbnailUrl,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.medium,
+                  cacheWidth: cacheW,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons.broken_image, color: Colors.grey);
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- NUOVA FUNZIONE PER COPIARE LA DESCRIZIONE ---
   Future<void> _copyDescriptionToClipboard() async {
     final String name = _currentItem['name'] ?? 'Senza nome';
@@ -650,10 +762,10 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
   // --- FUNZIONI DI AZIONE ---
 
-  // Funzioni di caricamento
-  Future<void> _pickAndUploadImage() async {
-    final dynamic photoTarget = await _showPhotoTargetDialog();
-    if (photoTarget == 'cancel') return;
+  // --- MODIFICATA: Ora accetta un 'targetVariantId' ---
+  Future<void> _pickAndUploadImage({dynamic targetVariantId}) async {
+    // Rimosso: _showPhotoTargetDialog()
+    final dynamic photoTarget = targetVariantId;
 
     //  Usa pickMultiImage per selezionare più file
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
@@ -669,6 +781,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     try {
       // Itera su ogni file selezionato per l'upload
       for (final XFile pickedFile in pickedFiles) {
+        // Passa il targetVariantId alla funzione di upload
         await _uploadSingleImage(pickedFile, photoTarget);
       }
 
@@ -686,7 +799,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       );
     } catch (e) {
       print('Errore (catch) durante l\'upload multiplo: $e');
-      // La gestione dell'errore per il singolo file è spostata in _uploadSingleImage
     } finally {
       if (mounted) {
         setState(() {
@@ -720,65 +832,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     } catch (e) {
       print('Errore upload di ${pickedFile.name}: $e');
     }
-  }
-
-  Future<dynamic> _showPhotoTargetDialog() {
-    dynamic selectedTarget;
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, dialogSetState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1E1E1E),
-              title: const Text('Lega foto a:'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    RadioListTile<dynamic>(
-                      title: const Text('Articolo Principale'),
-                      value: null,
-                      groupValue: selectedTarget,
-                      onChanged:
-                          (value) => dialogSetState(() {
-                            selectedTarget = value;
-                          }),
-                      activeColor: Theme.of(context).colorScheme.primary,
-                    ),
-                    if (_variants.isNotEmpty) ...[
-                      const Divider(),
-                      ..._variants.map((variant) {
-                        return RadioListTile<dynamic>(
-                          title: Text(variant['variant_name'] ?? 'Variante'),
-                          value: variant['variant_id'],
-                          groupValue: selectedTarget,
-                          onChanged:
-                              (value) => dialogSetState(() {
-                                selectedTarget = value;
-                              }),
-                          activeColor: Theme.of(context).colorScheme.primary,
-                        );
-                      }),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, 'cancel'),
-                  child: const Text('Annulla'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, selectedTarget),
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   int _calculateTotalStock() {
@@ -1408,150 +1461,95 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
+  // --- MODIFICATA: Widget galleria a sezioni ---
   Widget _buildPhotoGallery() {
-    // --- Gestione SKELETON LOADER ---
     if (_isPhotosLoading) {
-      return _buildPhotoGallerySkeleton(); // Mostra lo skeleton
+      return _buildPhotoGallerySkeleton();
     }
-    // --- Fine Skeleton ---
 
-    if (_photos.isEmpty) {
-      return Center(
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Nessuna foto trovata.'),
-            ),
-            if (!_isUploading)
-              ElevatedButton.icon(
-                onPressed: _pickAndUploadImage,
-                icon: const Icon(Iconsax.image, color: Colors.black),
-                label: const Text('Aggiungi foto'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[300], // Bianco "sporco"
-                  foregroundColor: Colors.black, // Icona e testo neri
-                ),
-              ),
-          ],
-        ),
-      );
-    }
+    // 1. Filtra le foto dell'articolo principale (quelle senza variant_id)
+    final List<Map<String, dynamic>> mainPhotos =
+        _photos
+            .where((p) => p['variant_id'] == null)
+            .cast<Map<String, dynamic>>()
+            .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // --- SEZIONE ARTICOLO PRINCIPALE ---
+        Text(
+          'Foto Articolo Principale',
+          style: TextStyle(
+            color: _headerTextColor,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
         SizedBox(
-          height: 140,
+          height: 140, // Altezza fissa per la riga
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: _photos.length,
+            itemCount: mainPhotos.length + 1, // +1 per il bottone "Aggiungi"
             itemBuilder: (context, index) {
-              final photo = _photos[index];
-
-              // --- Logica THUMBNAIL ---
-              // 1. Prendi il percorso full-res (per fallback)
-              final fullResUrl = '$kBaseUrl/${photo['file_path']}';
-
-              // 2. Prendi il thumbnail. Se non esiste (vecchie foto), usa il full-res.
-              final thumbnailUrl =
-                  photo['thumbnail_path'] != null
-                      ? '$kBaseUrl/${photo['thumbnail_path']}'
-                      : fullResUrl;
-              // --- Fine Logica Thumbnail ---
-
-              String targetName = 'Articolo Principale';
-              if (photo['variant_id'] != null) {
-                final matchingVariant = _variants.firstWhere(
-                  (v) =>
-                      (v['variant_id'] as num?)?.toInt() ==
-                      (photo['variant_id'] as num?)?.toInt(),
-                  orElse: () => null,
-                );
-                if (matchingVariant != null) {
-                  targetName = matchingVariant['variant_name'] ?? 'Variante';
-                } else {
-                  targetName = 'Variante';
-                }
+              if (index == 0) {
+                // Bottone "Aggiungi" per l'articolo (target = null)
+                return _buildAddPhotoButton(targetVariantId: null);
               }
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: InkWell(
-                      onTap: () async {
-                        final bool? photoDeleted = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            fullscreenDialog: true,
-                            builder:
-                                (context) => PhotoViewerPage(
-                                  photos: _photos.cast<Map<String, dynamic>>(),
-                                  initialIndex: index,
-                                ),
-                          ),
-                        );
-                        if (photoDeleted == true) {
-                          _fetchPhotos(); // Ricarica la galleria
-                        }
-                      },
-                      child: GridTile(
-                        footer: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 4,
-                          ),
-                          color: Colors.black.withAlpha(51),
-                          child: Text(
-                            targetName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final dpr = MediaQuery.devicePixelRatioOf(context);
-                            final cacheW = (constraints.maxWidth * dpr)
-                                .round()
-                                .clamp(256, 4096);
-
-                            return Image.network(
-                              thumbnailUrl, //  USA IL THUMBNAIL QUI
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              filterQuality: FilterQuality.medium,
-                              cacheWidth: cacheW,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
+              // Mostra la foto
+              final photo = mainPhotos[index - 1];
+              return _buildPhotoTile(photo: photo);
             },
           ),
         ),
+        const SizedBox(height: 24), // Spazio tra le sezioni
+        // --- SEZIONI VARIANTI ---
+        // Itera su ogni variante e crea una sezione per lei
+        ..._variants.map((variant) {
+          final int variantId = variant['variant_id'];
+          final String variantName = variant['variant_name'] ?? 'Variante';
+
+          // Filtra le foto solo per QUESTA variante
+          final List<Map<String, dynamic>> variantPhotos =
+              _photos
+                  .where((p) => p['variant_id'] == variantId)
+                  .cast<Map<String, dynamic>>()
+                  .toList();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Variante: $variantName',
+                style: TextStyle(
+                  color: _headerTextColor,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 140,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: variantPhotos.length + 1, // +1 per il bottone
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      // Bottone "Aggiungi" per QUESTA variante
+                      return _buildAddPhotoButton(targetVariantId: variantId);
+                    }
+                    final photo = variantPhotos[index - 1];
+                    return _buildPhotoTile(photo: photo);
+                  },
+                ),
+              ),
+              const SizedBox(height: 24), // Spazio tra le varianti
+            ],
+          );
+        }).toList(),
+
+        // --- LOADER (se stiamo caricando) ---
         if (_isUploading)
           const Padding(
             padding: EdgeInsets.only(top: 16.0),
@@ -1562,22 +1560,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 SizedBox(width: 8),
                 Text('Caricamento foto...'),
               ],
-            ),
-          )
-        else
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: _pickAndUploadImage,
-              icon: const Icon(
-                Iconsax.add_square,
-                color: Colors.black, // <-- IMPOSTA IL COLORE QUI
-              ),
-              label: const Text('Aggiungi foto'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[300], // Bianco "sporco"
-                foregroundColor: Colors.black, // Icona e testo neri
-              ),
             ),
           ),
       ],
