@@ -251,23 +251,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       ),
                       const SizedBox(height: 8),
                       _buildVariantsSection(),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.center,
-                        child: ElevatedButton.icon(
-                          onPressed: _navigateToAddVariant,
-                          icon: const Icon(
-                            Iconsax.add_square,
-                            color: Colors.black, // <-- IMPOSTA IL COLORE QUI
-                          ),
-                          label: const Text('Aggiungi variante'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.grey[300], // Bianco "sporco"
-                            foregroundColor: Colors.black, // Icona e testo neri
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 24),
                     ],
 
@@ -320,6 +303,22 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
+  Widget _buildAddVariantTile() {
+    return Card(
+      // Usiamo lo stesso stile del bottone "Aggiungi Foto"
+      color: Colors.grey[850],
+      margin: const EdgeInsets.symmetric(vertical: 4.0),
+      child: ListTile(
+        leading: Icon(Iconsax.add_square, color: Colors.grey[600]),
+        title: Text(
+          'Aggiungi variante',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+        onTap: _navigateToAddVariant, // Chiama la funzione esistente
+      ),
+    );
+  }
+
   // --- NUOVO WIDGET: Il bottone "+" per aggiungere foto ---
   Widget _buildAddPhotoButton({dynamic targetVariantId}) {
     return Padding(
@@ -356,7 +355,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-// --- NUOVO WIDGET: La singola foto nella galleria (MODIFICATO) ---
+  // --- NUOVO WIDGET: La singola foto nella galleria (MODIFICATO) ---
   Widget _buildPhotoTile({
     required Map<String, dynamic> photo,
     required List<Map<String, dynamic>> photoList, // <-- AGGIUNTO
@@ -387,7 +386,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   builder:
                       (context) => PhotoViewerPage(
                         photos: photoList, // <-- MODIFICATO (lista filtrata)
-                        initialIndex: indexInList, // <-- MODIFICATO (indice locale)
+                        initialIndex:
+                            indexInList, // <-- MODIFICATO (indice locale)
                       ),
                 ),
               );
@@ -1392,85 +1392,84 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         ),
       );
     }
-    if (_variants.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('Nessuna variante trovata.'),
-        ),
-      );
-    }
+
+    // NOTA: Non mostriamo "Nessuna variante trovata" perché
+    // mostreremo sempre il pulsante "Aggiungi".
 
     return Column(
-      children:
-          _variants.map((variant) {
-            final bool isVariantSold = variant['is_sold'] == 1;
-            final Color statusColor =
-                isVariantSold ? soldColor : availableColor;
+      children: [
+        // <-- 1. La Column ora ha parentesi quadre []
 
-            // --- INIZIO MODIFICA ---
-            return Card(
-              color:
-                  isVariantSold
-                      ? soldColor.withAlpha(51)
-                      : Theme.of(context).cardColor,
-              margin: const EdgeInsets.symmetric(vertical: 4.0),
-              child: ListTile(
-                // 1. Il titolo (ora centrato verticalmente)
-                title: Text(
-                  variant['variant_name'] ?? 'Senza nome',
-                  style: TextStyle(
-                    color: statusColor, // Usa colore verde/rosso
-                    decoration:
-                        isVariantSold ? TextDecoration.lineThrough : null,
-                  ),
+        // --- INIZIO MODIFICA ---
+        // 2. Usiamo ... (spread operator) per inserire tutte le varianti
+        ..._variants.map((variant) {
+          // --- FINE MODIFICA ---
+
+          final bool isVariantSold = variant['is_sold'] == 1;
+          final Color statusColor = isVariantSold ? soldColor : availableColor;
+
+          return Card(
+            color:
+                isVariantSold
+                    ? soldColor.withAlpha(51)
+                    : Theme.of(context).cardColor,
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            child: ListTile(
+              title: Text(
+                variant['variant_name'] ?? 'Senza nome',
+                style: TextStyle(
+                  color: statusColor,
+                  decoration: isVariantSold ? TextDecoration.lineThrough : null,
                 ),
-
-                // 2. Sottotitolo (RIMOSSO)
-
-                // 3. Trailing (Sostituito con il numero di pezzi)
-                trailing: Text(
-                  ((variant['quantity'] as num?)?.toInt() ?? 0).toString(),
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16, // Stessa dimensione del titolo
-                  ),
-                ),
-                onTap: () async {
-                  final bool? dataChanged = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => AddVariantPage(
-                            itemId: _currentItem['item_id'],
-                            variantId: variant['variant_id'],
-                          ),
-                    ),
-                  );
-                  if (dataChanged == true) {
-                    _markChanged();
-                    _refreshAllData();
-                  }
-                },
               ),
-            );
-            // --- FINE MODIFICA ---
-          }).toList(),
+              trailing: Text(
+                ((variant['quantity'] as num?)?.toInt() ?? 0).toString(),
+                style: TextStyle(
+                  color: statusColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              onTap: () async {
+                final bool? dataChanged = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => AddVariantPage(
+                          itemId: _currentItem['item_id'],
+                          variantId: variant['variant_id'],
+                        ),
+                  ),
+                );
+                if (dataChanged == true) {
+                  _markChanged();
+                  _refreshAllData();
+                }
+              },
+            ),
+          );
+        }).toList(),
+
+        // --- INIZIO MODIFICA ---
+        // 3. Aggiungiamo il nuovo "Tile" alla fine della Column
+        _buildAddVariantTile(),
+        // --- FINE MODIFICA ---
+      ],
     );
   }
 
-// --- MODIFICATA: Widget galleria a sezioni (con SCROLL PC) ---
+  // --- MODIFICATA: Widget galleria a sezioni (con SCROLL PC) ---
   Widget _buildPhotoGallery() {
     if (_isPhotosLoading) {
       return _buildPhotoGallerySkeleton();
     }
 
     // 1. Filtra le foto dell'articolo principale (quelle senza variant_id)
-    final List<Map<String, dynamic>> mainPhotos = _photos
-        .where((p) => p['variant_id'] == null)
-        .cast<Map<String, dynamic>>()
-        .toList();
+    final List<Map<String, dynamic>> mainPhotos =
+        _photos
+            .where((p) => p['variant_id'] == null)
+            .cast<Map<String, dynamic>>()
+            .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1490,14 +1489,12 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             height: 140, // Altezza fissa per la riga
             child: ScrollConfiguration(
               behavior: ScrollConfiguration.of(context).copyWith(
-                dragDevices: {
-                  PointerDeviceKind.touch,
-                  PointerDeviceKind.mouse,
-                },
+                dragDevices: {PointerDeviceKind.touch, PointerDeviceKind.mouse},
               ),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: mainPhotos.length + 1, // +1 per il bottone "Aggiungi"
+                itemCount:
+                    mainPhotos.length + 1, // +1 per il bottone "Aggiungi"
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return _buildAddPhotoButton(targetVariantId: null);
@@ -1522,10 +1519,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           final int variantId = variant['variant_id'];
           final String variantName = variant['variant_name'] ?? 'Variante';
 
-          final List<Map<String, dynamic>> variantPhotos = _photos
-              .where((p) => p['variant_id'] == variantId)
-              .cast<Map<String, dynamic>>()
-              .toList();
+          final List<Map<String, dynamic>> variantPhotos =
+              _photos
+                  .where((p) => p['variant_id'] == variantId)
+                  .cast<Map<String, dynamic>>()
+                  .toList();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
