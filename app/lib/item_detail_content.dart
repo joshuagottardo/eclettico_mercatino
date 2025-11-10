@@ -99,68 +99,89 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
   @override
   Widget build(BuildContext context) {
-    // (Rimosso PopScope ridondante.
-    // La navigazione "indietro" è gestita dal wrapper (item_detail_page.dart)
+    // ...
     return Scaffold(
       appBar:
           widget.showAppBar
               ? AppBar(
-                title: Text('Dettagli'),
-                actions: [
-                  // Bottone Mostra Barcode
-                  IconButton(
-                    tooltip: 'Salva Barcode',
-                    icon: const Icon(Iconsax.barcode),
-                    onPressed: _saveBarcodeImage,
-                  ),
+                // --- MODIFICA 1: Titolo dinamico ---
+                title: Text(_currentItem['name'] ?? 'Dettagli'),
 
-                  // Bottone Modifica Articolo
-                  IconButton(
-                    tooltip: 'Modifica Articolo',
-                    icon: const Icon(Iconsax.edit),
-                    onPressed: () async {
-                      final bool? dataChanged = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
+                // --- MODIFICA 2: Menu "Kebab" (tre puntini) ---
+                actions: [
+                  PopupMenuButton<String>(
+                    icon: const Icon(Iconsax.more), // Icona tre puntini
+                    onSelected: (String result) {
+                      // Gestiamo l'azione in base al valore
+                      if (result == 'barcode') {
+                        _saveBarcodeImage();
+                      } else if (result == 'edit') {
+                        // Logica "Modifica"
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => AddItemPage(
+                                  itemId: _currentItem['item_id'],
+                                ),
+                          ),
+                        ).then((dataChanged) {
+                          if (dataChanged == true) {
+                            _markChanged();
+                            _refreshAllData();
+                          }
+                        });
+                      } else if (result == 'sell') {
+                        // Logica "Vendi"
+                        showDialog(
+                          context: context,
                           builder:
-                              (context) =>
-                                  AddItemPage(itemId: _currentItem['item_id']),
-                        ),
-                      );
-                      if (dataChanged == true) {
-                        _markChanged();
-                        _refreshAllData();
+                              (context) => SellItemDialog(
+                                itemId: _currentItem['item_id'],
+                                variants: _variants,
+                                allPlatforms: _allPlatforms,
+                                hasVariants: _currentItem['has_variants'] == 1,
+                                mainItemQuantity:
+                                    (_currentItem['quantity'] as num?)
+                                        ?.toInt() ??
+                                    0,
+                              ),
+                        ).then((dataChanged) {
+                          if (dataChanged == true) {
+                            _markChanged();
+                            _refreshAllData();
+                          }
+                        });
                       }
                     },
-                  ),
-                  // Bottone Vendi Articolo
-                  IconButton(
-                    tooltip: 'Registra Vendita',
-                    icon: const Icon(Iconsax.receipt),
-                    onPressed:
-                        _calculateTotalStock() > 0
-                            ? () async {
-                              final bool? dataChanged = await showDialog(
-                                context: context,
-                                builder:
-                                    (context) => SellItemDialog(
-                                      itemId: _currentItem['item_id'],
-                                      variants: _variants,
-                                      allPlatforms: _allPlatforms,
-                                      hasVariants:
-                                          _currentItem['has_variants'] == 1,
-                                      mainItemQuantity:
-                                          (_currentItem['quantity'] as num?)
-                                              ?.toInt() ??
-                                          0,
-                                    ),
-                              );
-                              if (dataChanged == true) {
-                                _markChanged();
-                                _refreshAllData();
-                              }
-                            }
-                            : null, // Disabilita se stock è zero
+                    itemBuilder:
+                        (BuildContext context) => <PopupMenuEntry<String>>[
+                          // 1. Salva Barcode
+                          const PopupMenuItem<String>(
+                            value: 'barcode',
+                            child: ListTile(
+                              leading: Icon(Iconsax.barcode),
+                              title: Text('Salva Barcode'),
+                            ),
+                          ),
+                          // 2. Modifica Articolo
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: ListTile(
+                              leading: Icon(Iconsax.edit),
+                              title: Text('Modifica Articolo'),
+                            ),
+                          ),
+                          // 3. Registra Vendita (disabilitato se stock=0)
+                          PopupMenuItem<String>(
+                            value: 'sell',
+                            enabled: _calculateTotalStock() > 0,
+                            child: const ListTile(
+                              leading: Icon(Iconsax.receipt),
+                              title: Text('Registra Vendita'),
+                            ),
+                          ),
+                        ],
                   ),
                 ],
               )
@@ -307,7 +328,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     return status;
   }
 
-// --- FUNZIONE PER SALVARE IL BARCODE (AGGIORNATA PER DESKTOP) ---
+  // --- FUNZIONE PER SALVARE IL BARCODE (AGGIORNATA PER DESKTOP) ---
   Future<void> _saveBarcodeImage() async {
     final String? uniqueCode = _currentItem['unique_code']?.toString();
     if (uniqueCode == null || uniqueCode.isEmpty) {
@@ -325,22 +346,16 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       final barcode = bc.Barcode.code128();
       final image = img.Image(width: 400, height: 150);
       img.fill(image, color: img.ColorRgb8(255, 255, 255)); // Sfondo bianco
-      bci.drawBarcode(
-        image,
-        barcode,
-        uniqueCode,
-        font: img.arial24,
-      );
+      bci.drawBarcode(image, barcode, uniqueCode, font: img.arial24);
       final Uint8List pngBytes = Uint8List.fromList(img.encodePng(image));
       // --- FINE GENERAZIONE ---
-
 
       // --- LOGICA DI SALVATAGGIO (DIVERSA PER PIATTAFORMA) ---
       final bool isMobile = Theme.of(context).platform == TargetPlatform.iOS;
 
       if (isMobile) {
         // --- SALVATAGGIO SU MOBILE (iOS / Android) ---
-        
+
         // 1. Chiedi i permessi
         final status = await _requestMediaPermission();
         if (!status.isGranted && !status.isLimited) {
@@ -368,10 +383,9 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         } else {
           _showError('Salvataggio non riuscito.');
         }
-
       } else {
         // --- SALVATAGGIO SU DESKTOP (Windows / macOS / Linux) ---
-        
+
         // 1. Apri il dialog "Salva con nome..."
         final String? outputFile = await FilePicker.platform.saveFile(
           dialogTitle: 'Salva codice a barre',
@@ -401,7 +415,9 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     } catch (e) {
       // L'errore che ricevevi prima ora è gestito
       if (e is MissingPluginException) {
-        _showError('Questa piattaforma non è supportata per il salvataggio automatico.');
+        _showError(
+          'Questa piattaforma non è supportata per il salvataggio automatico.',
+        );
       } else {
         _showError('Errore durante la creazione del barcode: $e');
       }
