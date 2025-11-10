@@ -50,5 +50,14 @@
 
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Questa app ha bisogno di accedere alla tua galleria per salvare le foto degli articoli.</string>
+
+	<key>CFBundleDevelopmentRegion</key>
+    <string>it</string>
+    
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>it</string>
+        <string>en</string>
+    </array>
 </dict>
 </plist>
