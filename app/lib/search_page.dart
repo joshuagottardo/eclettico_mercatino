@@ -9,7 +9,9 @@ import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/api_config.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  final int? preselectedItemId;
+  const SearchPage({super.key, this.preselectedItemId});
+  static const double kTabletBreakpoint = 800.0;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -27,11 +29,12 @@ class _SearchPageState extends State<SearchPage> {
   int? _selectedCategoryId;
   String? _selectedBrand;
   bool _showOnlyAvailable = false;
+  
 
   Map<String, dynamic>? _selectedItem;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   // Breakpoint per tablet
-  static const double kTabletBreakpoint = 800.0;
+  
   bool _dataDidChange = false;
 
   @override
@@ -90,14 +93,25 @@ class _SearchPageState extends State<SearchPage> {
           _filtersLoading = false;
           _filterItems();
 
-          if (_selectedItem != null) {
+          // --- INIZIO MODIFICA ---
+          // Controlla se dobbiamo preselezionare un articolo
+          if (widget.preselectedItemId != null) {
             try {
-              // Aggiorna i dati dell'item selezionato
+              _selectedItem = _allItems.firstWhere(
+                (item) => item['item_id'] == widget.preselectedItemId,
+              );
+            } catch (e) {
+              _selectedItem = null; // L'articolo non è stato trovato
+            }
+          }
+          // Altrimenti, aggiorna quello già selezionato (logica di prima)
+          else if (_selectedItem != null) {
+            try {
               _selectedItem = _allItems.firstWhere(
                 (item) => item['item_id'] == _selectedItem!['item_id'],
               );
             } catch (e) {
-              _selectedItem = null; // L'item è stato eliminato o non c'è più
+              _selectedItem = null;
             }
           }
         });
@@ -218,7 +232,7 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(labelText: 'Categoria'),
-                    
+
                     items: [
                       const DropdownMenuItem<int>(
                         value: null,
@@ -241,7 +255,7 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Brand'),
-                    
+
                     items: [
                       const DropdownMenuItem<String>(
                         value: null,
@@ -275,7 +289,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isTablet = constraints.maxWidth >= kTabletBreakpoint;
+        final bool isTablet = constraints.maxWidth >= SearchPage.kTabletBreakpoint;
 
         if (isTablet) {
           return _buildTabletLayout();

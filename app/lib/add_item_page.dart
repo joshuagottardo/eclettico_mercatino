@@ -420,7 +420,7 @@ class _AddItemPageState extends State<AddItemPage> {
           autofocus: false,
           enableSuggestions: true,
           autocorrect: true,
-          maxLines: 10,
+          maxLines: 3,
           keyboardType: TextInputType.multiline,
         ),
         const SizedBox(height: 16),

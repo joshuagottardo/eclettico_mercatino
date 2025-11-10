@@ -99,23 +99,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
   @override
   Widget build(BuildContext context) {
-    // ...
     return Scaffold(
       appBar:
           widget.showAppBar
               ? AppBar(
-                // --- MODIFICA 1: Titolo dinamico ---
                 title: Text(_currentItem['name'] ?? 'Dettagli'),
-
-                // --- MODIFICA 2: Menu "Kebab" (tre puntini) ---
                 actions: [
                   PopupMenuButton<String>(
                     icon: const Icon(Iconsax.more), // Icona tre puntini
                     onSelected: (String result) {
                       // Gestiamo l'azione in base al valore
-                      if (result == 'barcode') {
-                        _saveBarcodeImage();
-                      } else if (result == 'edit') {
+                      if (result == 'edit') {
                         // Logica "Modifica"
                         Navigator.push(
                           context,
@@ -152,19 +146,16 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                             _refreshAllData();
                           }
                         });
+                      } else if (result == 'copy_desc') {
+                        // NUOVA Logica "Copia"
+                        _copyDescriptionToClipboard();
+                      } else if (result == 'barcode') {
+                        _saveBarcodeImage();
                       }
                     },
                     itemBuilder:
                         (BuildContext context) => <PopupMenuEntry<String>>[
-                          // 1. Salva Barcode
-                          const PopupMenuItem<String>(
-                            value: 'barcode',
-                            child: ListTile(
-                              leading: Icon(Iconsax.barcode),
-                              title: Text('Salva Barcode'),
-                            ),
-                          ),
-                          // 2. Modifica Articolo
+                          // 1. Modifica Articolo
                           const PopupMenuItem<String>(
                             value: 'edit',
                             child: ListTile(
@@ -172,7 +163,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                               title: Text('Modifica Articolo'),
                             ),
                           ),
-                          // 3. Registra Vendita (disabilitato se stock=0)
+                          // 2. Registra Vendita
                           PopupMenuItem<String>(
                             value: 'sell',
                             enabled: _calculateTotalStock() > 0,
@@ -181,11 +172,29 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                               title: Text('Registra Vendita'),
                             ),
                           ),
+                          // 3. Copia Descrizione (NUOVO)
+                          const PopupMenuItem<String>(
+                            value: 'copy_desc',
+                            child: ListTile(
+                              leading: Icon(Iconsax.note_text),
+                              title: Text('Copia Descrizione'),
+                            ),
+                          ),
+                          // 4. Salva Barcode
+                          const PopupMenuItem<String>(
+                            value: 'barcode',
+                            child: ListTile(
+                              leading: Icon(Iconsax.barcode),
+                              title: Text('Salva Barcode'),
+                            ),
+                          ),
                         ],
                   ),
                 ],
+                // --- FINE MODIFICA ---
               )
               : null,
+      // ...
       body: RefreshIndicator(
         onRefresh: _refreshAllData,
         //  Avvolgiamo in una Column per aggiungere i bottoni su tablet
@@ -310,9 +319,29 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // --- FUNZIONI DI CARICAMENTO DATI  ---
+  // --- NUOVA FUNZIONE PER COPIARE LA DESCRIZIONE ---
+  Future<void> _copyDescriptionToClipboard() async {
+    final String name = _currentItem['name'] ?? 'Senza nome';
+    final String brand = _currentItem['brand'] ?? 'N/D';
+    final String description =
+        _currentItem['description'] ?? 'Nessuna descrizione';
+    final String condition = (_currentItem['is_used'] == 0) ? 'Nuovo' : 'Usato';
 
-  // --- FUNZIONE PER I PERMESSI (copiata da photo_viewer_page) ---
+    // Formatta il testo come richiesto
+    final String textToCopy = '$name | $brand\n- $description\n- $condition';
+
+    await Clipboard.setData(ClipboardData(text: textToCopy));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Descrizione copiata negli appunti!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
   Future<PermissionStatus> _requestMediaPermission() async {
     // iOS: usa add-only per salvare in Libreria senza leggere
     if (Theme.of(context).platform == TargetPlatform.iOS) {
@@ -1177,80 +1206,127 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // Widget helper per mostrare i bottoni su tablet/desktop
+  // --- MODIFICATA: Widget helper per mostrare i bottoni su tablet/desktop ---
   Widget _buildActionButtonsRow() {
     // Usiamo un colore di sfondo simile all'AppBar per coerenza
     return Container(
       color:
           Theme.of(context).appBarTheme.backgroundColor ??
           Theme.of(context).cardColor,
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end, // Allinea i bottoni a destra
+        mainAxisAlignment:
+            MainAxisAlignment.spaceBetween, // Titolo a sx, bottoni a dx
         children: [
-          IconButton(
-            tooltip: 'Mostra Barcode',
-            icon: const Icon(Iconsax.barcode), // Nuova icona
-            onPressed: _saveBarcodeImage, // Nuova funzione
-          ),
-
-          // Bottone Modifica Articolo
-          IconButton(
-            tooltip: 'Modifica Articolo',
-            icon: const Icon(Icons.edit),
-            onPressed: () async {
-              final bool? dataChanged = await Navigator.push(
+          // Titolo a sinistra
+          Expanded(
+            child: Text(
+              _currentItem['name'] ?? 'Dettagli',
+              style: Theme.of(
                 context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => AddItemPage(itemId: _currentItem['item_id']),
-                ),
-              );
-              if (dataChanged == true) {
-                _markChanged();
-                _refreshAllData();
-              }
-            },
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
 
-          // Bottone Vendi Articolo
-          IconButton(
-            tooltip: 'Registra Vendita',
-            icon: const Icon(Icons.sell_outlined),
-            onPressed:
-                _calculateTotalStock() > 0
-                    ? () async {
-                      final bool? dataChanged = await showDialog(
-                        context: context,
+          // Bottoni con testo (TextButton.icon)
+          Row(
+            children: [
+              // 1. Modifica Articolo
+              Tooltip(
+                // <-- INIZIO FIX
+                message: 'Modifica Articolo',
+                child: TextButton.icon(
+                  icon: const Icon(Iconsax.edit),
+                  label: const Text('Modifica'),
+                  onPressed: () async {
+                    final bool? dataChanged = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
                         builder:
-                            (context) => ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 600),
-                              child: SellItemDialog(
-                                itemId: _currentItem['item_id'],
-                                variants: _variants,
-                                allPlatforms: _allPlatforms,
-                                hasVariants: _currentItem['has_variants'] == 1,
-                                mainItemQuantity:
-                                    (_currentItem['quantity'] as num?)
-                                        ?.toInt() ??
-                                    0,
-                              ),
-                            ),
-                      );
-                      if (dataChanged == true) {
-                        _markChanged();
-                        _refreshAllData();
-                      }
+                            (context) =>
+                                AddItemPage(itemId: _currentItem['item_id']),
+                      ),
+                    );
+                    if (dataChanged == true) {
+                      _markChanged();
+                      _refreshAllData();
                     }
-                    : null, // Disabilita se stock è zero
+                  },
+                ),
+              ), // <-- FINE FIX
+              const SizedBox(width: 8),
+
+              // 2. Vendi Articolo
+              Tooltip(
+                // <-- INIZIO FIX
+                message: 'Registra Vendita',
+                child: TextButton.icon(
+                  icon: const Icon(Iconsax.receipt),
+                  label: const Text('Vendi'),
+                  onPressed:
+                      _calculateTotalStock() > 0
+                          ? () async {
+                            final bool? dataChanged = await showDialog(
+                              context: context,
+                              builder:
+                                  (context) => ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 600,
+                                    ),
+                                    child: SellItemDialog(
+                                      itemId: _currentItem['item_id'],
+                                      variants: _variants,
+                                      allPlatforms: _allPlatforms,
+                                      hasVariants:
+                                          _currentItem['has_variants'] == 1,
+                                      mainItemQuantity:
+                                          (_currentItem['quantity'] as num?)
+                                              ?.toInt() ??
+                                          0,
+                                    ),
+                                  ),
+                            );
+                            if (dataChanged == true) {
+                              _markChanged();
+                              _refreshAllData();
+                            }
+                          }
+                          : null, // Disabilita se stock è zero
+                ),
+              ), // <-- FINE FIX
+              const SizedBox(width: 8),
+
+              // 3. Copia Descrizione (NUOVO)
+              Tooltip(
+                // <-- INIZIO FIX
+                message: 'Copia Descrizione',
+                child: TextButton.icon(
+                  icon: const Icon(Iconsax.note_text),
+                  label: const Text('Copia'),
+                  onPressed: _copyDescriptionToClipboard,
+                ),
+              ), // <-- FINE FIX
+              const SizedBox(width: 8),
+
+              // 4. Barcode
+              Tooltip(
+                // <-- INIZIO FIX
+                message: 'Salva Barcode',
+                child: TextButton.icon(
+                  icon: const Icon(Iconsax.barcode),
+                  label: const Text('Barcode'),
+                  onPressed: _saveBarcodeImage,
+                ),
+              ), // <-- FINE FIX
+            ],
           ),
         ],
       ),
     );
   }
 
-  // --- WIDGET VARIANTE ---
-  // --- WIDGET VARIANTE ---
   Widget _buildVariantsSection() {
     final Color soldColor = Colors.red[500]!;
     final Color availableColor =

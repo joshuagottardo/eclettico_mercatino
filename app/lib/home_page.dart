@@ -73,26 +73,38 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Funzione per navigare al dettaglio dopo aver preso i dati
+// Funzione per navigare alla SearchPage con preselezion
   void _navigateToDetail(int itemId) async {
-    try {
-      final url = '$kBaseUrl/api/items/$itemId';
-      final response = await http.get(Uri.parse(url));
+    // Usiamo LayoutBuilder per capire se siamo su Desktop
+    final bool isDesktop =
+        MediaQuery.of(context).size.width >= SearchPage.kTabletBreakpoint;
 
-      if (response.statusCode == 200) {
-        final itemData = jsonDecode(response.body);
-        _navigateAndReload(ItemDetailPage(item: itemData));
-      } else {
+    if (isDesktop) {
+      // --- SU DESKTOP ---
+      // Naviga alla SearchPage e passa l'ID per la preselezione
+      _navigateAndReload(SearchPage(preselectedItemId: itemId));
+    } else {
+      // --- SU MOBILE / TABLET ---
+      // Mantiene il comportamento vecchio (vista dettaglio mobile)
+      try {
+        final url = '$kBaseUrl/api/items/$itemId';
+        final response = await http.get(Uri.parse(url));
+
+        if (response.statusCode == 200) {
+          final itemData = jsonDecode(response.body);
+          _navigateAndReload(ItemDetailPage(item: itemData));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Errore: Articolo non trovato.')),
+          );
+        }
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: Articolo non trovato.')),
+          SnackBar(
+            content: Text('Errore di rete durante il recupero dei dettagli.'),
+          ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Errore di rete durante il recupero dei dettagli.'),
-        ),
-      );
     }
   }
 
