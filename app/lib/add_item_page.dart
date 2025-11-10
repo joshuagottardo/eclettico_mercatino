@@ -416,11 +416,12 @@ class _AddItemPageState extends State<AddItemPage> {
         TextFormField(
           controller: _descriptionController,
           decoration: const InputDecoration(labelText: 'Descrizione'),
-          textInputAction: TextInputAction.next,
+          textInputAction: TextInputAction.newline,
           autofocus: false,
           enableSuggestions: true,
           autocorrect: true,
-          maxLines: 5,
+          maxLines: 10,
+          keyboardType: TextInputType.multiline,
         ),
         const SizedBox(height: 16),
         Row(

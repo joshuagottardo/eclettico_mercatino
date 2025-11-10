@@ -645,6 +645,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
       // Se almeno un upload ha avuto successo, ricarica la galleria
       _fetchPhotos();
+      _markChanged();
 
       // Mostra un feedback di successo per il blocco di file
       ScaffoldMessenger.of(context).showSnackBar(
@@ -716,19 +717,21 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                           }),
                       activeColor: Theme.of(context).colorScheme.primary,
                     ),
-                    const Divider(),
-                    ..._variants.map((variant) {
-                      return RadioListTile<dynamic>(
-                        title: Text(variant['variant_name'] ?? 'Variante'),
-                        value: variant['variant_id'],
-                        groupValue: selectedTarget,
-                        onChanged:
-                            (value) => dialogSetState(() {
-                              selectedTarget = value;
-                            }),
-                        activeColor: Theme.of(context).colorScheme.primary,
-                      );
-                    }),
+                    if (_variants.isNotEmpty) ...[
+                      const Divider(),
+                      ..._variants.map((variant) {
+                        return RadioListTile<dynamic>(
+                          title: Text(variant['variant_name'] ?? 'Variante'),
+                          value: variant['variant_id'],
+                          groupValue: selectedTarget,
+                          onChanged:
+                              (value) => dialogSetState(() {
+                                selectedTarget = value;
+                              }),
+                          activeColor: Theme.of(context).colorScheme.primary,
+                        );
+                      }),
+                    ],
                   ],
                 ),
               ),
