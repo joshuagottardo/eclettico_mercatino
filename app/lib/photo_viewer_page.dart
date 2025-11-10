@@ -30,20 +30,53 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   late PageController _pageController;
   late int _currentIndex;
 
+  // --- MODIFICA: Aggiunto FocusNode per la tastiera ---
+  final FocusNode _focusNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+
+    // --- MODIFICA: Richiedi il focus per la tastiera ---
+    // Lo facciamo dopo che il primo frame è stato disegnato
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _focusNode.dispose(); // <-- Ricorda di fare il dispose
     super.dispose();
   }
 
+  // --- MODIFICA: Nuove funzioni per navigare ---
+  void _previousPage() {
+    if (_currentIndex > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _nextPage() {
+    if (_currentIndex < widget.photos.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+  // --- FINE MODIFICA ---
+
   Future<PermissionStatus> _requestMediaPermission() async {
+    // ... (funzione invariata)
     if (Theme.of(context).platform == TargetPlatform.iOS) {
       final status = await Permission.photosAddOnly.request();
       return status;
@@ -57,12 +90,13 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   }
 
   Future<void> _downloadPhoto() async {
+    // ... (funzione invariata)
     if (widget.photos.isEmpty || _isDownloading) return;
 
     setState(() => _isDownloading = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Download in corso...')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Download in corso...')));
 
     try {
       // 1) Dati immagine (comune a entrambi)
@@ -103,8 +137,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         if (status.isPermanentlyDenied) {
           _showFeedback(
             success: false,
-            message:
-                'Permesso negato. Apri Impostazioni e abilitalo.',
+            message: 'Permesso negato. Apri Impostazioni e abilitalo.',
           );
           await openAppSettings();
           return;
@@ -121,7 +154,10 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
         final result = await ImageGallerySaver.saveImage(
           bytes,
           quality: 100,
-          name: name.replaceAll(RegExp(r'\.[^.]+$'), ''), // Rimuovi estensione solo qui
+          name: name.replaceAll(
+            RegExp(r'\.[^.]+$'),
+            '',
+          ), // Rimuovi estensione solo qui
           isReturnImagePathOfIOS: true,
         );
 
@@ -133,9 +169,9 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
 
         _showFeedback(
           success: ok,
-          message: ok ? 'Foto salvata in Libreria.' : 'Salvataggio non riuscito.',
+          message:
+              ok ? 'Foto salvata in Libreria.' : 'Salvataggio non riuscito.',
         );
-
       } else {
         // --- SALVATAGGIO DESKTOP (Windows / macOS / Linux) ---
 
@@ -155,10 +191,12 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
           _showFeedback(success: false, message: 'Salvataggio annullato.');
         }
       }
-
     } catch (e) {
       if (e is MissingPluginException) {
-        _showFeedback(success: false, message: 'Salvataggio non supportato su questa piattaforma.');
+        _showFeedback(
+          success: false,
+          message: 'Salvataggio non supportato su questa piattaforma.',
+        );
       } else {
         _showFeedback(success: false, message: 'Errore: $e');
       }
@@ -168,6 +206,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   }
 
   Future<void> _deletePhoto() async {
+    // ... (funzione invariata)
     if (widget.photos.isEmpty) return;
 
     final bool? confirmed = await showDialog<bool>(
@@ -228,8 +267,8 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     }
   }
 
-  // La tua funzione _showFeedback (INVARIATA)
   void _showFeedback({required bool success, required String message}) {
+    // ... (funzione invariata)
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -240,125 +279,186 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
     }
   }
 
-  // Il tuo metodo build() (INVARIATO)
   @override
   Widget build(BuildContext context) {
     final bool actionInProgress = _isDownloading || _isDeleting;
     final bool hasPhotos = widget.photos.isNotEmpty;
 
-    // --- INIZIO MODIFICA ---
+    // --- MODIFICA: Determina se siamo su mobile ---
+    final bool isMobile = Theme.of(context).platform == TargetPlatform.iOS;
 
-    // 1. Avvolgiamo tutto in un GestureDetector
-    return GestureDetector(
-      onVerticalDragEnd: (DragEndDetails details) {
-        // 2. Definiamo una "soglia" di velocità
-        // (puoi aggiustare questo valore se sembra troppo o troppo poco sensibile)
-        const double minSwipeVelocity = 350.0;
-
-        // 3. Controlliamo se la velocità dello swipe (in qualsiasi direzione)
-        //    è maggiore della nostra soglia.
-        if (details.primaryVelocity != null &&
-            details.primaryVelocity!.abs() > minSwipeVelocity) {
-          // 4. Non chiudiamo se stiamo già scaricando o eliminando
-          if (actionInProgress) return;
-
-          // 5. Chiudiamo la pagina
-          Navigator.pop(context);
+    // --- MODIFICA: Avvolgi tutto in KeyboardListener ---
+    return KeyboardListener(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: (KeyEvent event) {
+        // Ascolta solo quando il tasto è PREMUTO
+        if (event is KeyDownEvent) {
+          // Freccia sinistra
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            _previousPage();
+          }
+          // Freccia destra
+          else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            _nextPage();
+          }
+          // Tasto ESC
+          else if (event.logicalKey == LogicalKeyboardKey.escape) {
+            if (!actionInProgress) Navigator.pop(context);
+          }
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Iconsax.close_square),
-            onPressed: actionInProgress ? null : () => Navigator.pop(context),
-          ),
-          actions: [
-            IconButton(
-              icon:
-                  _isDeleting
-                      ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.red,
-                        ),
-                      )
-                      : const Icon(Iconsax.trash, color: Colors.red),
-              onPressed: actionInProgress || !hasPhotos ? null : _deletePhoto,
-              tooltip: 'Elimina foto',
+      child: GestureDetector(
+        onVerticalDragEnd: (DragEndDetails details) {
+          // ... (swipe verticale invariato)
+          const double minSwipeVelocity = 350.0;
+          if (details.primaryVelocity != null &&
+              details.primaryVelocity!.abs() > minSwipeVelocity) {
+            if (actionInProgress) return;
+            Navigator.pop(context);
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            // ... (appBar invariata)
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Iconsax.close_square),
+              onPressed: actionInProgress ? null : () => Navigator.pop(context),
             ),
-            IconButton(
-              icon:
-                  _isDownloading
-                      ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                      : const Icon(Iconsax.document_download),
-              onPressed: actionInProgress || !hasPhotos ? null : _downloadPhoto,
-              tooltip: 'Scarica foto',
-            ),
-          ],
-        ),
-        body: PageView.builder(
-          controller: _pageController,
-          itemCount: widget.photos.length,
-          onPageChanged: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          itemBuilder: (context, index) {
-            final photo = widget.photos[index];
-            final photoId = photo['photo_id'];
-            final compressedPhotoUrl =
-                '$kBaseUrl/api/photos/compressed/$photoId';
-
-            return InteractiveViewer(
-              panEnabled: true,
-              minScale: 1.0,
-              maxScale: 4.0,
-              child: Center(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final dpr = MediaQuery.devicePixelRatioOf(context);
-                    final cacheW = (constraints.maxWidth * dpr).round().clamp(
-                      256,
-                      4096,
-                    );
-
-                    return Image.network(
-                      compressedPhotoUrl,
-                      fit: BoxFit.contain,
-                      gaplessPlayback: true,
-                      filterQuality: FilterQuality.medium,
-                      cacheWidth: cacheW,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Iconsax.gallery_slash,
-                          color: Colors.grey,
-                        );
-                      },
-                    );
-                  },
-                ),
+            actions: [
+              IconButton(
+                icon:
+                    _isDeleting
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.red,
+                          ),
+                        )
+                        : const Icon(Iconsax.trash, color: Colors.red),
+                onPressed: actionInProgress || !hasPhotos ? null : _deletePhoto,
+                tooltip: 'Elimina foto',
               ),
-            );
-          },
+              IconButton(
+                icon:
+                    _isDownloading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Iconsax.document_download),
+                onPressed:
+                    actionInProgress || !hasPhotos ? null : _downloadPhoto,
+                tooltip: 'Scarica foto',
+              ),
+            ],
+          ),
+          // --- MODIFICA: Avvolgi il PageView in uno Stack ---
+          body: Stack(
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                itemCount: widget.photos.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  // ... (itemBuilder invariato)
+                  final photo = widget.photos[index];
+                  final photoId = photo['photo_id'];
+                  final compressedPhotoUrl =
+                      '$kBaseUrl/api/photos/compressed/$photoId';
+
+                  return InteractiveViewer(
+                    panEnabled: true,
+                    minScale: 1.0,
+                    maxScale: 4.0,
+                    child: Center(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final dpr = MediaQuery.devicePixelRatioOf(context);
+                          final cacheW = (constraints.maxWidth * dpr)
+                              .round()
+                              .clamp(256, 4096);
+
+                          return Image.network(
+                            compressedPhotoUrl,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            filterQuality: FilterQuality.medium,
+                            cacheWidth: cacheW,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Iconsax.gallery_slash,
+                                color: Colors.grey,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              // --- MODIFICA: Aggiungi le frecce su Desktop ---
+              if (!isMobile) ...[
+                // Freccia Sinistra
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Iconsax.arrow_left_2),
+                      color: Colors.white,
+                      tooltip: 'Foto precedente (←)',
+                      onPressed: _previousPage,
+                    ),
+                  ),
+                ),
+                // Freccia Destra
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Iconsax.arrow_right_3),
+                      color: Colors.white,
+                      tooltip: 'Foto successiva (→)',
+                      onPressed: _nextPage,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
