@@ -322,7 +322,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
     Color color,
     dynamic rawValue,
   ) {
-    final bool isNegative = (rawValue is num) && rawValue < 0;
+    // Proviamo a convertire il valore grezzo in un numero per l'animazione
+    final double? numericValue = double.tryParse(rawValue.toString());
+    final bool isNegative = numericValue != null && numericValue < 0;
 
     return Expanded(
       child: Card(
@@ -349,13 +351,29 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: isNegative ? Colors.red[700] : color,
-                  fontWeight: FontWeight.bold,
+
+              // --- INIZIO MODIFICA ---
+              // Se abbiamo un numero valido, usiamo l'animazione
+              if (numericValue != null)
+                _AnimatedCount(
+                  endValue: numericValue,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: isNegative ? Colors.red[700] : color,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  // Formatta il numero mentre scorre
+                  formatter: (val) => '€ ${val.toStringAsFixed(2)}',
+                )
+              else
+                // Fallback statico se il valore non è numerico
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
+              // --- FINE MODIFICA ---
             ],
           ),
         ),
@@ -406,9 +424,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              '$count pezzi venduti',
+            _AnimatedCount(
+              endValue: count,
               style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              formatter: (val) => '${val.toInt()} pezzi venduti',
             ),
           ],
         ),
@@ -439,11 +458,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Widget _buildResponsiveTopPerformers() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        
         const double desktopBreakpoint = 900.0;
 
         if (constraints.maxWidth >= desktopBreakpoint) {
-          
           return IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -455,7 +472,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
             ),
           );
         } else {
-          
           return Column(
             children: [
               _buildTopCategoryCard(),
@@ -464,6 +480,79 @@ class _StatisticsPageState extends State<StatisticsPage> {
             ],
           );
         }
+      },
+    );
+  }
+}
+
+// --- NUOVO WIDGET PER L'ANIMAZIONE DEI NUMERI ---
+class _AnimatedCount extends StatefulWidget {
+  final num endValue;
+  final TextStyle? style;
+  final String Function(num) formatter;
+
+  const _AnimatedCount({
+    required this.endValue,
+    required this.formatter,
+    this.style,
+  });
+
+  @override
+  State<_AnimatedCount> createState() => _AnimatedCountState();
+}
+
+class _AnimatedCountState extends State<_AnimatedCount>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(
+        seconds: 2,
+      ), // Durata dell'animazione (es. 2 secondi)
+    );
+
+    // Animazione curva per un effetto più naturale (rallenta alla fine)
+    _animation = Tween<double>(
+      begin: 0,
+      end: widget.endValue.toDouble(),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
+
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedCount oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Se il valore cambia, riavvia l'animazione dal vecchio valore al nuovo
+    if (oldWidget.endValue != widget.endValue) {
+      _animation = Tween<double>(
+        begin: oldWidget.endValue.toDouble(),
+        end: widget.endValue.toDouble(),
+      ).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo),
+      );
+      _controller.reset();
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Text(widget.formatter(_animation.value), style: widget.style);
       },
     );
   }
