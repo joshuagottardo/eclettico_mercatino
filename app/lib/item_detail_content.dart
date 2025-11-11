@@ -8,7 +8,6 @@ import 'package:eclettico/sell_item_dialog.dart';
 import 'package:eclettico/photo_viewer_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:eclettico/add_item_page.dart';
-import 'package:eclettico/edit_sale_dialog.dart';
 import 'package:eclettico/icon_helper.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/api_config.dart';
@@ -22,9 +21,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
-// ... (tutti gli import)
-import 'package:flutter/gestures.dart';
-import 'package:eclettico/sales_log_page.dart'; // <-- AGGIUNGI QUESTO
+import 'package:eclettico/sales_log_page.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -61,7 +58,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   final ImagePicker _picker = ImagePicker();
   List _allPlatforms = [];
   bool _platformsLoading = true;
-  bool _isSalesLogOpen = false; // Stato per il Drawer Log
   bool _isDeleting = false;
 
   // Colori
@@ -69,8 +65,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   final Color _availableColor = Colors.green[500]!;
   final Color _headerTextColor = Colors.grey[600]!;
 
-  // Colore per il card del Log Vendite
-  final Color _logDrawerColor = const Color(0xFF161616);
 
   @override
   void initState() {
@@ -1137,115 +1131,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  Widget _buildSalesLogSection() {
-    if (_isLogLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-    if (_salesLog.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Nessuna vendita registrata.',
-            style: TextStyle(color: Colors.white70),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children:
-          _salesLog.map((sale) {
-            String title = sale['platform_name'] ?? 'N/D';
-            if (sale['variant_name'] != null) {
-              title = '${sale['variant_name']} / $title';
-            }
-
-            String date =
-                sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8.0,
-                vertical: 4.0,
-              ),
-              child: ListTile(
-                leading: Icon(Iconsax.coin, color: _availableColor),
-                title: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Data: $date | Q.tà: ${sale['quantity_sold']} | Totale: € ${sale['total_price']}',
-                ),
-                trailing: Icon(
-                  Iconsax.edit,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                onTap: () async {
-                  int? currentStock;
-                  final int? saleVariantId =
-                      (sale['variant_id'] as num?)?.toInt();
-
-                  if (saleVariantId != null) {
-                    final matchingVariant = _variants.firstWhere(
-                      (v) =>
-                          (v['variant_id'] as num?)?.toInt() == saleVariantId,
-                      orElse: () => null,
-                    );
-                    if (matchingVariant != null) {
-                      currentStock =
-                          (matchingVariant['quantity'] as num?)?.toInt();
-                    }
-                  } else {
-                    if (_currentItem['has_variants'] == 0) {
-                      currentStock =
-                          (_currentItem['quantity'] as num?)?.toInt();
-                    } else {
-                      currentStock = null;
-                    }
-                  }
-
-                  if (currentStock == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Errore: Stock non trovato (articolo/variante inesistente?).',
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  final bool? dataChanged = await showDialog(
-                    context: context,
-                    builder:
-                        (context) => ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 600),
-                          child: EditSaleDialog(
-                            sale: sale,
-                            allPlatforms: _allPlatforms,
-                            currentStock: currentStock!,
-                          ),
-                        ),
-                  );
-                  if (dataChanged == true) {
-                    _markChanged();
-                    _refreshAllData();
-                  }
-                },
-              ),
-            );
-          }).toList(),
-    );
-  }
 
   // --- MODIFICATA: Widget helper per mostrare i bottoni su tablet/desktop ---
   Widget _buildActionButtonsRow() {

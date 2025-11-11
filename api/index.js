@@ -757,22 +757,30 @@ app.post("/api/sales", async (req, res) => {
         });
       }
     } else {
-      // Articolo senza varianti
+      // Articolo senza varianti - METODO A DUE PASSI
+      console.log(`Vendita Articolo ${item_id}. Qty da vendere: ${qty}`);
+
+      // 1. Aggiorna SOLO la quantità
       const [resUpd] = await connection.query(
-        `
-    UPDATE items 
-    SET quantity = COALESCE(quantity,0) - ?,
-        is_sold  = CASE WHEN COALESCE(quantity,0) - ? <= 0 THEN 1 ELSE 0 END
-    WHERE item_id = ? AND COALESCE(quantity,0) >= ?
-    `,
-        [qty, qty, item_id, qty]
+        `UPDATE items SET quantity = quantity - ? WHERE item_id = ? AND quantity >= ?`,
+        [qty, item_id, qty]
       );
+
       if (resUpd.affectedRows === 0) {
         await connection.rollback();
         return res.status(400).json({
           error: "Stock articolo insufficiente o articolo non trovato",
         });
       }
+
+      // 2. Aggiorna lo stato is_sold basandosi sulla NUOVA quantità reale
+      //    (Se quantità <= 0 allora is_sold = 1, altrimenti 0)
+      await connection.query(
+        `UPDATE items SET is_sold = IF(quantity <= 0, 1, 0) WHERE item_id = ?`,
+        [item_id]
+      );
+
+      console.log(`Stock e stato aggiornati per articolo ${item_id}`);
     }
 
     // 7. Commit

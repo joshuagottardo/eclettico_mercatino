@@ -1,8 +1,6 @@
-// lib/sales_log_page.dart
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/edit_sale_dialog.dart';
-import 'package:eclettico/api_config.dart'; // Ci serve per kBaseUrl
 
 class SalesLogPage extends StatefulWidget {
   final List salesLog;
@@ -23,11 +21,10 @@ class SalesLogPage extends StatefulWidget {
 }
 
 class _SalesLogPageState extends State<SalesLogPage> {
-  // Teniamo traccia dei dati qui
   late List _currentSalesLog;
   late List _currentVariants;
   late Map<String, dynamic> _currentItem;
-  bool _dataDidChange = false; // Flag per notificare la pagina precedente
+  bool _dataDidChange = false;
 
   @override
   void initState() {
@@ -37,15 +34,7 @@ class _SalesLogPageState extends State<SalesLogPage> {
     _currentItem = Map.from(widget.item);
   }
 
-  // Funzione per ricaricare TUTTO (chiamata dopo una modifica)
   Future<void> _refreshData() async {
-    // Per ora ricarichiamo i dati simulando le chiamate
-    // (In futuro potremmo voler passare le funzioni di refresh)
-    // NOTA: Questa è una simulazione, l'ideale sarebbe avere un provider
-    // o passare la funzione di refresh da item_detail_content.
-    
-    // Dato che non possiamo ricaricare i dati dall'API qui,
-    // impostiamo solo il flag e chiudiamo la pagina.
     _dataDidChange = true;
     Navigator.pop(context, _dataDidChange);
   }
