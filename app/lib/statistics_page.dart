@@ -7,6 +7,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:eclettico/icon_helper.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -270,17 +271,18 @@ class _StatisticsPageState extends State<StatisticsPage> {
   List<Widget> _buildTopPerformersList() {
     final topCategory = _statsData['topCategory'];
     final topBrand = _statsData['topBrand'];
+    final String? categoryName = topCategory?['category_name'];
 
     return [
       _buildTopPerformerCard(
-        title: 'CATEGORIA TOP',
+        title: 'CATEGORIA PIÙ VENDUTA',
         name: topCategory?['category_name'] ?? 'N/D',
         count: _parseCount(topCategory?['sales_count']),
-        icon: Iconsax.category,
+        icon: getIconForCategory(categoryName),
       ),
       // Rimosso SizedBox(width: 8) per unire i widget come richiesto
       _buildTopPerformerCard(
-        title: 'BRAND TOP',
+        title: 'BRAND PIÙ VENDUTO',
         name: topBrand?['brand'] ?? 'N/D',
         count: _parseCount(topBrand?['sales_count']),
         icon: Iconsax.tag,
