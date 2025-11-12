@@ -117,15 +117,59 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                         width: 1,
                       ),
                     ),
+
                     onSelected: (String result) {
-                      // ... (tua logica invariata) ...
+                      // 1. MODIFICA ARTICOLO
                       if (result == 'edit') {
-                        /*...*/
-                      } else if (result == 'sell') {
-                        /*...*/
-                      } else if (result == 'copy_desc') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => AddItemPage(
+                                  itemId: _currentItem['item_id'],
+                                ),
+                          ),
+                        ).then((dataChanged) {
+                          if (dataChanged == true) {
+                            _markChanged();
+                            _refreshAllData();
+                          }
+                        });
+                      }
+                      // 2. REGISTRA VENDITA
+                      else if (result == 'sell') {
+                        showDialog(
+                          context: context,
+                          builder:
+                              (context) => ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 600,
+                                ),
+                                child: SellItemDialog(
+                                  itemId: _currentItem['item_id'],
+                                  variants: _variants,
+                                  allPlatforms: _allPlatforms,
+                                  hasVariants:
+                                      _currentItem['has_variants'] == 1,
+                                  mainItemQuantity:
+                                      (_currentItem['quantity'] as num?)
+                                          ?.toInt() ??
+                                      0,
+                                ),
+                              ),
+                        ).then((dataChanged) {
+                          if (dataChanged == true) {
+                            _markChanged();
+                            _refreshAllData();
+                          }
+                        });
+                      }
+                      // 3. COPIA DESCRIZIONE
+                      else if (result == 'copy_desc') {
                         _copyDescriptionToClipboard();
-                      } else if (result == 'barcode') {
+                      }
+                      // 4. BARCODE
+                      else if (result == 'barcode') {
                         _saveBarcodeImage();
                       }
                     },

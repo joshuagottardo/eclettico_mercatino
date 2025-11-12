@@ -5,6 +5,8 @@ import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -113,6 +115,34 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
                     const SizedBox(height: 32),
 
+                    Text(
+                      'ANDAMENTO VENDITE (30 GIORNI)',
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[400],
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Card(
+                      color: const Color(
+                        0xFF1A1A1A,
+                      ), // Leggermente più scuro dello sfondo
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: _SalesTrendChart(
+                          trendData: _statsData['salesTrend'] ?? [],
+                          isLoaded: !_isLoading,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // --- FINE MODIFICA: GRAFICO ---
                     _buildResponsiveTopPerformers(),
                   ],
                 ),
@@ -556,6 +586,204 @@ class _AnimatedCountState extends State<_AnimatedCount>
       builder: (context, child) {
         return Text(widget.formatter(_animation.value), style: widget.style);
       },
+    );
+  }
+}
+
+class _SalesTrendChart extends StatefulWidget {
+  final List<dynamic> trendData;
+  final bool isLoaded;
+
+  const _SalesTrendChart({required this.trendData, required this.isLoaded});
+
+  @override
+  State<_SalesTrendChart> createState() => _SalesTrendChartState();
+}
+
+class _SalesTrendChartState extends State<_SalesTrendChart> {
+  List<Color> gradientColors = [
+    const Color(0xFF23b6e6),
+    const Color(0xFF02d39a),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.isLoaded) {
+      return const SizedBox(
+        height: 250,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (widget.trendData.isEmpty) {
+      // Mostra un grafico piatto se non ci sono dati
+      return Container(
+        height: 250,
+        alignment: Alignment.center,
+        child: Text(
+          "Nessun dato di vendita recente",
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        AspectRatio(
+          aspectRatio: 1.70,
+          child: Padding(
+            padding: const EdgeInsets.only(
+              right: 18,
+              left: 12,
+              top: 24,
+              bottom: 12,
+            ),
+            child: LineChart(mainData()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  LineChartData mainData() {
+    // Prepara i dati
+    List<FlSpot> spots = [];
+    double maxY = 0;
+
+    for (int i = 0; i < widget.trendData.length; i++) {
+      final day = widget.trendData[i];
+      final double val = double.tryParse(day['daily_total'].toString()) ?? 0.0;
+      if (val > maxY) maxY = val;
+      spots.add(FlSpot(i.toDouble(), val));
+    }
+
+    // Aggiungi un po' di margine sopra
+    maxY = maxY * 1.2;
+
+    return LineChartData(
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: maxY / 5, // 5 linee orizzontali
+        getDrawingHorizontalLine: (value) {
+          return FlLine(color: Colors.white10, strokeWidth: 1);
+        },
+      ),
+      titlesData: FlTitlesData(
+        show: true,
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 30,
+            interval:
+                (widget.trendData.length / 5)
+                    .ceilToDouble(), // Mostra circa 5 date
+            getTitlesWidget: (value, meta) {
+              final int index = value.toInt();
+              if (index >= 0 && index < widget.trendData.length) {
+                final dateStr = widget.trendData[index]['date'];
+                final date = DateTime.parse(dateStr.toString());
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    DateFormat('dd/MM').format(date),
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                );
+              }
+              return const Text('');
+            },
+          ),
+        ),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            interval: maxY / 5,
+            getTitlesWidget: (value, meta) {
+              // Formatta i numeri (es. 1k, 500)
+              if (value == 0) return const Text('');
+              return Text(
+                value >= 1000
+                    ? '${(value / 1000).toStringAsFixed(1)}k'
+                    : value.toInt().toString(),
+                style: const TextStyle(
+                  color: Color(0xff67727d),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.left,
+              );
+            },
+            reservedSize: 42,
+          ),
+        ),
+      ),
+      borderData: FlBorderData(show: false),
+      minX: 0,
+      maxX: (widget.trendData.length - 1).toDouble(),
+      minY: 0,
+      maxY: maxY,
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true, // Curva morbida
+          gradient: LinearGradient(colors: gradientColors),
+          barWidth: 4,
+          isStrokeCapRound: true,
+          dotData: const FlDotData(
+            show: false,
+          ), // Nascondi i punti (mostrali solo al tocco se vuoi)
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              colors:
+                  gradientColors
+                      .map((color) => color.withOpacity(0.3))
+                      .toList(),
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+      ],
+      // Interazione e Tooltip
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          tooltipRoundedRadius: 8,
+          getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+            return touchedBarSpots.map((barSpot) {
+              final flSpot = barSpot;
+              // Mostra la data e il valore
+              final dateStr = widget.trendData[flSpot.x.toInt()]['date'];
+              final date = DateTime.parse(dateStr.toString());
+              return LineTooltipItem(
+                '${DateFormat('dd MMM').format(date)}\n',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+                children: [
+                  TextSpan(
+                    text: '€ ${flSpot.y.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: gradientColors[0], // Colore del testo
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              );
+            }).toList();
+          },
+        ),
+      ),
     );
   }
 }

@@ -28,9 +28,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
   List _platforms = [];
   bool _platformsLoading = true;
   final Set<int> _selectedPlatformIds = {};
-
-  String _headerTitle = '';
-
   bool _isLoading = false; // Per il salvataggio
   bool _isPageLoading = false; // Per il caricamento iniziale
   bool _isEditMode = false;
@@ -58,7 +55,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
         if (mounted) {
           // Popoliamo i controller
           _nameController.text = variant['variant_name'] ?? '';
-          _headerTitle = variant['variant_name'] ?? '';
+          
           _purchasePriceController.text =
               variant['purchase_price']?.toString() ?? '';
           _quantityController.text = variant['quantity']?.toString() ?? '';

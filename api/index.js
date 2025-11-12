@@ -1256,6 +1256,17 @@ app.get("/api/statistics/summary", async (req, res) => {
     // Estrai il valore, o 0 se nullo
     const estimated_profit = estimatedProfitRows[0]?.estimated_profit || 0;
 
+    // Trend vendite ultimi 30 giorni
+    const [salesTrend] = await pool.query(`
+      SELECT 
+        DATE(sale_date) as date, 
+        SUM(total_price) as daily_total
+      FROM sales_log
+      WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      GROUP BY DATE(sale_date)
+      ORDER BY date ASC
+    `);
+
     const totalsData = totalsQuery[0] || {
       // Usa il risultato della NUOVA query
       gross_profit_total: 0,
@@ -1267,9 +1278,10 @@ app.get("/api/statistics/summary", async (req, res) => {
     totalsData.estimated_profit = estimated_profit;
 
     res.json({
-      totals: totalsData, // Invia l'oggetto totals aggiornato
+      totals: totalsData,
       topCategory: topCategory[0] || null,
       topBrand: topBrand[0] || null,
+      salesTrend: salesTrend, // <-- AGGIUNGI QUESTO
     });
   } catch (error) {
     console.error("Errore in GET /api/statistics/summary:", error);
