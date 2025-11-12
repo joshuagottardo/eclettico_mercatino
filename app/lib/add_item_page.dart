@@ -325,8 +325,9 @@ class _AddItemPageState extends State<AddItemPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _isEditMode ? 'Modifica Articolo' : 'Aggiungi Nuovo Articolo',
+          _isEditMode ? 'Modifica' : 'Aggiungi Articolo',
         ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon:

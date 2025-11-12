@@ -29,6 +29,8 @@ class _AddVariantPageState extends State<AddVariantPage> {
   bool _platformsLoading = true;
   final Set<int> _selectedPlatformIds = {};
 
+  String _headerTitle = '';
+
   bool _isLoading = false; // Per il salvataggio
   bool _isPageLoading = false; // Per il caricamento iniziale
   bool _isEditMode = false;
@@ -56,6 +58,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
         if (mounted) {
           // Popoliamo i controller
           _nameController.text = variant['variant_name'] ?? '';
+          _headerTitle = variant['variant_name'] ?? '';
           _purchasePriceController.text =
               variant['purchase_price']?.toString() ?? '';
           _quantityController.text = variant['quantity']?.toString() ?? '';
@@ -113,7 +116,9 @@ class _AddVariantPageState extends State<AddVariantPage> {
 
     final body = {
       "variant_name": _nameController.text,
-      "purchase_price": double.tryParse(_purchasePriceController.text.replaceAll(',', '.')),
+      "purchase_price": double.tryParse(
+        _purchasePriceController.text.replaceAll(',', '.'),
+      ),
       "quantity": int.tryParse(_quantityController.text),
       "description": _descriptionController.text,
       "platforms": _selectedPlatformIds.toList(),
@@ -235,7 +240,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     return Scaffold(
       appBar: AppBar(
         //  Titolo e Azioni dinamiche
-        title: Text(_isEditMode ? 'Modifica Variante' : 'Aggiungi Variante'),
+        title: Text(_isEditMode ? 'Modifica' : 'Aggiungi Variante'),
         actions: [
           //  Bottone Elimina (solo in Modifica)
           if (_isEditMode)
@@ -304,7 +309,9 @@ class _AddVariantPageState extends State<AddVariantPage> {
                               decoration: const InputDecoration(
                                 labelText: 'Acquisto (€)',
                               ),
-                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              keyboardType: TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
                               validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                             ),
                           ),

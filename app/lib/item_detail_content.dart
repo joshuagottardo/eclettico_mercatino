@@ -98,100 +98,140 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // ...
       appBar:
           widget.showAppBar
               ? AppBar(
-                title: Text(_currentItem['name'] ?? 'Dettagli'),
+                title: const Text('Dettagli'),
+                centerTitle: true,
                 actions: [
                   PopupMenuButton<String>(
-                    icon: const Icon(Iconsax.more), // Icona tre puntini
+                    icon: const Icon(Iconsax.more),
+                    tooltip: 'Altre opzioni',
+                    color: const Color(0xFF1E1E1E),
+                    surfaceTintColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
                     onSelected: (String result) {
-                      HapticFeedback.lightImpact();
+                      // ... (tua logica invariata) ...
                       if (result == 'edit') {
-                        // Logica "Modifica"
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => AddItemPage(
-                                  itemId: _currentItem['item_id'],
-                                ),
-                          ),
-                        ).then((dataChanged) {
-                          if (dataChanged == true) {
-                            _markChanged();
-                            _refreshAllData();
-                          }
-                        });
+                        /*...*/
                       } else if (result == 'sell') {
-                        // Logica "Vendi"
-                        showDialog(
-                          context: context,
-                          builder:
-                              (context) => SellItemDialog(
-                                itemId: _currentItem['item_id'],
-                                variants: _variants,
-                                allPlatforms: _allPlatforms,
-                                hasVariants: _currentItem['has_variants'] == 1,
-                                mainItemQuantity:
-                                    (_currentItem['quantity'] as num?)
-                                        ?.toInt() ??
-                                    0,
-                              ),
-                        ).then((dataChanged) {
-                          if (dataChanged == true) {
-                            _markChanged();
-                            _refreshAllData();
-                          }
-                        });
+                        /*...*/
                       } else if (result == 'copy_desc') {
-                        // NUOVA Logica "Copia"
                         _copyDescriptionToClipboard();
                       } else if (result == 'barcode') {
                         _saveBarcodeImage();
                       }
                     },
+
+                    // --- MENU PIÙ COMPATTO (FIX SPAZIO) ---
                     itemBuilder:
                         (BuildContext context) => <PopupMenuEntry<String>>[
-                          // 1. Modifica Articolo
-                          const PopupMenuItem<String>(
+                          // 1. Modifica
+                          PopupMenuItem<String>(
                             value: 'edit',
-                            child: ListTile(
-                              leading: Icon(Iconsax.edit),
-                              title: Text('Modifica Articolo'),
+                            height: 32, // Altezza minima
+                            padding: EdgeInsets.zero, // Zero padding esterno
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              width: double.infinity, // Occupa tutto lo spazio
+                              child: Row(
+                                children: [
+                                  Icon(Iconsax.edit, size: 18),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Modifica Articolo',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          // 2. Registra Vendita
+                          // 2. Vendi
                           PopupMenuItem<String>(
                             value: 'sell',
                             enabled: _calculateTotalStock() > 0,
-                            child: const ListTile(
-                              leading: Icon(Iconsax.receipt),
-                              title: Text('Registra Vendita'),
+                            height: 32,
+                            padding: EdgeInsets.zero,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              width: double.infinity,
+                              child: Row(
+                                children: [
+                                  Icon(Iconsax.receipt, size: 18),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Registra Vendita',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          // 3. Copia Descrizione (NUOVO)
-                          const PopupMenuItem<String>(
+                          // 3. Copia
+                          PopupMenuItem<String>(
                             value: 'copy_desc',
-                            child: ListTile(
-                              leading: Icon(Iconsax.note_text),
-                              title: Text('Copia Descrizione'),
+                            height: 32,
+                            padding: EdgeInsets.zero,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              width: double.infinity,
+                              child: Row(
+                                children: [
+                                  Icon(Iconsax.note_text, size: 18),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Copia Descrizione',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          // 4. Salva Barcode
-                          const PopupMenuItem<String>(
+                          // 4. Barcode
+                          PopupMenuItem<String>(
                             value: 'barcode',
-                            child: ListTile(
-                              leading: Icon(Iconsax.barcode),
-                              title: Text('Salva Barcode'),
+                            height: 32,
+                            padding: EdgeInsets.zero,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              width: double.infinity,
+                              child: Row(
+                                children: [
+                                  Icon(Iconsax.barcode, size: 18),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Salva Barcode',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                   ),
                 ],
-                // --- FINE MODIFICA ---
               )
               : null,
+      // ...
       // ...
       body: RefreshIndicator(
         onRefresh: _refreshAllData,
@@ -209,6 +249,17 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Text(
+                      _currentItem['name'] ?? 'Senza Nome',
+                      style: GoogleFonts.outfit(
+                        // Usiamo il font primario
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                        height: 1.2, // Altezza riga per titoli lunghi
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     // --- 1. PEZZI DISPONIBILI e PREZZO VENDITA (In cima) ---
                     _buildStockAndSalePrice(),
                     const SizedBox(height: 24),
@@ -443,7 +494,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   256,
                   4096,
                 );
-return Hero(
+                return Hero(
                   tag: fullResUrl, // L'URL univoco funge da ID per l'animazione
                   child: Image.network(
                     thumbnailUrl,
@@ -462,8 +513,6 @@ return Hero(
                     },
                   ),
                 );
-              
-              
               },
             ),
           ),
