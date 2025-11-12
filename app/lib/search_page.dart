@@ -10,6 +10,7 @@ import 'package:eclettico/api_config.dart';
 import 'package:eclettico/empty_state_widget.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:eclettico/bouncy_button.dart';
+import 'package:flutter/services.dart';
 
 class SearchPage extends StatefulWidget {
   final int? preselectedItemId;
@@ -32,6 +33,7 @@ class _SearchPageState extends State<SearchPage> {
   int? _selectedCategoryId;
   String? _selectedBrand;
   bool _showOnlyAvailable = false;
+  bool _showOnlySold = false;
 
   Map<String, dynamic>? _selectedItem;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -151,7 +153,13 @@ class _SearchPageState extends State<SearchPage> {
           tempFilteredList.where((item) {
             return item['is_sold'] == 0;
           }).toList();
+    } else if (_showOnlySold) {
+      tempFilteredList =
+          tempFilteredList.where((item) {
+            return item['is_sold'] == 1;
+          }).toList();
     }
+
     if (_selectedCategoryId != null) {
       tempFilteredList =
           tempFilteredList.where((item) {
@@ -191,28 +199,65 @@ class _SearchPageState extends State<SearchPage> {
   void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      isScrollControlled: true, // Permette al foglio di adattarsi al contenuto
+      backgroundColor: Colors.transparent, // Lo sfondo è gestito dal Container
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) {
-            return Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: ListView(
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              child: Column(
+                mainAxisSize:
+                    MainAxisSize.min, // Occupa solo lo spazio necessario
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // --- MANIGLIA ---
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[700],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+
+                  // --- INTESTAZIONE ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Filtri',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       TextButton(
-                        child: const Text('Pulisci Filtri'),
+                        child: const Text('Pulisci tutto'),
                         onPressed: () {
+                          HapticFeedback.mediumImpact(); // Feedback cancellazione
+                          // Resetta lo stato locale del foglio
                           setSheetState(() {
                             _selectedCategoryId = null;
                             _selectedBrand = null;
                             _showOnlyAvailable = false;
+                            _showOnlySold = false;
+                          });
+                          // Resetta lo stato della pagina principale e filtra
+                          setState(() {
+                            _selectedCategoryId = null;
+                            _selectedBrand = null;
+                            _showOnlyAvailable = false;
+                            _showOnlySold = false;
                           });
                           _filterItems();
                           Navigator.pop(context);
@@ -220,21 +265,58 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                     ],
                   ),
-                  const Divider(),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 16),
+
+                  // --- SWITCH 1: SOLO DISPONIBILI ---
                   SwitchListTile.adaptive(
                     title: const Text('Mostra solo disponibili'),
                     value: _showOnlyAvailable,
+                    contentPadding:
+                        EdgeInsets.zero, // Rimuove padding laterale extra
+                    activeColor: Theme.of(context).colorScheme.primary,
                     onChanged: (value) {
+                      HapticFeedback.lightImpact(); // Feedback Aptico
                       setSheetState(() {
                         _showOnlyAvailable = value;
+                        if (value) _showOnlySold = false; // Disattiva l'altro
+                      });
+                      // Aggiorna pagina principale in tempo reale
+                      setState(() {
+                        _showOnlyAvailable = value;
+                        if (value) _showOnlySold = false;
                       });
                       _filterItems();
                     },
-                    activeColor: Theme.of(context).colorScheme.primary,
                   ),
+
+                  // --- SWITCH 2: SOLO VENDUTI (NUOVO) ---
+                  SwitchListTile.adaptive(
+                    title: const Text('Mostra solo venduti'),
+                    value: _showOnlySold,
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    onChanged: (value) {
+                      HapticFeedback.lightImpact(); // Feedback Aptico
+                      setSheetState(() {
+                        _showOnlySold = value;
+                        if (value)
+                          _showOnlyAvailable = false; // Disattiva l'altro
+                      });
+                      setState(() {
+                        _showOnlySold = value;
+                        if (value) _showOnlyAvailable = false;
+                      });
+                      _filterItems();
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // --- DROPDOWN CATEGORIA ---
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(labelText: 'Categoria'),
-
+                    value: _selectedCategoryId,
                     items: [
                       const DropdownMenuItem<int>(
                         value: null,
@@ -248,16 +330,22 @@ class _SearchPageState extends State<SearchPage> {
                       }),
                     ],
                     onChanged: (value) {
+                      HapticFeedback.lightImpact(); // Feedback al cambio
                       setSheetState(() {
+                        _selectedCategoryId = value;
+                      });
+                      setState(() {
                         _selectedCategoryId = value;
                       });
                       _filterItems();
                     },
                   ),
-                  const SizedBox(height: 16),
+
+                  const SizedBox(height: 16), // Spazio tra i filtri
+                  // --- DROPDOWN BRAND ---
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Brand'),
-
+                    value: _selectedBrand,
                     items: [
                       const DropdownMenuItem<String>(
                         value: null,
@@ -271,7 +359,11 @@ class _SearchPageState extends State<SearchPage> {
                       }),
                     ],
                     onChanged: (value) {
+                      HapticFeedback.lightImpact(); // Feedback al cambio
                       setSheetState(() {
+                        _selectedBrand = value;
+                      });
+                      setState(() {
                         _selectedBrand = value;
                       });
                       _filterItems();
@@ -286,7 +378,6 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  // --- NUOVO BUILD METHOD RESPONSIVO ---
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -484,7 +575,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget? _buildFloatingActionButton() {
     return BouncyButton(
-      scaleDownFactor: 0.90, 
+      scaleDownFactor: 0.90,
       onPressed: () {
         _navigateAndReload(context, const AddItemPage());
       },
@@ -553,6 +644,7 @@ class _SearchPageState extends State<SearchPage> {
           _selectedCategoryId != null ||
           _selectedBrand != null ||
           _showOnlyAvailable;
+          _showOnlySold;
 
       if (isFiltering) {
         return const EmptyStateWidget(

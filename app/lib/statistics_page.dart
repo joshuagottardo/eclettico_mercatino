@@ -108,43 +108,99 @@ class _StatisticsPageState extends State<StatisticsPage> {
               ? Center(child: Text(_errorMessage!))
               : RefreshIndicator(
                 onRefresh: _fetchStatistics,
-                child: ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: [
-                    _buildResponsiveStatBoxes(),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const double desktopBreakpoint = 900.0;
+                    final bool isWide =
+                        constraints.maxWidth >= desktopBreakpoint;
 
-                    const SizedBox(height: 32),
+                    return ListView(
+                      padding: const EdgeInsets.all(16.0),
+                      children: [
+                        _buildResponsiveStatBoxes(), // Questo resta uguale (già reattivo)
 
-                    Text(
-                      'ANDAMENTO VENDITE (30 GIORNI)',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[400],
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      color: const Color(
-                        0xFF1A1A1A,
-                      ), // Leggermente più scuro dello sfondo
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: _SalesTrendChart(
-                          trendData: _statsData['salesTrend'] ?? [],
-                          isLoaded: !_isLoading,
+                        const SizedBox(height: 32),
+
+                        // Titolo Grafico (Comune a entrambi i layout)
+                        Text(
+                          'ANDAMENTO VENDITE (30 GIORNI)',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[400],
+                            letterSpacing: 1.2,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                        const SizedBox(height: 16),
 
-                    // --- FINE MODIFICA: GRAFICO ---
-                    _buildResponsiveTopPerformers(),
-                  ],
+                        // --- LAYOUT REATTIVO GRAFICO + TOP PERFORMERS ---
+                        if (isWide)
+                          // 1. Layout Desktop/Tablet (Affiancati)
+                          IntrinsicHeight(
+                            // Forza stessa altezza
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // GRAFICO (A Sinistra, prende più spazio: flex 2)
+                                Expanded(
+                                  flex: 2,
+                                  child: Card(
+                                    color: const Color(0xFF1A1A1A),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: _SalesTrendChart(
+                                        trendData:
+                                            _statsData['salesTrend'] ?? [],
+                                        isLoaded: !_isLoading,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+
+                                // TOP PERFORMERS (A Destra, flex 1, in colonna)
+                                Expanded(
+                                  flex: 1,
+                                  child: Column(
+                                    children: [
+                                      Expanded(
+                                        child: _buildTopCategoryCard(),
+                                      ), // Usa Expanded per distribuire altezza
+                                      const SizedBox(height: 16),
+                                      Expanded(child: _buildTopBrandCard()),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          // 2. Layout Mobile (Uno sotto l'altro, come prima)
+                          Column(
+                            children: [
+                              Card(
+                                color: const Color(0xFF1A1A1A),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: _SalesTrendChart(
+                                    trendData: _statsData['salesTrend'] ?? [],
+                                    isLoaded: !_isLoading,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              _buildResponsiveTopPerformers(), // Top Performers sotto
+                            ],
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
     );
@@ -421,51 +477,98 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }) {
     return Card(
       color: const Color(0xFF161616),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: Colors.grey[700],
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+      clipBehavior: Clip.antiAlias,
+      // Aggiungiamo un po' di elevazione per staccarla dal fondo
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Stack(
+        children: [
+          // --- 1. WATERMARK (Icona Gigante di Sfondo) ---
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Transform.rotate(
+              angle: -0.2,
+              child: Icon(
+                icon,
+                size: 140, // Ancora più grande per riempire meglio su PC
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
+          ),
+
+          // --- 2. CONTENUTO REALE (Distribuito verticalmente) ---
+          Padding(
+            padding: const EdgeInsets.all(20.0), // Più padding interno
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              // Questo distribuisce gli elementi per occupare tutta l'altezza disponibile
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  icon,
-                  size: 28,
-                  color: Theme.of(context).colorScheme.primary,
+                // A. IL TITOLO (Piccolo in alto)
+                Text(
+                  title.toUpperCase(),
+                  style: GoogleFonts.outfit(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
                 ),
-                const SizedBox(width: 12),
+
+                const SizedBox(height: 12),
+
+                // B. IL NOME (Gigante al centro)
+                // Rimosso l'icona piccola, ora il testo è protagonista
                 Expanded(
-                  child: Text(
-                    name,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      name,
+                      style: GoogleFonts.outfit(
+                        fontSize: 32, // Molto grande
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // C. IL CONTEGGIO (In basso)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: _AnimatedCount(
+                    endValue: count,
+                    style: GoogleFonts.inconsolata(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    formatter: (val) => '${val.toInt()} PEZZI VENDUTI',
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            _AnimatedCount(
-              endValue: count,
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              formatter: (val) => '${val.toInt()} pezzi venduti',
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+
 
   Widget _buildTopCategoryCard() {
     final topCategory = _statsData['topCategory'];

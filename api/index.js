@@ -1208,6 +1208,7 @@ app.get("/api/statistics/summary", async (req, res) => {
     const [topCategory] = await pool.query(`
       SELECT 
           SUM(s.quantity_sold) as sales_count, 
+          SUM(s.total_price) as total_revenue,
           c.name as category_name
       FROM sales_log s
       JOIN items i ON s.item_id = i.item_id
@@ -1221,6 +1222,7 @@ app.get("/api/statistics/summary", async (req, res) => {
     const [topBrand] = await pool.query(`
       SELECT 
           SUM(s.quantity_sold) as sales_count, 
+          SUM(s.total_price) as total_revenue,
           i.brand
       FROM sales_log s
       JOIN items i ON s.item_id = i.item_id
