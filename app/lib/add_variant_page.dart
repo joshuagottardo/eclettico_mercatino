@@ -29,8 +29,8 @@ class _AddVariantPageState extends State<AddVariantPage> {
   List _platforms = [];
   bool _platformsLoading = true;
   final Set<int> _selectedPlatformIds = {};
-  bool _isLoading = false; // Per il salvataggio
-  bool _isPageLoading = false; // Per il caricamento iniziale
+  bool _isLoading = false;
+  bool _isPageLoading = false;
   bool _isEditMode = false;
 
   @override
@@ -45,7 +45,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  //  Funzione per caricare i dati della variante
   Future<void> _loadVariantData() async {
     try {
       final url = '$kBaseUrl/api/variants/${widget.variantId}';
@@ -54,15 +53,12 @@ class _AddVariantPageState extends State<AddVariantPage> {
       if (response.statusCode == 200) {
         final variant = jsonDecode(response.body);
         if (mounted) {
-          // Popoliamo i controller
           _nameController.text = variant['variant_name'] ?? '';
-
           _purchasePriceController.text =
               variant['purchase_price']?.toString() ?? '';
           _quantityController.text = variant['quantity']?.toString() ?? '';
           _descriptionController.text = variant['description'] ?? '';
 
-          // Popoliamo le piattaforme
           if (variant['platforms'] != null) {
             _selectedPlatformIds.clear();
             _selectedPlatformIds.addAll(List<int>.from(variant['platforms']));
@@ -82,7 +78,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // Funzione per caricare le piattaforme
   Future<void> _fetchPlatforms() async {
     try {
       const url = '$kBaseUrl/api/platforms';
@@ -105,7 +100,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // (Rinominata in _submitForm
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -125,9 +119,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
     try {
       http.Response response;
 
-      // Logica per POST (Crea) o PUT (Modifica)
       if (_isEditMode) {
-        // --- MODALITÀ MODIFICA ---
         final url = '$kBaseUrl/api/variants/${widget.variantId}';
         response = await http.put(
           Uri.parse(url),
@@ -135,7 +127,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
           body: jsonEncode(body),
         );
       } else {
-        // --- MODALITÀ CREAZIONE ---
         final url = '$kBaseUrl/api/items/${widget.itemId}/variants';
         response = await http.post(
           Uri.parse(url),
@@ -160,15 +151,13 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  // Funzione per eliminare la variante
   Future<void> _deleteVariant() async {
-    // Chiedi conferma
     final bool? confirmed = await _showDeleteConfirmation();
     if (confirmed != true) return;
 
     setState(() {
       _isLoading = true;
-    }); // Usiamo lo stesso loader
+    });
     try {
       final url = '$kBaseUrl/api/variants/${widget.variantId}';
       final response = await http.delete(Uri.parse(url));
@@ -190,7 +179,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
     }
   }
 
-  //  Dialog di conferma eliminazione
   Future<bool?> _showDeleteConfirmation() {
     return showDialog<bool>(
       context: context,
@@ -233,185 +221,180 @@ class _AddVariantPageState extends State<AddVariantPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Padding per la tastiera
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
-      ),
-      // Rimuoviamo constraints di altezza fissa/massima forzata qui,
-      // lasciamo che sia il contenuto a decidere.
-      padding: EdgeInsets.only(
-        bottom: bottomPadding + 16,
-      ), // +16 per un po' di respiro sotto
-      child: Column(
-        mainAxisSize:
-            MainAxisSize.min, // Fondamentale: occupa il minimo spazio verticale
-        children: [
-          // --- 1. INTESTAZIONE ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Column(
-              children: [
-                // Maniglia
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(2),
+    // FIX 3: GestureDetector per chiudere la tastiera cliccando fuori
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+        ),
+        padding: EdgeInsets.only(bottom: bottomPadding + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // --- 1. INTESTAZIONE ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                // Riga Titolo e Bottoni
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Titolo
-                    Text(
-                      _isEditMode ? 'Modifica' : 'Aggiungi Variante',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    // Azioni
-                    Row(
-                      children: [
-                        if (_isEditMode)
-                          IconButton(
-                            icon: const Icon(Iconsax.trash, color: Colors.red),
-                            onPressed: _isLoading ? null : _deleteVariant,
-                            tooltip: 'Elimina',
-                          ),
-                        // --- MODIFICA BOTTONE SALVA ---
-                        IconButton(
-                          icon:
-                              _isLoading
-                                  ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : Icon(
-                                    Iconsax.save_2,
-                                    // Usa il colore primario (o bianco) senza sfondo
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                          onPressed: _isLoading ? null : _submitForm,
-                          tooltip: 'Salva',
-                          // RIMOSSO: style: IconButton.styleFrom(...)
-                        ),
-                        // --- FINE MODIFICA ---
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const Divider(color: Colors.white10),
-
-          // --- 2. CONTENUTO ---
-          if (_isPageLoading || _platformsLoading)
-            const Padding(
-              padding: EdgeInsets.all(32.0),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else
-            // --- MODIFICA QUI: Flexible invece di Expanded ---
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'Nome'),
-                        validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
-                        textInputAction: TextInputAction.next,
-                        autofocus: true,
+                      Text(
+                        // FIX 1: Testo modificato
+                        _isEditMode ? 'Modifica Variante' : 'Aggiungi Variante',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                      const SizedBox(height: 16),
                       Row(
                         children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _quantityController,
-                              decoration: const InputDecoration(
-                                labelText: 'N° Pezzi',
+                          if (_isEditMode)
+                            IconButton(
+                              icon: const Icon(
+                                Iconsax.trash,
+                                color: Colors.red,
                               ),
-                              keyboardType: TextInputType.number,
-                              validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                              onPressed: _isLoading ? null : _deleteVariant,
+                              tooltip: 'Elimina',
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _purchasePriceController,
-                              decoration: const InputDecoration(
-                                labelText: 'Acquisto (€)',
-                              ),
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              validator: (v) => v!.isEmpty ? 'Obbl.' : null,
-                            ),
+                          IconButton(
+                            icon:
+                                _isLoading
+                                    ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                    : Icon(
+                                      Iconsax.save_2,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                            onPressed: _isLoading ? null : _submitForm,
+                            tooltip: 'Salva',
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Descrizione',
-                        ),
-                        maxLines: 3,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                      ),
-
-                      const SizedBox(height: 24),
-                      Text(
-                        'Piattaforme',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      ..._buildPlatformChips(),
-
-                      // Spazio extra in fondo per staccare dai bordi
-                      const SizedBox(height: 16),
                     ],
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(color: Colors.white10),
+
+            // --- 2. CONTENUTO ---
+            if (_isPageLoading || _platformsLoading)
+              const Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              Flexible(
+                child: SingleChildScrollView(
+                  // FIX 3: Chiude tastiera allo scroll
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(labelText: 'Nome'),
+                          validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
+                          textInputAction: TextInputAction.next,
+                          // FIX 2: Rimosso autofocus: true
+                          autofocus: false,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _quantityController,
+                                decoration: const InputDecoration(
+                                  labelText: 'N° Pezzi',
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _purchasePriceController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Acquisto (€)',
+                                ),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _descriptionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Descrizione',
+                          ),
+                          maxLines: 3,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.newline,
+                        ),
+
+                        const SizedBox(height: 24),
+                        Text(
+                          'Piattaforme',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        ..._buildPlatformChips(),
+
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // MODIFICA: Sostituito CheckboxListTile con FilterChip
   List<Widget> _buildPlatformChips() {
     if (_platforms.isEmpty) return [const SizedBox.shrink()];
 
     return [
       Wrap(
-        spacing: 8.0, // Spazio orizzontale
-        runSpacing: 4.0, // Spazio verticale
+        spacing: 8.0,
+        runSpacing: 4.0,
         children:
             _platforms.map((platform) {
               final platformId = platform['platform_id'] as int;
@@ -429,7 +412,6 @@ class _AddVariantPageState extends State<AddVariantPage> {
                     }
                   });
                 },
-                // Stile
                 selectedColor: Theme.of(
                   context,
                 ).colorScheme.primary.withAlpha(77),
