@@ -79,21 +79,22 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   }
 
   void _navigateToAddVariant() async {
-    final bool? dataChanged = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => AddVariantPage(
-              itemId: _currentItem['item_id'],
-              variantId:
-                  null, // Passiamo null per indicare la creazione di una nuova variante
-            ),
-      ),
-    );
-    if (dataChanged == true) {
-      _markChanged();
-      _refreshAllData();
-    }
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Permette al sheet di essere alto
+      backgroundColor: Colors.transparent, // Lo sfondo è nel widget
+      builder:
+          (context) => AddVariantPage(
+            itemId: _currentItem['item_id'],
+            variantId: null, // Nuova variante
+          ),
+    ).then((dataChanged) {
+      // Se il bottom sheet ritorna 'true', aggiorniamo i dati
+      if (dataChanged == true) {
+        _markChanged();
+        _refreshAllData();
+      }
+    });
   }
 
   @override
@@ -141,23 +142,31 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       else if (result == 'sell') {
                         showModalBottomSheet(
                           context: context,
-                          isScrollControlled: true, // FONDAMENTALE: permette al sheet di alzarsi con la tastiera
-                          backgroundColor: Colors.transparent, // Lo sfondo lo gestisce il widget stesso
-                          builder: (context) => Padding(
-                            // Padding per gestire la tastiera
-                            padding: EdgeInsets.only(
-                              bottom: MediaQuery.of(context).viewInsets.bottom,
-                            ),
-                            child: SellItemDialog(
-                              itemId: _currentItem['item_id'],
-                              variants: _variants,
-                              allPlatforms: _allPlatforms,
-                              hasVariants: _currentItem['has_variants'] == 1,
-                              mainItemQuantity: (_currentItem['quantity'] as num?)?.toInt() ?? 0,
-                            ),
-                          ),
+                          isScrollControlled:
+                              true, // FONDAMENTALE: permette al sheet di alzarsi con la tastiera
+                          backgroundColor:
+                              Colors
+                                  .transparent, // Lo sfondo lo gestisce il widget stesso
+                          builder:
+                              (context) => Padding(
+                                // Padding per gestire la tastiera
+                                padding: EdgeInsets.only(
+                                  bottom:
+                                      MediaQuery.of(context).viewInsets.bottom,
+                                ),
+                                child: SellItemDialog(
+                                  itemId: _currentItem['item_id'],
+                                  variants: _variants,
+                                  allPlatforms: _allPlatforms,
+                                  hasVariants:
+                                      _currentItem['has_variants'] == 1,
+                                  mainItemQuantity:
+                                      (_currentItem['quantity'] as num?)
+                                          ?.toInt() ??
+                                      0,
+                                ),
+                              ),
                         ).then((dataChanged) {
-                          
                           if (dataChanged == true) {
                             _markChanged();
                             _refreshAllData();
@@ -1376,20 +1385,21 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 ),
               ),
               onTap: () async {
-                final bool? dataChanged = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (context) => AddVariantPage(
-                          itemId: _currentItem['item_id'],
-                          variantId: variant['variant_id'],
-                        ),
-                  ),
-                );
-                if (dataChanged == true) {
-                  _markChanged();
-                  _refreshAllData();
-                }
+                await showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder:
+                      (context) => AddVariantPage(
+                        itemId: _currentItem['item_id'],
+                        variantId: variant['variant_id'], // Modifica esistente
+                      ),
+                ).then((dataChanged) {
+                  if (dataChanged == true) {
+                    _markChanged();
+                    _refreshAllData();
+                  }
+                });
               },
             ),
           );

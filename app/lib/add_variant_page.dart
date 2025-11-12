@@ -56,7 +56,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
         if (mounted) {
           // Popoliamo i controller
           _nameController.text = variant['variant_name'] ?? '';
-          
+
           _purchasePriceController.text =
               variant['purchase_price']?.toString() ?? '';
           _quantityController.text = variant['quantity']?.toString() ?? '';
@@ -233,57 +233,116 @@ class _AddVariantPageState extends State<AddVariantPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        //  Titolo e Azioni dinamiche
-        title: Text(_isEditMode ? 'Modifica' : 'Aggiungi Variante'),
-        actions: [
-          //  Bottone Elimina (solo in Modifica)
-          if (_isEditMode)
-            IconButton(
-              icon: const Icon(Iconsax.trash, color: Colors.red),
-              onPressed: _isLoading ? null : _deleteVariant,
-              tooltip: 'Elimina Variante',
-            ),
-          IconButton(
-            icon:
-                _isLoading
-                    ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
+    // Padding per la tastiera
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+      ),
+      // Rimuoviamo constraints di altezza fissa/massima forzata qui,
+      // lasciamo che sia il contenuto a decidere.
+      padding: EdgeInsets.only(
+        bottom: bottomPadding + 16,
+      ), // +16 per un po' di respiro sotto
+      child: Column(
+        mainAxisSize:
+            MainAxisSize.min, // Fondamentale: occupa il minimo spazio verticale
+        children: [
+          // --- 1. INTESTAZIONE ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Column(
+              children: [
+                // Maniglia
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Riga Titolo e Bottoni
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Titolo
+                    Text(
+                      _isEditMode ? 'Modifica' : 'Aggiungi Variante',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
-                    )
-                    : const Icon(Iconsax.save_2),
-            onPressed: _isLoading ? null : _submitForm,
-            tooltip: 'Salva',
+                    ),
+                    // Azioni
+                    Row(
+                      children: [
+                        if (_isEditMode)
+                          IconButton(
+                            icon: const Icon(Iconsax.trash, color: Colors.red),
+                            onPressed: _isLoading ? null : _deleteVariant,
+                            tooltip: 'Elimina',
+                          ),
+                        // --- MODIFICA BOTTONE SALVA ---
+                        IconButton(
+                          icon:
+                              _isLoading
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                  : Icon(
+                                    Iconsax.save_2,
+                                    // Usa il colore primario (o bianco) senza sfondo
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                  ),
+                          onPressed: _isLoading ? null : _submitForm,
+                          tooltip: 'Salva',
+                          // RIMOSSO: style: IconButton.styleFrom(...)
+                        ),
+                        // --- FINE MODIFICA ---
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-      //Mostra loader
-      body: GestureDetector(
-        onTap: () {
-          // Chiude la tastiera forzando la rimozione del focus da qualsiasi campo
-          FocusScope.of(context).unfocus();
-        },
-        child:
-            _isPageLoading || _platformsLoading
-                ? Center(
-                  child: CircularProgressIndicator(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                )
-                : Form(
+
+          const Divider(color: Colors.white10),
+
+          // --- 2. CONTENUTO ---
+          if (_isPageLoading || _platformsLoading)
+            const Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            // --- MODIFICA QUI: Flexible invece di Expanded ---
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Form(
                   key: _formKey,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TextFormField(
                         controller: _nameController,
                         decoration: const InputDecoration(labelText: 'Nome'),
                         validator: (v) => v!.isEmpty ? 'Obbligatorio' : null,
+                        textInputAction: TextInputAction.next,
+                        autofocus: true,
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -305,9 +364,10 @@ class _AddVariantPageState extends State<AddVariantPage> {
                               decoration: const InputDecoration(
                                 labelText: 'Acquisto (€)',
                               ),
-                              keyboardType: TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               validator: (v) => v!.isEmpty ? 'Obbl.' : null,
                             ),
                           ),
@@ -320,20 +380,26 @@ class _AddVariantPageState extends State<AddVariantPage> {
                           labelText: 'Descrizione',
                         ),
                         maxLines: 3,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
                       ),
 
                       const SizedBox(height: 24),
-                      const Divider(),
-                      const SizedBox(height: 16),
                       Text(
                         'Piattaforme',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
                       ..._buildPlatformChips(),
+
+                      // Spazio extra in fondo per staccare dai bordi
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
+              ),
+            ),
+        ],
       ),
     );
   }
