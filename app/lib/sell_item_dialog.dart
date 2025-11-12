@@ -97,11 +97,10 @@ class _SellItemDialogState extends State<SellItemDialog> {
     }
   }
 
-  // Modifichiamo la funzione per accettare il controller dello slider
   Future<void> _submitSale() async {
     // 1. Validazione preliminare
     if (!_formKey.currentState!.validate()) {
-      _sliderController.reset(); // Resetta lo slider se il form non è valido
+      _sliderController.reset();
       return;
     }
     if (_selectedPlatformId == null) {
@@ -140,34 +139,22 @@ class _SellItemDialogState extends State<SellItemDialog> {
       );
 
       if (response.statusCode == 201) {
-        // --- SUCCESSO! ---
-
-        // 1. Feedback Aptico Pesante
         HapticFeedback.heavyImpact();
-
-        // 2. Suono di Cassa (opzionale, se il file esiste)
         try {
           await _audioPlayer.play(AssetSource('sounds/cash.mp3'));
-        } catch (_) {
-          // Ignora errori audio se il file non c'è
-        }
+        } catch (_) {}
 
-        // 3. Mostra stato successo sullo slider
         _sliderController.success();
-
-        // 4. Aspetta un attimo per far godere l'animazione all'utente
         await Future.delayed(const Duration(milliseconds: 1500));
 
         if (mounted) Navigator.pop(context, true);
       } else {
-        // Errore Server
-        _sliderController.reset(); // Torna indietro
+        _sliderController.reset();
         HapticFeedback.vibrate();
         final error = jsonDecode(response.body);
         _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
       }
     } catch (e) {
-      // Errore Rete
       _sliderController.reset();
       HapticFeedback.vibrate();
       _showError('Errore di rete: $e');
@@ -194,211 +181,223 @@ class _SellItemDialogState extends State<SellItemDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Padding per la tastiera: fa salire il foglio quando esce la tastiera
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    
+    // MODIFICA 1: Controllo se siamo su uno schermo largo (Desktop/Dialog)
+    // Se la larghezza è > 600, presumiamo sia un Dialog, quindi arrotondiamo tutto.
+    final bool isDesktopDialog = MediaQuery.of(context).size.width > 600;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
-      ),
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // --- 1. MANIGLIA (Drag Handle) ---
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey[700],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+    // MODIFICA 2: Avvolgiamo tutto in Material per evitare il crash su Desktop
+    return Material(
+      type: MaterialType.transparency, // Mantiene i bordi arrotondati del Container figlio
+      child: Center( // Center assicura che su Desktop il dialog stia al centro
+        child: Container(
+          // Se siamo su desktop, limitiamo la larghezza, altrimenti usa tutto lo spazio (BottomSheet)
+          width: isDesktopDialog ? 500 : double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            // MODIFICA 3: Bordi adattivi (Tutti arrotondati su Desktop, solo sopra su Mobile)
+            borderRadius: isDesktopDialog 
+                ? BorderRadius.circular(24.0)
+                : const BorderRadius.vertical(top: Radius.circular(24.0)),
           ),
-
-          // --- 2. TITOLO ---
-          Text(
-            'Registra Vendita',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // --- 3. IL FORM ---
-          Flexible(
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // --- Piattaforme ---
-                    DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(
-                        labelText: 'Piattaforma',
-                      ),
-                      items:
-                          _platforms.map<DropdownMenuItem<int>>((platform) {
-                            return DropdownMenuItem<int>(
-                              value: platform['platform_id'],
-                              child: Text(platform['name']),
-                            );
-                          }).toList(),
-                      onChanged:
-                          (value) =>
-                              setState(() => _selectedPlatformId = value),
-                      validator:
-                          (value) => value == null ? 'Obbligatorio' : null,
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Maniglia (Solo su mobile/bottom sheet ha senso visivo, ma la lasciamo per coerenza o la nascondiamo)
+              if (!isDesktopDialog)
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                ),
+              
+              // Spazio extra su desktop se togliamo la maniglia
+              if (isDesktopDialog) const SizedBox(height: 8),
 
-                    TextFormField(
-                      controller: _dateController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Data Vendita',
-                      ),
-                      onTap: () => _selectDate(context),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- Varianti ---
-                    if (widget.hasVariants)
-                      DropdownButtonFormField<int>(
-                        decoration: const InputDecoration(
-                          labelText: 'Variante',
-                        ),
-                        items:
-                            widget.variants
-                                .cast<Map<String, dynamic>>()
-                                .where((v) {
-                                  final q = v['quantity'];
-                                  final qty =
-                                      q is num
-                                          ? q.toInt()
-                                          : int.tryParse(q?.toString() ?? '') ??
-                                              0;
-                                  return qty > 0;
-                                })
-                                .map<DropdownMenuItem<int>>((variant) {
-                                  return DropdownMenuItem<int>(
-                                    value: variant['variant_id'],
-                                    child: Text(
-                                      '${variant['variant_name']} (Pz: ${variant['quantity']})',
-                                    ),
-                                  );
-                                })
-                                .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedVariantId = value;
-                            if (value != null) {
-                              final selectedVariant = widget.variants
-                                  .firstWhere(
-                                    (v) => v['variant_id'] == value,
-                                    orElse: () => null,
-                                  );
-                              _maxAvailableQuantity =
-                                  (selectedVariant?['quantity'] as num?)
-                                      ?.toInt();
-                            } else {
-                              _maxAvailableQuantity = null;
-                            }
-                            _formKey.currentState?.validate();
-                          });
-                        },
-                        validator:
-                            (value) => value == null ? 'Obbligatorio' : null,
-                      ),
-
-                    if (widget.hasVariants) const SizedBox(height: 16),
-
-                    // --- Quantità e Prezzo ---
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _quantityController,
-                            decoration: InputDecoration(labelText: 'Quantità'),
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.isEmpty)
-                                return 'Obbl.';
-                              final int? enteredQuantity = int.tryParse(value);
-                              if (enteredQuantity == null) return 'Num.';
-                              if (enteredQuantity <= 0) return '> 0';
-                              if (_maxAvailableQuantity != null &&
-                                  enteredQuantity > _maxAvailableQuantity!) {
-                                return 'Max: $_maxAvailableQuantity';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _priceController,
-                            decoration: const InputDecoration(
-                              labelText: 'Totale (€)',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            validator: (v) => v!.isEmpty ? 'Obbl.' : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _userController,
-                      decoration: const InputDecoration(
-                        labelText: 'Utente (opzionale)',
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // --- 4. SLIDER AZIONE ---
-                    ActionSlider.standard(
-                      controller: _sliderController,
-                      height: 50.0,
-                      backgroundColor: const Color(0xFF333333),
-                      toggleColor: Colors.green[600],
-                      icon: const Icon(Iconsax.money_send, color: Colors.white),
-                      loadingIcon: const CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                      successIcon: const Icon(
-                        Icons.check_rounded,
-                        color: Colors.white,
-                      ),
-                      action: (controller) async {
-                        await _submitSale();
-                      },
-                      child: Text(
-                        'Scorri per vendere',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+              Text(
+                'Registra Vendita',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-            ),
+              const SizedBox(height: 24),
+
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        DropdownButtonFormField<int>(
+                          decoration: const InputDecoration(
+                            labelText: 'Piattaforma',
+                          ),
+                          items:
+                              _platforms.map<DropdownMenuItem<int>>((platform) {
+                                return DropdownMenuItem<int>(
+                                  value: platform['platform_id'],
+                                  child: Text(platform['name']),
+                                );
+                              }).toList(),
+                          onChanged:
+                              (value) =>
+                                  setState(() => _selectedPlatformId = value),
+                          validator:
+                              (value) => value == null ? 'Obbligatorio' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _dateController,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Data Vendita',
+                          ),
+                          onTap: () => _selectDate(context),
+                        ),
+                        const SizedBox(height: 16),
+
+                        if (widget.hasVariants)
+                          DropdownButtonFormField<int>(
+                            decoration: const InputDecoration(
+                              labelText: 'Variante',
+                            ),
+                            items:
+                                widget.variants
+                                    .cast<Map<String, dynamic>>()
+                                    .where((v) {
+                                      final q = v['quantity'];
+                                      final qty =
+                                          q is num
+                                              ? q.toInt()
+                                              : int.tryParse(q?.toString() ?? '') ??
+                                                  0;
+                                      return qty > 0;
+                                    })
+                                    .map<DropdownMenuItem<int>>((variant) {
+                                      return DropdownMenuItem<int>(
+                                        value: variant['variant_id'],
+                                        child: Text(
+                                          '${variant['variant_name']} (Pz: ${variant['quantity']})',
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedVariantId = value;
+                                if (value != null) {
+                                  final selectedVariant = widget.variants
+                                      .firstWhere(
+                                        (v) => v['variant_id'] == value,
+                                        orElse: () => null,
+                                      );
+                                  _maxAvailableQuantity =
+                                      (selectedVariant?['quantity'] as num?)
+                                          ?.toInt();
+                                } else {
+                                  _maxAvailableQuantity = null;
+                                }
+                                _formKey.currentState?.validate();
+                              });
+                            },
+                            validator:
+                                (value) => value == null ? 'Obbligatorio' : null,
+                          ),
+
+                        if (widget.hasVariants) const SizedBox(height: 16),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _quantityController,
+                                decoration: InputDecoration(labelText: 'Quantità'),
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty)
+                                    return 'Obbl.';
+                                  final int? enteredQuantity = int.tryParse(value);
+                                  if (enteredQuantity == null) return 'Num.';
+                                  if (enteredQuantity <= 0) return '> 0';
+                                  if (_maxAvailableQuantity != null &&
+                                      enteredQuantity > _maxAvailableQuantity!) {
+                                    return 'Max: $_maxAvailableQuantity';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _priceController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Totale (€)',
+                                ),
+                                keyboardType: const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _userController,
+                          decoration: const InputDecoration(
+                            labelText: 'Utente (opzionale)',
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        ActionSlider.standard(
+                          controller: _sliderController,
+                          height: 50.0,
+                          backgroundColor: const Color(0xFF333333),
+                          toggleColor: Colors.green[600],
+                          icon: const Icon(Iconsax.money_send, color: Colors.white),
+                          loadingIcon: const CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                          successIcon: const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                          ),
+                          action: (controller) async {
+                            await _submitSale();
+                          },
+                          child: Text(
+                            'Scorri per vendere',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

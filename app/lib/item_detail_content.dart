@@ -1212,36 +1212,19 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // --- MODIFICATA: Widget helper per mostrare i bottoni su tablet/desktop ---
-  Widget _buildActionButtonsRow() {
-    // Usiamo un colore di sfondo simile all'AppBar per coerenza
+Widget _buildActionButtonsRow() {
     return Container(
       color:
           Theme.of(context).appBarTheme.backgroundColor ??
           Theme.of(context).cardColor,
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.spaceBetween, // Titolo a sx, bottoni a dx
+        mainAxisAlignment: MainAxisAlignment.end, // Allinea i bottoni a destra
         children: [
-          // Titolo a sinistra
-          Expanded(
-            child: Text(
-              _currentItem['name'] ?? 'Dettagli',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ),
-
-          // Bottoni con testo (TextButton.icon)
+          // RIMOSSO IL TEXT WIDGET DEL TITOLO
           Row(
             children: [
-              // 1. Modifica Articolo
               Tooltip(
-                // <-- INIZIO FIX
                 message: 'Modifica Articolo',
                 child: TextButton.icon(
                   icon: const Icon(Iconsax.edit),
@@ -1261,12 +1244,10 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     }
                   },
                 ),
-              ), // <-- FINE FIX
+              ),
               const SizedBox(width: 8),
 
-              // 2. Vendi Articolo
               Tooltip(
-                // <-- INIZIO FIX
                 message: 'Registra Vendita',
                 child: TextButton.icon(
                   icon: const Icon(Iconsax.receipt),
@@ -1299,33 +1280,29 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                               _refreshAllData();
                             }
                           }
-                          : null, // Disabilita se stock è zero
+                          : null,
                 ),
-              ), // <-- FINE FIX
+              ),
               const SizedBox(width: 8),
 
-              // 3. Copia Descrizione (NUOVO)
               Tooltip(
-                // <-- INIZIO FIX
                 message: 'Copia Descrizione',
                 child: TextButton.icon(
                   icon: const Icon(Iconsax.note_text),
                   label: const Text('Copia'),
                   onPressed: _copyDescriptionToClipboard,
                 ),
-              ), // <-- FINE FIX
+              ),
               const SizedBox(width: 8),
 
-              // 4. Barcode
               Tooltip(
-                // <-- INIZIO FIX
                 message: 'Salva Barcode',
                 child: TextButton.icon(
                   icon: const Icon(Iconsax.barcode),
                   label: const Text('Barcode'),
                   onPressed: _saveBarcodeImage,
                 ),
-              ), // <-- FINE FIX
+              ),
             ],
           ),
         ],
@@ -1336,7 +1313,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   Widget _buildVariantsSection() {
     final Color soldColor = Colors.red[500]!;
     final Color availableColor =
-        Colors.green[500]!; // Colore verde per disponibile
+        Colors.green[500]!;
 
     if (_isVariantsLoading) {
       return const Center(
@@ -1347,17 +1324,9 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       );
     }
 
-    // NOTA: Non mostriamo "Nessuna variante trovata" perché
-    // mostreremo sempre il pulsante "Aggiungi".
-
     return Column(
       children: [
-        // <-- 1. La Column ora ha parentesi quadre []
-
-        // --- INIZIO MODIFICA ---
-        // 2. Usiamo ... (spread operator) per inserire tutte le varianti
         ..._variants.map((variant) {
-          // --- FINE MODIFICA ---
 
           final bool isVariantSold = variant['is_sold'] == 1;
           final Color statusColor = isVariantSold ? soldColor : availableColor;
