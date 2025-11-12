@@ -89,62 +89,68 @@ class _StatisticsPageState extends State<StatisticsPage> {
           ),
         ],
       ),
-      body: _isLoading
-          ? _buildSkeletonLoader()
-          : _errorMessage != null
+      body:
+          _isLoading
+              ? _buildSkeletonLoader()
+              : _errorMessage != null
               ? Center(child: Text(_errorMessage!))
               : RefreshIndicator(
-                  onRefresh: _fetchStatistics,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16.0),
-                    children: [
-                      // --- UNICO BLOCCO DI CONTROLLO LAYOUT ---
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          // Breakpoints
-                          const double wideDesktop = 1300.0;
-                          const double tablet = 700.0;
+                onRefresh: _fetchStatistics,
+                child: ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    // --- UNICO BLOCCO DI CONTROLLO LAYOUT ---
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Breakpoints
+                        const double wideDesktop = 1300.0;
+                        const double tablet = 700.0;
 
-                          if (constraints.maxWidth >= wideDesktop) {
-                            return _buildWideDesktopLayout();
-                          } else if (constraints.maxWidth >= tablet) {
-                            return _buildTabletLayout();
-                          } else {
-                            return _buildMobileLayout();
-                          }
-                        },
-                      ),
+                        if (constraints.maxWidth >= wideDesktop) {
+                          return _buildWideDesktopLayout();
+                        } else if (constraints.maxWidth >= tablet) {
+                          return _buildTabletLayout();
+                        } else {
+                          return _buildMobileLayout();
+                        }
+                      },
+                    ),
+                    // ... altri widget sopra ...
+                    const SizedBox(height: 32),
 
-                      const SizedBox(height: 32),
-
-                      // --- GRAFICO (SEMPRE SOTTO) ---
-                      Text(
-                        'ANDAMENTO VENDITE (30 GIORNI)',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[400],
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Card(
-                        color: const Color(0xFF1A1A1A),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: _SalesTrendChart(
-                            trendData: _statsData['salesTrend'] ?? [],
-                            isLoaded: !_isLoading,
+                    // --- GRAFICO (SEMPRE SOTTO) ---
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'ANDAMENTO VENDITE (30 GIORNI)',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[400],
+                            letterSpacing: 1.2,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 32), // Spazio finale
-                    ],
-                  ),
+                        const SizedBox(height: 16),
+                        Card(
+                          color: const Color(0xFF1A1A1A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: _SalesTrendChart(
+                              trendData: _statsData['salesTrend'] ?? [],
+                              isLoaded: !_isLoading,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
+              ),
     );
   }
 
@@ -156,19 +162,19 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Widget _buildWideDesktopLayout() {
     // Passiamo fontSize: 32 per rendere le cifre grandi su desktop
     final finStats = _buildFinancialStatsList(valueFontSize: 32.0);
-    
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Statistiche Finanziarie
         ...finStats.map((w) => Expanded(child: w)),
-        
+
         // Spaziatore visivo
         Container(
-          width: 1, 
-          height: 80, 
-          color: Colors.grey[800], 
-          margin: const EdgeInsets.symmetric(horizontal: 24)
+          width: 1,
+          height: 80,
+          color: Colors.grey[800],
+          margin: const EdgeInsets.symmetric(horizontal: 24),
         ),
 
         // Top Performers (senza spazio tra loro)
@@ -179,12 +185,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   // 2. TABLET: Finanza sopra, Top Performers sotto
   Widget _buildTabletLayout() {
-    final finStats = _buildFinancialStatsList(valueFontSize: 24.0); // Font medio
+    final finStats = _buildFinancialStatsList(
+      valueFontSize: 24.0,
+    ); // Font medio
     return Column(
       children: [
         Row(children: finStats.map((w) => Expanded(child: w)).toList()),
         const SizedBox(height: 16),
-        Row(children: _buildTopPerformersList().map((w) => Expanded(child: w)).toList()),
+        Row(
+          children:
+              _buildTopPerformersList().map((w) => Expanded(child: w)).toList(),
+        ),
       ],
     );
   }
@@ -202,20 +213,33 @@ class _StatisticsPageState extends State<StatisticsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Riga 1: Margine Profitto (1) + Guadagno Lordo (2)
-        Row(children: [Expanded(child: finStats[1]), Expanded(child: finStats[2])]),
-        
+        Row(
+          children: [
+            Expanded(child: finStats[1]),
+            Expanded(child: finStats[2]),
+          ],
+        ),
+
         // Riga 2: Spesa Totale (3) + Valore Magazzino (0)
-        Row(children: [Expanded(child: finStats[3]), Expanded(child: finStats[0])]),
-        
+        Row(
+          children: [
+            Expanded(child: finStats[3]),
+            Expanded(child: finStats[0]),
+          ],
+        ),
+
         const SizedBox(height: 16), // Spazio normale prima dei Top Performers
-        
         // Top Performers: Rimosso padding eccessivo
         // Usiamo il map index per non mettere spazio sotto l'ultimo elemento se necessario,
         // ma qui semplicemente mettiamo un piccolo margine.
-        ..._buildTopPerformersList().map((w) => Padding(
-          padding: const EdgeInsets.only(bottom: 4.0), // Ridotto da 16 a 4 per avvicinarli
-          child: w,
-        )),
+        ..._buildTopPerformersList().map(
+          (w) => Padding(
+            padding: const EdgeInsets.only(
+              bottom: 4.0,
+            ), // Ridotto da 16 a 4 per avvicinarli
+            child: w,
+          ),
+        ),
       ],
     );
   }
@@ -294,7 +318,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
   // SINGOLI WIDGET (CARD)
   // ---------------------------------------------------------------------------
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, dynamic rawValue, double fontSize) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    dynamic rawValue,
+    double fontSize,
+  ) {
     final double? numericValue = double.tryParse(rawValue.toString());
     final bool isNegative = numericValue != null && numericValue < 0;
 
@@ -377,7 +408,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
               ),
             ),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -406,9 +437,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: _AnimatedCount(
@@ -438,11 +474,29 @@ class _StatisticsPageState extends State<StatisticsPage> {
       child: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          Row(children: [Expanded(child: Container(height: 100, color: baseColor)), const SizedBox(width: 10), Expanded(child: Container(height: 100, color: baseColor))]),
+          Row(
+            children: [
+              Expanded(child: Container(height: 100, color: baseColor)),
+              const SizedBox(width: 10),
+              Expanded(child: Container(height: 100, color: baseColor)),
+            ],
+          ),
           const SizedBox(height: 10),
-          Row(children: [Expanded(child: Container(height: 100, color: baseColor)), const SizedBox(width: 10), Expanded(child: Container(height: 100, color: baseColor))]),
+          Row(
+            children: [
+              Expanded(child: Container(height: 100, color: baseColor)),
+              const SizedBox(width: 10),
+              Expanded(child: Container(height: 100, color: baseColor)),
+            ],
+          ),
           const SizedBox(height: 30),
-          Container(height: 200, decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(12))),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: baseColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ],
       ),
     );
@@ -455,21 +509,32 @@ class _AnimatedCount extends StatefulWidget {
   final num endValue;
   final TextStyle? style;
   final String Function(num) formatter;
-  const _AnimatedCount({required this.endValue, required this.formatter, this.style});
+  const _AnimatedCount({
+    required this.endValue,
+    required this.formatter,
+    this.style,
+  });
 
   @override
   State<_AnimatedCount> createState() => _AnimatedCountState();
 }
 
-class _AnimatedCountState extends State<_AnimatedCount> with SingleTickerProviderStateMixin {
+class _AnimatedCountState extends State<_AnimatedCount>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1));
-    _animation = Tween<double>(begin: 0, end: widget.endValue.toDouble()).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+    _animation = Tween<double>(
+      begin: 0,
+      end: widget.endValue.toDouble(),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
     _controller.forward();
   }
 
@@ -477,7 +542,12 @@ class _AnimatedCountState extends State<_AnimatedCount> with SingleTickerProvide
   void didUpdateWidget(_AnimatedCount oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.endValue != widget.endValue) {
-      _animation = Tween<double>(begin: oldWidget.endValue.toDouble(), end: widget.endValue.toDouble()).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
+      _animation = Tween<double>(
+        begin: oldWidget.endValue.toDouble(),
+        end: widget.endValue.toDouble(),
+      ).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo),
+      );
       _controller.reset();
       _controller.forward();
     }
@@ -493,7 +563,9 @@ class _AnimatedCountState extends State<_AnimatedCount> with SingleTickerProvide
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animation,
-      builder: (context, child) => Text(widget.formatter(_animation.value), style: widget.style),
+      builder:
+          (context, child) =>
+              Text(widget.formatter(_animation.value), style: widget.style),
     );
   }
 }
@@ -507,21 +579,54 @@ class _SalesTrendChart extends StatefulWidget {
 }
 
 class _SalesTrendChartState extends State<_SalesTrendChart> {
-  List<Color> gradientColors = [const Color(0xFF23b6e6), const Color(0xFF02d39a)];
+  List<Color> gradientColors = [
+    const Color(0xFF23b6e6),
+    const Color(0xFF02d39a),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.isLoaded) return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+    if (!widget.isLoaded) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     if (widget.trendData.isEmpty) {
-      return Container(height: 180, alignment: Alignment.center, child: Text("Nessun dato", style: TextStyle(color: Colors.grey[600])));
+      return Container(
+        height: 180,
+        alignment: Alignment.center,
+        child: Text("Nessun dato", style: TextStyle(color: Colors.grey[600])),
+      );
+    }
+    final double width = MediaQuery.of(context).size.width;
+    final bool isMobile = width < 600;
+    final bool isDesktop = width >= 1000;
+
+    double myAspectRatio;
+    if (isMobile) {
+      myAspectRatio = 2.0; // Mobile: Alto
+    } else if (isDesktop) {
+      myAspectRatio = 5.0; // Desktop: Molto schiacciato (panoramico)
+    } else {
+      myAspectRatio = 3.0; // Tablet: Medio
     }
 
     return Stack(
       children: [
         AspectRatio(
-          aspectRatio: 2.5, 
+          // Su mobile abbassiamo l'aspect ratio (più alto) per dare respiro,
+          // su desktop lo teniamo schiacciato (2.5) come richiesto prima.
+          aspectRatio: myAspectRatio,
           child: Padding(
-            padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+            // MODIFICA 3: Rimosso padding a sinistra/sotto (gestito da fl_chart), ridotto destra/sopra
+            // Old: right: 18, left: 12, top: 24, bottom: 12
+            padding: const EdgeInsets.only(
+              right: 12,
+              left: 0,
+              top: 12,
+              bottom: 4,
+            ),
             child: LineChart(mainData()),
           ),
         ),
@@ -533,17 +638,26 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
     List<FlSpot> spots = [];
     double maxY = 0;
     for (int i = 0; i < widget.trendData.length; i++) {
-      final val = double.tryParse(widget.trendData[i]['daily_total'].toString()) ?? 0.0;
+      final val =
+          double.tryParse(widget.trendData[i]['daily_total'].toString()) ?? 0.0;
       if (val > maxY) maxY = val;
       spots.add(FlSpot(i.toDouble(), val));
     }
     maxY = maxY == 0 ? 100 : maxY * 1.2;
 
     return LineChartData(
-      gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: maxY / 5, getDrawingHorizontalLine: (value) => FlLine(color: Colors.white10, strokeWidth: 1)),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: maxY / 5,
+        getDrawingHorizontalLine:
+            (value) => FlLine(color: Colors.white10, strokeWidth: 1),
+      ),
       titlesData: FlTitlesData(
         show: true,
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
@@ -555,7 +669,16 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
               if (index >= 0 && index < widget.trendData.length) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(DateFormat('dd/MM').format(DateTime.parse(widget.trendData[index]['date'])), style: const TextStyle(color: Color(0xff68737d), fontWeight: FontWeight.bold, fontSize: 12)),
+                  child: Text(
+                    DateFormat(
+                      'dd/MM',
+                    ).format(DateTime.parse(widget.trendData[index]['date'])),
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 );
               }
               return const Text('');
@@ -566,7 +689,20 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
           sideTitles: SideTitles(
             showTitles: true,
             interval: maxY / 5,
-            getTitlesWidget: (value, meta) => value == 0 ? const Text('') : Text(value >= 1000 ? '${(value / 1000).toStringAsFixed(1)}k' : value.toInt().toString(), style: const TextStyle(color: Color(0xff67727d), fontWeight: FontWeight.bold, fontSize: 12)),
+            getTitlesWidget:
+                (value, meta) =>
+                    value == 0
+                        ? const Text('')
+                        : Text(
+                          value >= 1000
+                              ? '${(value / 1000).toStringAsFixed(1)}k'
+                              : value.toInt().toString(),
+                          style: const TextStyle(
+                            color: Color(0xff67727d),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
             reservedSize: 40,
           ),
         ),
@@ -584,7 +720,17 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
           barWidth: 4,
           isStrokeCapRound: true,
           dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(show: true, gradient: LinearGradient(colors: gradientColors.map((color) => color.withOpacity(0.3)).toList(), begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              colors:
+                  gradientColors
+                      .map((color) => color.withOpacity(0.3))
+                      .toList(),
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
         ),
       ],
     );
