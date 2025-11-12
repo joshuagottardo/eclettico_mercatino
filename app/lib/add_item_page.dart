@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
-
 import 'package:eclettico/item_detail_page.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter/services.dart';
 
 class AddItemPage extends StatefulWidget {
   final int? itemId;
@@ -249,6 +249,7 @@ class _AddItemPageState extends State<AddItemPage> {
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        HapticFeedback.heavyImpact();
         if (mounted) {
           if (!_isEditMode && response.statusCode == 201) {
             final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -403,9 +404,9 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
         SwitchListTile.adaptive(
           title: const Text('L\'articolo è USATO?'),
-          // MODIFICA: Sottotitolo rimosso
           value: _isUsed,
           onChanged: (bool value) {
+            HapticFeedback.lightImpact();
             setState(() {
               _isUsed = value;
             });
@@ -451,9 +452,9 @@ class _AddItemPageState extends State<AddItemPage> {
 
         SwitchListTile.adaptive(
           title: const Text('L\'articolo ha varianti?'),
-          // MODIFICA: Sottotitolo rimosso
           value: _hasVariants,
           onChanged: (bool value) {
+            
             if (_isEditMode && !value) {
               if (_variantCount > 0) {
                 _showError(
@@ -469,6 +470,8 @@ class _AddItemPageState extends State<AddItemPage> {
                 return;
               }
             }
+
+            HapticFeedback.lightImpact();
 
             setState(() {
               _hasVariants = value;

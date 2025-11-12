@@ -22,6 +22,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:eclettico/sales_log_page.dart';
+import 'package:flutter/services.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -106,7 +107,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   PopupMenuButton<String>(
                     icon: const Icon(Iconsax.more), // Icona tre puntini
                     onSelected: (String result) {
-                      // Gestiamo l'azione in base al valore
+                      HapticFeedback.lightImpact();
                       if (result == 'edit') {
                         // Logica "Modifica"
                         Navigator.push(
@@ -474,20 +475,16 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   }
 
   Future<void> _copyDescriptionToClipboard() async {
-    // --- INIZIO MODIFICA ---
     final String name = _capitalizeFirst(_currentItem['name']);
     final String brand = _capitalizeFirst(_currentItem['brand']);
     final String description =
         _currentItem['description'] ?? 'Nessuna descrizione';
     final String condition = (_currentItem['is_used'] == 0) ? 'Nuovo' : 'Usato';
-
-    // Formatta il testo come richiesto
     final String textToCopy =
         '$name | $brand\n$description\nCONDIZIONE: $condition';
-    // --- FINE MODIFICA ---
 
     await Clipboard.setData(ClipboardData(text: textToCopy));
-    // ...
+    HapticFeedback.mediumImpact();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -665,6 +662,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       final response = await http.delete(Uri.parse(url));
 
       if (response.statusCode == 200) {
+        HapticFeedback.mediumImpact();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

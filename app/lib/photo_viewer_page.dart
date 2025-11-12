@@ -206,7 +206,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   }
 
   Future<void> _deletePhoto() async {
-    // ... (funzione invariata)
+    
     if (widget.photos.isEmpty) return;
 
     final bool? confirmed = await showDialog<bool>(
@@ -246,6 +246,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       final response = await http.delete(Uri.parse(url));
 
       if (response.statusCode == 200) {
+        HapticFeedback.mediumImpact();
         if (mounted) {
           _showFeedback(success: true, message: 'Foto eliminata.');
           Navigator.pop(context, true);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:eclettico/api_config.dart';
+import 'package:flutter/services.dart';
 
 class SellItemDialog extends StatefulWidget {
   final int itemId;
@@ -129,6 +130,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
         body: jsonEncode(body),
       );
       if (response.statusCode == 201) {
+        HapticFeedback.heavyImpact();
         if (mounted) Navigator.pop(context, true);
       } else {
         final error = jsonDecode(response.body);
