@@ -10,6 +10,7 @@ import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:eclettico/bouncy_button.dart';
+import 'package:eclettico/snackbar_helper.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -96,15 +97,17 @@ class _HomePageState extends State<HomePage> {
           final itemData = jsonDecode(response.body);
           _navigateAndReload(ItemDetailPage(item: itemData));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore: Articolo non trovato.')),
+          showFloatingSnackBar(
+            context,
+            'Errore: Articolo non trovato.',
+            isError: true,
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore di rete durante il recupero dei dettagli.'),
-          ),
+        showFloatingSnackBar(
+          context,
+          'Errore di rete durante il recupero dei dettagli.',
+          isError: true,
         );
       }
     }

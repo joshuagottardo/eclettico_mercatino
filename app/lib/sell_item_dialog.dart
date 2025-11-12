@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:action_slider/action_slider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:eclettico/snackbar_helper.dart';
 
 class SellItemDialog extends StatefulWidget {
   final int itemId;
@@ -175,9 +176,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+      showFloatingSnackBar(context, message, isError: true);
     }
   }
 

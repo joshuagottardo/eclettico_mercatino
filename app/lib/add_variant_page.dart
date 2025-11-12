@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:eclettico/snackbar_helper.dart';
 
 class AddVariantPage extends StatefulWidget {
   final int itemId;
@@ -217,9 +218,7 @@ class _AddVariantPageState extends State<AddVariantPage> {
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+      showFloatingSnackBar(context, message, isError: true);
     }
   }
 

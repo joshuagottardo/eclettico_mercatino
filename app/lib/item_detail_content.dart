@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:eclettico/sales_log_page.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:eclettico/snackbar_helper.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -583,12 +584,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     HapticFeedback.mediumImpact();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Descrizione copiata negli appunti!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      showFloatingSnackBar(context, 'Descrizione copiata negli appunti!');
     }
   }
 
@@ -616,8 +612,10 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
 
     // Mostra feedback di avvio
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Salvataggio codice a barre...')),
+    showFloatingSnackBar(
+      context,
+      'Salvataggio codice a barre...',
+      isError: false,
     );
 
     try {
@@ -653,14 +651,13 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         );
 
         if (result['isSuccess'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Codice a barre salvato in galleria!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          showFloatingSnackBar(context, 'Codice a barre salvato in galleria!');
         } else {
-          _showError('Salvataggio non riuscito.');
+          showFloatingSnackBar(
+            context,
+            'Salvataggio non riuscito.',
+            isError: true,
+          );
         }
       } else {
         // --- SALVATAGGIO SU DESKTOP (Windows / macOS / Linux) ---
@@ -680,12 +677,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           await file.writeAsBytes(pngBytes);
 
           // 4. Mostra feedback
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Codice a barre salvato!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          showFloatingSnackBar(context, 'Barcode salvato!');
         } else {
           // L'utente ha premuto "Annulla"
           _showError('Salvataggio annullato.');
@@ -760,12 +752,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       if (response.statusCode == 200) {
         HapticFeedback.mediumImpact();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Articolo eliminato con successo.'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          showFloatingSnackBar(context, 'Articolo eliminato con successo.');
           _markChanged();
           // Torna alla pagina precedente (Home/Search) e segnala il cambiamento (true)
           Navigator.pop(context, true);
@@ -792,9 +779,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   // Funzione helper per mostrare errori
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+      showFloatingSnackBar(context, message, isError: true);
     }
   }
 
@@ -929,12 +914,9 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       _markChanged();
 
       // Mostra un feedback di successo per il blocco di file
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Caricamento di ${pickedFiles.length} foto completato!',
-          ),
-        ),
+      showFloatingSnackBar(
+        context,
+        'Caricamento di ${pickedFiles.length} foto completato!',
       );
     } catch (e) {
       print('Errore (catch) durante l\'upload multiplo: $e');

@@ -8,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:eclettico/snackbar_helper.dart';
 
 class PhotoViewerPage extends StatefulWidget {
   final List<Map<String, dynamic>> photos;
@@ -90,13 +91,12 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   }
 
   Future<void> _downloadPhoto() async {
-    // ... (funzione invariata)
     if (widget.photos.isEmpty || _isDownloading) return;
 
     setState(() => _isDownloading = true);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Download in corso...')));
+
+    showFloatingSnackBar(context, 'Download in corso...', isError: false);
+    Padding;
 
     try {
       // 1) Dati immagine (comune a entrambi)
@@ -112,9 +112,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
       if (!name.contains('.')) {
         name = '$name.jpg';
       }
-      // NOTA: NON rimuoviamo l'estensione qui, la usiamo per il file picker
 
-      // 2) Download bytes (comune a entrambi)
       final dio = Dio();
       final resp = await dio.get<List<int>>(
         photoUrl,
@@ -270,12 +268,7 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   void _showFeedback({required bool success, required String message}) {
     // ... (funzione invariata)
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: success ? Colors.green[600] : Colors.red,
-        ),
-      );
+      showFloatingSnackBar(context, message, isError: !success);
     }
   }
 

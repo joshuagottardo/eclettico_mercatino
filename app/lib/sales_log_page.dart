@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/edit_sale_dialog.dart';
 import 'package:eclettico/empty_state_widget.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:eclettico/snackbar_helper.dart';
 
 class SalesLogPage extends StatefulWidget {
   final List salesLog;
@@ -43,9 +44,7 @@ class _SalesLogPageState extends State<SalesLogPage> {
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
+      showFloatingSnackBar(context, message, isError: true);
     }
   }
 
