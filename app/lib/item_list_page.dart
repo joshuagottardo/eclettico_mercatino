@@ -245,15 +245,32 @@ class _ItemListPageState extends State<ItemListPage> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      brand,
-                      style: TextStyle(
-                        color: isSold ? Colors.grey[500] : Colors.grey[400],
-                        fontSize: 14,
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      decoration: BoxDecoration(
+                        
+                        color: textColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: textColor.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        brand.toUpperCase(), // Maiuscolo per stile "etichetta"
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.8),
+                          fontSize: 10, // Più piccolo ma leggibile
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

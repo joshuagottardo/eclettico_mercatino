@@ -429,10 +429,43 @@ class _HomePageState extends State<HomePage> {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
-                  // Aggiunto il sottotitolo
-                  Text(
-                    brand, // Ora questa variabile esiste ed è corretta
-                    style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(height: 8), // Un po' di spazio
+                  // --- INIZIO MODIFICA BADGE ---
+                  Row(
+                    // Avvolgiamo in una Row per evitare che il badge si allarghi
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          // Sfondo semitrasparente
+                          color: Theme.of(
+                            context,
+                          ).textTheme.bodySmall!.color!.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodySmall!.color!.withOpacity(0.2),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          brand.toUpperCase(), // Maiuscolo
+                          style: GoogleFonts.outfit(
+                            // Usiamo il font primario
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodySmall!.color!.withOpacity(0.8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -498,9 +531,43 @@ class _HomePageState extends State<HomePage> {
                   item['name'] ?? 'Senza Nome',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
-                Text(
-                  item['brand'] ?? 'N/D',
-                  style: Theme.of(context).textTheme.bodySmall,
+                const SizedBox(height: 8), // Un po' di spazio
+                // --- INIZIO MODIFICA BADGE ---
+                Row(
+                  // Avvolgiamo in una Row per evitare che il badge si allarghi
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        // Sfondo semitrasparente
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodySmall!.color!.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).textTheme.bodySmall!.color!.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        item['brand'].toUpperCase(), // Maiuscolo
+                        style: GoogleFonts.outfit(
+                          // Usiamo il font primario
+                          color: Theme.of(
+                            context,
+                          ).textTheme.bodySmall!.color!.withOpacity(0.8),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

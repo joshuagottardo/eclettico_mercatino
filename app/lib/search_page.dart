@@ -629,17 +629,33 @@ class _SearchPageState extends State<SearchPage> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-
-                    // Brand (Sottotitolo)
-                    Text(
-                      brand,
-                      style: TextStyle(
-                        color: isSold ? Colors.grey[500] : Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: textColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: textColor.withOpacity(0.2),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            brand.toUpperCase(),
+                            style: TextStyle(
+                              color: textColor.withOpacity(0.8),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
