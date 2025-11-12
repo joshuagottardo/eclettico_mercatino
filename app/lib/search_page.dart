@@ -9,6 +9,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:eclettico/empty_state_widget.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:eclettico/bouncy_button.dart';
 
 class SearchPage extends StatefulWidget {
   final int? preselectedItemId;
@@ -305,7 +306,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildSkeletonList() {
     final Color baseColor = Colors.grey[850]!;
     final Color highlightColor = Colors.grey[700]!;
-    final Color boxColor = Colors.grey[850]!;
+    final Color boxColor = Colors.grey[800]!; // Colore dei box interni
 
     return Shimmer.fromColors(
       baseColor: baseColor,
@@ -313,35 +314,61 @@ class _SearchPageState extends State<SearchPage> {
       period: const Duration(milliseconds: 1200),
       child: ListView.builder(
         padding: const EdgeInsets.all(8.0),
-        itemCount: 10,
+        itemCount: 8, // Numero di scheletri da mostrare
         itemBuilder: (context, index) {
           return Card(
+            // Usiamo lo stesso colore base della card reale (o trasparente per far vedere lo shimmer)
             color: baseColor,
-            margin: const EdgeInsets.symmetric(vertical: 4.0),
-            child: ListTile(
-              leading: Container(
-                width: 40.0,
-                height: 40.0,
-                decoration: BoxDecoration(
-                  color: boxColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              title: Container(
-                height: 16.0,
-                width: 200.0,
-                decoration: BoxDecoration(
-                  color: boxColor,
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-              ),
-              trailing: Container(
-                width: 30.0,
-                height: 14.0,
-                decoration: BoxDecoration(
-                  color: boxColor,
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
+            // STESSO MARGINE della card reale (vertical: 6.0)
+            margin: const EdgeInsets.symmetric(vertical: 6.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12), // Default delle card
+            ),
+            child: Padding(
+              // STESSO PADDING della card reale (all: 10.0)
+              padding: const EdgeInsets.all(10.0),
+              child: Row(
+                children: [
+                  // 1. Scheletro per la Thumbnail (80x80, Raggio 12)
+                  Container(
+                    width: 80.0,
+                    height: 80.0,
+                    decoration: BoxDecoration(
+                      color: boxColor,
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // 2. Scheletro per i Testi
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Riga Titolo (Lunga)
+                        Container(
+                          height: 20.0,
+                          width: double.infinity, // Prende tutto lo spazio
+                          decoration: BoxDecoration(
+                            color: boxColor,
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                        ),
+                        const SizedBox(height: 8), // Spazio simile al reale
+                        // Riga Brand/Badge (Corta)
+                        Container(
+                          height: 16.0,
+                          width: 100.0,
+                          decoration: BoxDecoration(
+                            color: boxColor,
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -456,13 +483,27 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget? _buildFloatingActionButton() {
-    return FloatingActionButton(
+    return BouncyButton(
+      scaleDownFactor: 0.90, 
       onPressed: () {
         _navigateAndReload(context, const AddItemPage());
       },
-      tooltip: 'Aggiungi articolo',
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      child: const Icon(Iconsax.add, color: Colors.black),
+      child: Container(
+        height: 56,
+        width: 56,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Icon(Iconsax.add, color: Colors.black),
+      ),
     );
   }
 

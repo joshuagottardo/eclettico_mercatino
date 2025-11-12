@@ -9,6 +9,7 @@ import 'package:eclettico/statistics_page.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:eclettico/bouncy_button.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -343,24 +344,32 @@ class _HomePageState extends State<HomePage> {
     required VoidCallback onTap,
     bool isExpanded = false,
   }) {
-    final buttonContent = InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12.0),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(label, style: Theme.of(context).textTheme.titleMedium),
-          ],
-        ),
+    // Costruiamo prima il contenuto grafico
+    Widget content = Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12.0),
+        // Aggiungiamo una leggera ombra per dare profondità quando si preme
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 8),
+          Text(label, style: Theme.of(context).textTheme.titleMedium),
+        ],
       ),
     );
+
+    // Avvolgiamo nel BouncyButton
+    final buttonContent = BouncyButton(onPressed: onTap, child: content);
 
     return isExpanded ? Expanded(child: buttonContent) : buttonContent;
   }
