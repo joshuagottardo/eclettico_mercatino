@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/api_config.dart';
+import 'package:eclettico/empty_state_widget.dart';
 
 class ItemListPage extends StatefulWidget {
   final int categoryId;
@@ -76,7 +77,12 @@ class _ItemListPageState extends State<ItemListPage> {
             _isLoading
                 ? _buildSkeletonList()
                 : _items.isEmpty
-                ? Center(child: Text('Nessun articolo in questa categoria.'))
+                ? const EmptyStateWidget(
+                  icon: Iconsax.box_remove,
+                  title: 'Categoria Vuota',
+                  subtitle:
+                      'Non ci sono ancora articoli associati a questa categoria.',
+                )
                 : ListView.builder(
                   padding: const EdgeInsets.all(8.0),
                   itemCount: _items.length,

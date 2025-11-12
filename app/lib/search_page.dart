@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/api_config.dart';
+import 'package:eclettico/empty_state_widget.dart';
 
 class SearchPage extends StatefulWidget {
   final int? preselectedItemId;
@@ -505,16 +506,26 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
     if (_filteredItems.isEmpty) {
-      return Center(
-        child: Text(
-          _searchController.text.isEmpty &&
-                  _selectedCategoryId == null &&
-                  _selectedBrand == null &&
-                  !_showOnlyAvailable
-              ? 'Nessun articolo. Aggiungine uno!'
-              : 'Nessun articolo trovato con questi filtri.',
-        ),
-      );
+      final bool isFiltering = _searchController.text.isNotEmpty ||
+          _selectedCategoryId != null ||
+          _selectedBrand != null ||
+          _showOnlyAvailable;
+
+      if (isFiltering) {
+        return const EmptyStateWidget(
+          icon: Iconsax.search_status,
+          title: 'Nessun risultato',
+          subtitle: 'Non abbiamo trovato articoli che corrispondono alla tua ricerca. Prova a cambiare i filtri.',
+        );
+      } else {
+        return EmptyStateWidget(
+          icon: Iconsax.box_add,
+          title: 'Magazzino Vuoto',
+          subtitle: 'Non ci sono ancora articoli nel tuo magazzino.\nInizia aggiungendone uno!',
+          actionLabel: 'Aggiungi Articolo',
+          onAction: () => _navigateAndReload(context, const AddItemPage()),
+        );
+      }
     }
 
     return ListView.builder(

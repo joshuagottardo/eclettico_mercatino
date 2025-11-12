@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/edit_sale_dialog.dart';
+import 'package:eclettico/empty_state_widget.dart';
 
 class SalesLogPage extends StatefulWidget {
   final List salesLog;
@@ -62,8 +63,10 @@ class _SalesLogPageState extends State<SalesLogPage> {
           title: const Text('Storico Vendite'),
         ),
         body: _currentSalesLog.isEmpty
-            ? const Center(
-                child: Text('Nessuna vendita registrata.'),
+            ? const EmptyStateWidget(
+                icon: Iconsax.receipt_1, // O Iconsax.empty_wallet
+                title: 'Nessuna Vendita',
+                subtitle: 'Non hai ancora registrato nessuna vendita per questo articolo.',
               )
             : ListView.builder(
                 padding: const EdgeInsets.all(8.0),
