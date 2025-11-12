@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -357,7 +358,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
               if (numericValue != null)
                 _AnimatedCount(
                   endValue: numericValue,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  style: GoogleFonts.inconsolata(
+                    textStyle: Theme.of(context).textTheme.headlineSmall,
                     color: isNegative ? Colors.red[700] : color,
                     fontWeight: FontWeight.bold,
                   ),

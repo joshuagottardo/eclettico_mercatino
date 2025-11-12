@@ -22,7 +22,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:eclettico/sales_log_page.dart';
-import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -65,7 +65,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   final Color _soldColor = Colors.red[500]!;
   final Color _availableColor = Colors.green[500]!;
   final Color _headerTextColor = Colors.grey[600]!;
-
 
   @override
   void initState() {
@@ -942,7 +941,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
               const SizedBox(height: 4),
               Text(
                 estimatedValue,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                style: GoogleFonts.inconsolata(
+                  textStyle: Theme.of(context).textTheme.titleLarge,
                   color: Colors.grey[300],
                   fontWeight: FontWeight.bold,
                 ),
@@ -968,7 +968,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 const SizedBox(height: 4),
                 Text(
                   '€ ${_currentItem['purchase_price'] ?? 'N/D'}', // Calcolato qui
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  style: GoogleFonts.inconsolata(
+                    textStyle: Theme.of(context).textTheme.titleLarge,
                     color: Colors.grey[300],
                     fontWeight: FontWeight.bold,
                   ),
@@ -1062,17 +1063,13 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                   const SizedBox(height: 8),
-
-                  // --- INIZIO MODIFICA ---
-                  // Aggiunto FittedBox per ridimensionare il testo se necessario
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
                       totalStock.toString(),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
+                      style: GoogleFonts.inconsolata(
+                        textStyle: Theme.of(context).textTheme.headlineMedium,
                         color: totalStock > 0 ? _availableColor : _soldColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 34,
@@ -1110,9 +1107,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       salePrice,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
+                      style: GoogleFonts.inconsolata(
+                        textStyle: Theme.of(context).textTheme.headlineMedium,
                         color: accentColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 34,
@@ -1128,7 +1124,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       ],
     );
   }
-
 
   // --- MODIFICATA: Widget helper per mostrare i bottoni su tablet/desktop ---
   Widget _buildActionButtonsRow() {

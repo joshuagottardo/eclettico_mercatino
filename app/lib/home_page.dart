@@ -8,6 +8,7 @@ import 'package:eclettico/library_page.dart';
 import 'package:eclettico/statistics_page.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -73,7 +74,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-// Funzione per navigare alla SearchPage con preselezion
+  // Funzione per navigare alla SearchPage con preselezion
   void _navigateToDetail(int itemId) async {
     // Usiamo LayoutBuilder per capire se siamo su Desktop
     final bool isDesktop =
@@ -438,9 +439,10 @@ class _HomePageState extends State<HomePage> {
             ),
             Text(
               price,
-              style: TextStyle(
+              style: GoogleFonts.inconsolata(
                 color: Colors.green[600],
                 fontWeight: FontWeight.bold,
+                fontSize: 16, // Leggermente più grande per leggibilità
               ),
             ),
           ],

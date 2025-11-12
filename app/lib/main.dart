@@ -34,9 +34,9 @@ class MagazzinoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Gestione Magazzino',
+      title: 'Eclettico',
       theme: ThemeData(
-        fontFamily: GoogleFonts.inconsolata().fontFamily,
+        fontFamily: GoogleFonts.outfit().fontFamily,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF121212),
         cardColor: const Color(0xFF1E1E1E),
