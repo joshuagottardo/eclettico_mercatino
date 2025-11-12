@@ -136,7 +136,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _buildButtonLayout(context),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
 
                   // Card ULTIME VENDITE
                   Card(
@@ -147,7 +147,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
 
                   // Card ULTIMI ARRIVI
                   Card(
@@ -389,7 +389,7 @@ class _HomePageState extends State<HomePage> {
             color: Theme.of(context).colorScheme.primary,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         if (_latestSales.isEmpty)
           const Text('Nessuna vendita recente.')
         else
@@ -439,7 +439,9 @@ class _HomePageState extends State<HomePage> {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyLarge,
+                    style: GoogleFonts.inconsolata(
+                      textStyle: Theme.of(context).textTheme.bodyLarge,
+                    ),
                   ),
                   const SizedBox(height: 8), // Un po' di spazio
                   // --- INIZIO MODIFICA BADGE ---
@@ -466,12 +468,12 @@ class _HomePageState extends State<HomePage> {
                         ),
                         child: Text(
                           brand.toUpperCase(), // Maiuscolo
-                          style: GoogleFonts.outfit(
-                            // Usiamo il font primario
+                          style: GoogleFonts.inconsolata(
                             color: Theme.of(
                               context,
                             ).textTheme.bodySmall!.color!.withOpacity(0.8),
-                            fontSize: 10,
+                            fontSize:
+                                12, // Aumentato leggermente per leggibilità
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
                           ),
@@ -508,7 +510,7 @@ class _HomePageState extends State<HomePage> {
             color: Theme.of(context).colorScheme.primary,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         if (_latestItems.isEmpty)
           const Text('Nessun articolo aggiunto di recente.')
         else
@@ -541,12 +543,13 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   item['name'] ?? 'Senza Nome',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: GoogleFonts.inconsolata(
+                    textStyle: Theme.of(context).textTheme.bodyLarge,
+                  ),
                 ),
-                const SizedBox(height: 8), // Un po' di spazio
-                // --- INIZIO MODIFICA BADGE ---
+                const SizedBox(height: 8),
+
                 Row(
-                  // Avvolgiamo in una Row per evitare che il badge si allarghi
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -568,12 +571,11 @@ class _HomePageState extends State<HomePage> {
                       ),
                       child: Text(
                         item['brand'].toUpperCase(), // Maiuscolo
-                        style: GoogleFonts.outfit(
-                          // Usiamo il font primario
+                        style: GoogleFonts.inconsolata(
                           color: Theme.of(
                             context,
                           ).textTheme.bodySmall!.color!.withOpacity(0.8),
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),
