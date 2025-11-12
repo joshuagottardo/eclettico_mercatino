@@ -443,7 +443,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   256,
                   4096,
                 );
-                return Hero(
+return Hero(
                   tag: fullResUrl, // L'URL univoco funge da ID per l'animazione
                   child: Image.network(
                     thumbnailUrl,
@@ -462,6 +462,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     },
                   ),
                 );
+              
+              
               },
             ),
           ),

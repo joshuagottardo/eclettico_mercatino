@@ -252,7 +252,7 @@ class _ItemListPageState extends State<ItemListPage> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        
+                        // Sfondo semitrasparente basato sul colore del testo
                         color: textColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
