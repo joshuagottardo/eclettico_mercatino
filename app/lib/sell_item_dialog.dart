@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:flutter/services.dart';
+import 'package:action_slider/action_slider.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:iconsax/iconsax.dart';
 
 class SellItemDialog extends StatefulWidget {
   final int itemId;
@@ -27,16 +30,16 @@ class SellItemDialog extends StatefulWidget {
 
 class _SellItemDialogState extends State<SellItemDialog> {
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
 
   List _platforms = [];
-  bool _platformsLoading = true;
 
   int? _selectedPlatformId;
   int? _selectedVariantId;
   final _quantityController = TextEditingController(text: '1');
   final _priceController = TextEditingController();
   final _userController = TextEditingController();
+  final _sliderController = ActionSliderController();
+  final _audioPlayer = AudioPlayer();
 
   final TextEditingController _dateController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
@@ -79,7 +82,6 @@ class _SellItemDialogState extends State<SellItemDialog> {
         if (mounted) {
           setState(() {
             _platforms = jsonDecode(response.body);
-            _platformsLoading = false;
           });
         }
       } else {
@@ -94,22 +96,26 @@ class _SellItemDialogState extends State<SellItemDialog> {
     }
   }
 
+  // Modifichiamo la funzione per accettare il controller dello slider
   Future<void> _submitSale() async {
+    // 1. Validazione preliminare
     if (!_formKey.currentState!.validate()) {
+      _sliderController.reset(); // Resetta lo slider se il form non è valido
       return;
     }
     if (_selectedPlatformId == null) {
+      _sliderController.reset();
       _showError('Seleziona una piattaforma');
       return;
     }
     if (widget.hasVariants && _selectedVariantId == null) {
+      _sliderController.reset();
       _showError('Seleziona la variante venduta');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    // 2. Avvia stato di caricamento sullo slider
+    _sliderController.loading();
 
     final body = {
       "item_id": widget.itemId,
@@ -117,7 +123,9 @@ class _SellItemDialogState extends State<SellItemDialog> {
       "platform_id": _selectedPlatformId,
       "sale_date": DateFormat('yyyy-MM-dd').format(_selectedDate),
       "quantity_sold": int.tryParse(_quantityController.text),
-      "total_price": double.tryParse(_priceController.text.replaceAll(',', '.')),
+      "total_price": double.tryParse(
+        _priceController.text.replaceAll(',', '.'),
+      ),
       "sold_by_user":
           _userController.text.isNotEmpty ? _userController.text : null,
     };
@@ -129,21 +137,39 @@ class _SellItemDialogState extends State<SellItemDialog> {
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: jsonEncode(body),
       );
+
       if (response.statusCode == 201) {
+        // --- SUCCESSO! ---
+
+        // 1. Feedback Aptico Pesante
         HapticFeedback.heavyImpact();
+
+        // 2. Suono di Cassa (opzionale, se il file esiste)
+        try {
+          await _audioPlayer.play(AssetSource('sounds/cash.mp3'));
+        } catch (_) {
+          // Ignora errori audio se il file non c'è
+        }
+
+        // 3. Mostra stato successo sullo slider
+        _sliderController.success();
+
+        // 4. Aspetta un attimo per far godere l'animazione all'utente
+        await Future.delayed(const Duration(milliseconds: 1200));
+
         if (mounted) Navigator.pop(context, true);
       } else {
+        // Errore Server
+        _sliderController.reset(); // Torna indietro
+        HapticFeedback.vibrate();
         final error = jsonDecode(response.body);
         _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
       }
     } catch (e) {
+      // Errore Rete
+      _sliderController.reset();
+      HapticFeedback.vibrate();
       _showError('Errore di rete: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
@@ -161,6 +187,8 @@ class _SellItemDialogState extends State<SellItemDialog> {
     _priceController.dispose();
     _userController.dispose();
     _dateController.dispose();
+    _sliderController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -172,187 +200,195 @@ class _SellItemDialogState extends State<SellItemDialog> {
     );
 
     return AlertDialog(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: const Color(
+        0xFF1E1E1E,
+      ), // O Colors.transparent se usi GlassDialog
       title: const Text('Registra Vendita'),
       content: SizedBox(
         width: dialogWidth,
-        child:
-            _platformsLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Form(
-                  key: _formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // --- Piattaforme ---
-                        DropdownButtonFormField<int>(
-                          decoration: const InputDecoration(
-                            labelText: 'Piattaforma',
-                          ),
-                          
-                          items:
-                              _platforms.map<DropdownMenuItem<int>>((platform) {
-                                return DropdownMenuItem<int>(
-                                  value: platform['platform_id'],
-                                  child: Text(platform['name']),
-                                );
-                              }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedPlatformId = value;
-                            });
-                          },
-                          validator:
-                              (value) => value == null ? 'Obbligatorio' : null,
-                        ),
-                        const SizedBox(height: 16),
+        child: Form(
+          // Rimosso il controllo _isLoading, ora lo slider gestisce il loading
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- Piattaforme ---
+                DropdownButtonFormField<int>(
+                  decoration: const InputDecoration(labelText: 'Piattaforma'),
 
-                        TextFormField(
-                          controller: _dateController,
-                          readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Data Vendita',
-                          ),
-                          onTap: () => _selectDate(context),
-                        ),
-                        const SizedBox(height: 16),
+                  items:
+                      _platforms.map<DropdownMenuItem<int>>((platform) {
+                        return DropdownMenuItem<int>(
+                          value: platform['platform_id'],
+                          child: Text(platform['name']),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedPlatformId = value;
+                    });
+                  },
+                  validator: (value) => value == null ? 'Obbligatorio' : null,
+                ),
+                const SizedBox(height: 16),
 
-                        // --- Varianti (Condizionale) ---
-                        if (widget.hasVariants)
-                          DropdownButtonFormField<int>(
-                            decoration: const InputDecoration(
-                              labelText: 'Variante',
-                            ),
-                            
-                            items:
-                                widget.variants
-                                    // 1. Assicura che la lista sia di tipo Mappa
-                                    .cast<Map<String, dynamic>>()
-                                    // 2. Dichiara ESPLICITAMENTE il tipo di 'v'
-                                    .where((Map<String, dynamic> v) {
-                                      final q = v['quantity'];
-                                      final qty =
-                                          q is num
-                                              ? q.toInt()
-                                              : int.tryParse(
-                                                    q?.toString() ?? '',
-                                                  ) ??
-                                                  0;
-                                      return qty > 0;
-                                    })
-                                    // 3. Dichiara esplicitamente anche qui per coerenza
-                                    .map<DropdownMenuItem<int>>((
-                                      Map<String, dynamic> variant,
-                                    ) {
-                                      return DropdownMenuItem<int>(
-                                        value: variant['variant_id'],
-                                        // Mostra lo stock disponibile nel menu
-                                        child: Text(
-                                          '${variant['variant_name']} (Pz: ${variant['quantity']})',
-                                        ),
-                                      );
-                                    })
-                                    .toList(),
-                            onChanged: (value) {
-                              //  Aggiorna lo stock max
-                              setState(() {
-                                _selectedVariantId = value;
-                                if (value != null) {
-                                  final selectedVariant = widget.variants
-                                      .firstWhere(
-                                        (v) => v['variant_id'] == value,
-                                        orElse: () => null,
-                                      );
-                                  _maxAvailableQuantity =
-                                      (selectedVariant?['quantity'] as num?)
-                                          ?.toInt();
-                                } else {
-                                  _maxAvailableQuantity = null;
-                                }
-                                _formKey.currentState
-                                    ?.validate(); // Riconvalida il form
-                              });
-                            },
-                            validator:
-                                (value) =>
-                                    value == null ? 'Obbligatorio' : null,
-                          ),
+                TextFormField(
+                  controller: _dateController,
+                  readOnly: true,
+                  decoration: const InputDecoration(labelText: 'Data Vendita'),
+                  onTap: () => _selectDate(context),
+                ),
+                const SizedBox(height: 16),
 
-                        if (widget.hasVariants) const SizedBox(height: 16),
+                // --- Varianti (Condizionale) ---
+                if (widget.hasVariants)
+                  DropdownButtonFormField<int>(
+                    decoration: const InputDecoration(labelText: 'Variante'),
 
-                        // --- Quantità e Prezzo ---
-                        Row(
-                          children: [
-                            Expanded(
-                              //  Campo Quantità
-                              child: TextFormField(
-                                controller: _quantityController,
-                                decoration: InputDecoration(
-                                  labelText: 'Quantità',
+                    items:
+                        widget.variants
+                            // 1. Assicura che la lista sia di tipo Mappa
+                            .cast<Map<String, dynamic>>()
+                            // 2. Dichiara ESPLICITAMENTE il tipo di 'v'
+                            .where((Map<String, dynamic> v) {
+                              final q = v['quantity'];
+                              final qty =
+                                  q is num
+                                      ? q.toInt()
+                                      : int.tryParse(q?.toString() ?? '') ?? 0;
+                              return qty > 0;
+                            })
+                            // 3. Dichiara esplicitamente anche qui per coerenza
+                            .map<DropdownMenuItem<int>>((
+                              Map<String, dynamic> variant,
+                            ) {
+                              return DropdownMenuItem<int>(
+                                value: variant['variant_id'],
+                                // Mostra lo stock disponibile nel menu
+                                child: Text(
+                                  '${variant['variant_name']} (Pz: ${variant['quantity']})',
                                 ),
-                                keyboardType: TextInputType.number,
+                              );
+                            })
+                            .toList(),
+                    onChanged: (value) {
+                      //  Aggiorna lo stock max
+                      setState(() {
+                        _selectedVariantId = value;
+                        if (value != null) {
+                          final selectedVariant = widget.variants.firstWhere(
+                            (v) => v['variant_id'] == value,
+                            orElse: () => null,
+                          );
+                          _maxAvailableQuantity =
+                              (selectedVariant?['quantity'] as num?)?.toInt();
+                        } else {
+                          _maxAvailableQuantity = null;
+                        }
+                        _formKey.currentState
+                            ?.validate(); // Riconvalida il form
+                      });
+                    },
+                    validator: (value) => value == null ? 'Obbligatorio' : null,
+                  ),
 
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Obbl.';
-                                  }
-                                  final int? enteredQuantity = int.tryParse(
-                                    value,
-                                  );
-                                  if (enteredQuantity == null) return 'Num.';
-                                  if (enteredQuantity <= 0) return '> 0';
+                if (widget.hasVariants) const SizedBox(height: 16),
 
-                                  if (_maxAvailableQuantity != null &&
-                                      enteredQuantity >
-                                          _maxAvailableQuantity!) {
-                                    return 'Max: $_maxAvailableQuantity';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _priceController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Totale (€)',
-                                ),
-                                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                validator: (v) => v!.isEmpty ? 'Obbl.' : null,
-                              ),
-                            ),
-                          ],
+                // --- Quantità e Prezzo ---
+                Row(
+                  children: [
+                    Expanded(
+                      //  Campo Quantità
+                      child: TextFormField(
+                        controller: _quantityController,
+                        decoration: InputDecoration(labelText: 'Quantità'),
+                        keyboardType: TextInputType.number,
+
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Obbl.';
+                          }
+                          final int? enteredQuantity = int.tryParse(value);
+                          if (enteredQuantity == null) return 'Num.';
+                          if (enteredQuantity <= 0) return '> 0';
+
+                          if (_maxAvailableQuantity != null &&
+                              enteredQuantity > _maxAvailableQuantity!) {
+                            return 'Max: $_maxAvailableQuantity';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _priceController,
+                        decoration: const InputDecoration(
+                          labelText: 'Totale (€)',
                         ),
-                        const SizedBox(height: 16),
-
-                        TextFormField(
-                          controller: _userController,
-                          decoration: const InputDecoration(
-                            labelText: 'Utente (opzionale)',
-                          ),
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
                         ),
-                      ],
+                        validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _userController,
+                  decoration: const InputDecoration(
+                    labelText: 'Utente (opzionale)',
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                ActionSlider.standard(
+                  controller: _sliderController,
+                  width: dialogWidth - 32,
+                  height: 50.0, // <-- 1. PIÙ BASSO (Default era ~70)
+                  backgroundColor: const Color(0xFF333333),
+
+                  // 2. COLORE VERDE (Toggle/Cursore)
+                  toggleColor: Colors.green[600],
+
+                  // 3. Icona bianca (per contrasto col verde)
+                  icon: const Icon(Iconsax.money_send, color: Colors.white),
+
+                  loadingIcon: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                  successIcon: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                  ),
+                  action: (controller) async {
+                    await _submitSale();
+                  },
+                  child: Text(
+                    'Scorri per vendere',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
       ),
       actions: [
+        // Manteniamo solo "Annulla", il tasto "Registra" è sostituito dallo slider
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _submitSale,
-          child:
-              _isLoading
-                  ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                  : const Text('Registra'),
+          child: const Text('Annulla', style: TextStyle(color: Colors.grey)),
         ),
       ],
     );
