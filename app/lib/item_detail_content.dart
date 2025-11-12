@@ -443,22 +443,24 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   256,
                   4096,
                 );
-
-                return Image.network(
-                  thumbnailUrl,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.medium,
-                  cacheWidth: cacheW,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.broken_image, color: Colors.grey);
-                  },
+                return Hero(
+                  tag: fullResUrl, // L'URL univoco funge da ID per l'animazione
+                  child: Image.network(
+                    thumbnailUrl,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    filterQuality: FilterQuality.medium,
+                    cacheWidth: cacheW,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.broken_image, color: Colors.grey);
+                    },
+                  ),
                 );
               },
             ),

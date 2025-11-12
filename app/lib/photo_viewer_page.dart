@@ -206,7 +206,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
   }
 
   Future<void> _deletePhoto() async {
-    
     if (widget.photos.isEmpty) return;
 
     final bool? confirmed = await showDialog<bool>(
@@ -375,7 +374,6 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                   });
                 },
                 itemBuilder: (context, index) {
-                  // ... (itemBuilder invariato)
                   final photo = widget.photos[index];
                   final photoId = photo['photo_id'];
                   final compressedPhotoUrl =
@@ -393,26 +391,30 @@ class _PhotoViewerPageState extends State<PhotoViewerPage> {
                               .round()
                               .clamp(256, 4096);
 
-                          return Image.network(
-                            compressedPhotoUrl,
-                            fit: BoxFit.contain,
-                            gaplessPlayback: true,
-                            filterQuality: FilterQuality.medium,
-                            cacheWidth: cacheW,
-                            loadingBuilder: (context, child, progress) {
-                              if (progress == null) return child;
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Iconsax.gallery_slash,
-                                color: Colors.grey,
-                              );
-                            },
+                          return Hero(
+                            tag:
+                                '$kBaseUrl/${photo['file_path']}', // Lo stesso TAG usato nell'altra pagina
+                            child: Image.network(
+                              compressedPhotoUrl,
+                              fit: BoxFit.contain,
+                              gaplessPlayback: true,
+                              filterQuality: FilterQuality.medium,
+                              cacheWidth: cacheW,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Iconsax.gallery_slash,
+                                  color: Colors.grey,
+                                );
+                              },
+                            ),
                           );
                         },
                       ),
