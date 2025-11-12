@@ -64,27 +64,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
     if (value == null) return '€ 0.00';
     final double? amount = double.tryParse(value.toString());
     if (amount == null) return '€ N/D';
-
     return '€ ${amount.toStringAsFixed(2)}';
   }
 
   int _parseCount(dynamic countValue) {
     if (countValue == null) return 0;
-
-    // Se è già un intero, usalo
     if (countValue is int) return countValue;
-
-    // Se è una stringa, prova a convertirla
-    if (countValue is String) {
-      return int.tryParse(countValue) ?? 0;
-    }
-
-    // Se è un altro tipo di numero (es. double), convertilo
-    if (countValue is num) {
-      return countValue.toInt();
-    }
-
-    // Fallback
+    if (countValue is String) return int.tryParse(countValue) ?? 0;
+    if (countValue is num) return countValue.toInt();
     return 0;
   }
 
@@ -101,369 +88,262 @@ class _StatisticsPageState extends State<StatisticsPage> {
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? _buildSkeletonLoader()
-              : _errorMessage != null
+      body: _isLoading
+          ? _buildSkeletonLoader()
+          : _errorMessage != null
               ? Center(child: Text(_errorMessage!))
               : RefreshIndicator(
-                onRefresh: _fetchStatistics,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    const double desktopBreakpoint = 900.0;
-                    final bool isWide =
-                        constraints.maxWidth >= desktopBreakpoint;
+                  onRefresh: _fetchStatistics,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      // --- UNICO BLOCCO DI CONTROLLO LAYOUT ---
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Breakpoints
+                          const double wideDesktop = 1300.0;
+                          const double tablet = 700.0;
 
-                    return ListView(
-                      padding: const EdgeInsets.all(16.0),
-                      children: [
-                        _buildResponsiveStatBoxes(), // Questo resta uguale (già reattivo)
+                          if (constraints.maxWidth >= wideDesktop) {
+                            return _buildWideDesktopLayout();
+                          } else if (constraints.maxWidth >= tablet) {
+                            return _buildTabletLayout();
+                          } else {
+                            return _buildMobileLayout();
+                          }
+                        },
+                      ),
 
-                        const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                        // Titolo Grafico (Comune a entrambi i layout)
-                        Text(
-                          'ANDAMENTO VENDITE (30 GIORNI)',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[400],
-                            letterSpacing: 1.2,
+                      // --- GRAFICO (SEMPRE SOTTO) ---
+                      Text(
+                        'ANDAMENTO VENDITE (30 GIORNI)',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[400],
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Card(
+                        color: const Color(0xFF1A1A1A),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: _SalesTrendChart(
+                            trendData: _statsData['salesTrend'] ?? [],
+                            isLoaded: !_isLoading,
                           ),
                         ),
-                        const SizedBox(height: 16),
-
-                        // --- LAYOUT REATTIVO GRAFICO + TOP PERFORMERS ---
-                        if (isWide)
-                          // 1. Layout Desktop/Tablet (Affiancati)
-                          IntrinsicHeight(
-                            // Forza stessa altezza
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // GRAFICO (A Sinistra, prende più spazio: flex 2)
-                                Expanded(
-                                  flex: 2,
-                                  child: Card(
-                                    color: const Color(0xFF1A1A1A),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: _SalesTrendChart(
-                                        trendData:
-                                            _statsData['salesTrend'] ?? [],
-                                        isLoaded: !_isLoading,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-
-                                // TOP PERFORMERS (A Destra, flex 1, in colonna)
-                                Expanded(
-                                  flex: 1,
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: _buildTopCategoryCard(),
-                                      ), // Usa Expanded per distribuire altezza
-                                      const SizedBox(height: 16),
-                                      Expanded(child: _buildTopBrandCard()),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          // 2. Layout Mobile (Uno sotto l'altro, come prima)
-                          Column(
-                            children: [
-                              Card(
-                                color: const Color(0xFF1A1A1A),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: _SalesTrendChart(
-                                    trendData: _statsData['salesTrend'] ?? [],
-                                    isLoaded: !_isLoading,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-                              _buildResponsiveTopPerformers(), // Top Performers sotto
-                            ],
-                          ),
-                      ],
-                    );
-                  },
+                      ),
+                      const SizedBox(height: 32), // Spazio finale
+                    ],
+                  ),
                 ),
-              ),
     );
   }
 
-  // WIDGET REATTIVO PER I BOX STATISTICI
-  Widget _buildResponsiveStatBoxes() {
+  // ---------------------------------------------------------------------------
+  // LAYOUT BUILDERS
+  // ---------------------------------------------------------------------------
+
+  // 1. DESKTOP LARGO: Tutto su una riga, font GRANDI
+  Widget _buildWideDesktopLayout() {
+    // Passiamo fontSize: 32 per rendere le cifre grandi su desktop
+    final finStats = _buildFinancialStatsList(valueFontSize: 32.0);
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Statistiche Finanziarie
+        ...finStats.map((w) => Expanded(child: w)),
+        
+        // Spaziatore visivo
+        Container(
+          width: 1, 
+          height: 80, 
+          color: Colors.grey[800], 
+          margin: const EdgeInsets.symmetric(horizontal: 24)
+        ),
+
+        // Top Performers (senza spazio tra loro)
+        ..._buildTopPerformersList().map((w) => Expanded(child: w)),
+      ],
+    );
+  }
+
+  // 2. TABLET: Finanza sopra, Top Performers sotto
+  Widget _buildTabletLayout() {
+    final finStats = _buildFinancialStatsList(valueFontSize: 24.0); // Font medio
+    return Column(
+      children: [
+        Row(children: finStats.map((w) => Expanded(child: w)).toList()),
+        const SizedBox(height: 16),
+        Row(children: _buildTopPerformersList().map((w) => Expanded(child: w)).toList()),
+      ],
+    );
+  }
+
+  // 3. MOBILE: Griglia riordinata e compattata
+  Widget _buildMobileLayout() {
+    // Indici originali della lista _buildFinancialStatsList:
+    // 0: Valore Magazzino
+    // 1: Margine Profitto
+    // 2: Guadagno Lordo
+    // 3: Spesa Totale
+    final finStats = _buildFinancialStatsList(valueFontSize: 20.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Riga 1: Margine Profitto (1) + Guadagno Lordo (2)
+        Row(children: [Expanded(child: finStats[1]), Expanded(child: finStats[2])]),
+        
+        // Riga 2: Spesa Totale (3) + Valore Magazzino (0)
+        Row(children: [Expanded(child: finStats[3]), Expanded(child: finStats[0])]),
+        
+        const SizedBox(height: 16), // Spazio normale prima dei Top Performers
+        
+        // Top Performers: Rimosso padding eccessivo
+        // Usiamo il map index per non mettere spazio sotto l'ultimo elemento se necessario,
+        // ma qui semplicemente mettiamo un piccolo margine.
+        ..._buildTopPerformersList().map((w) => Padding(
+          padding: const EdgeInsets.only(bottom: 4.0), // Ridotto da 16 a 4 per avvicinarli
+          child: w,
+        )),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // LISTE DI WIDGET GENERATE
+  // ---------------------------------------------------------------------------
+
+  // Aggiunto parametro opzionale per la grandezza del font
+  List<Widget> _buildFinancialStatsList({double valueFontSize = 20.0}) {
     final totals = _statsData['totals'] ?? {};
-    final grossProfit = totals['gross_profit_total'];
-    final netProfit = totals['net_profit_total'];
-    final totalSpent = totals['total_spent'];
-    final estimatedProfit = totals['estimated_profit'];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const double desktopBreakpoint = 900.0;
-
-        if (constraints.maxWidth >= desktopBreakpoint) {
-          return IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildStatCard(
-                  'VALORE MAGAZZINO',
-                  _formatCurrency(estimatedProfit),
-                  Iconsax.box,
-                  _estimatedProfitColor,
-                  estimatedProfit,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  'MARGINE DI PROFITTO',
-                  _formatCurrency(netProfit),
-                  Iconsax.money_send,
-                  _netProfitColor,
-                  netProfit,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  'GUADAGNO LORDO',
-                  _formatCurrency(grossProfit),
-                  Iconsax.archive_add,
-                  _grossProfitColor,
-                  grossProfit,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  'SPESA TOTALE',
-                  _formatCurrency(totalSpent),
-                  Iconsax.card_slash,
-                  _spentColor,
-                  totalSpent,
-                ),
-              ],
-            ),
-          );
-        } else {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  _buildStatCard(
-                    'VALORE MAGAZZINO',
-                    _formatCurrency(estimatedProfit),
-                    Iconsax.box,
-                    _estimatedProfitColor,
-                    estimatedProfit,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              IntrinsicHeight(
-                child: Row(
-                  children: [
-                    _buildStatCard(
-                      'MARGINE DI PROFITTO',
-                      _formatCurrency(netProfit),
-                      Iconsax.money_send,
-                      _netProfitColor,
-                      netProfit,
-                    ),
-                    const SizedBox(width: 16),
-                    _buildStatCard(
-                      'SPESA TOTALE',
-                      _formatCurrency(totalSpent),
-                      Iconsax.card_slash,
-                      _spentColor,
-                      totalSpent,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  _buildStatCard(
-                    'GUADAGNO LORDO',
-                    _formatCurrency(grossProfit),
-                    Iconsax.archive_add,
-                    _grossProfitColor,
-                    grossProfit,
-                  ),
-                ],
-              ),
-            ],
-          );
-        }
-      },
-    );
-  }
-
-  Widget _buildSkeletonLoader() {
-    final Color baseColor = Colors.grey[850]!;
-    final Color highlightColor = Colors.grey[700]!;
-
-    return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
-      child: ListView(
-        padding: const EdgeInsets.all(16.0),
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: baseColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: baseColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: baseColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: baseColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Container(
-            height: 24,
-            width: 200,
-            decoration: BoxDecoration(
-              color: baseColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: baseColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Container(
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: baseColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+    // L'ordine qui è importante per gli indici usati nel layout mobile
+    return [
+      // Index 0
+      _buildStatCard(
+        'VALORE MAGAZZINO',
+        _formatCurrency(totals['estimated_profit']),
+        Iconsax.box,
+        _estimatedProfitColor,
+        totals['estimated_profit'],
+        valueFontSize,
       ),
-    );
+      // Index 1
+      _buildStatCard(
+        'MARGINE PROFITTO',
+        _formatCurrency(totals['net_profit_total']),
+        Iconsax.money_send,
+        _netProfitColor,
+        totals['net_profit_total'],
+        valueFontSize,
+      ),
+      // Index 2
+      _buildStatCard(
+        'GUADAGNO LORDO',
+        _formatCurrency(totals['gross_profit_total']),
+        Iconsax.archive_add,
+        _grossProfitColor,
+        totals['gross_profit_total'],
+        valueFontSize,
+      ),
+      // Index 3
+      _buildStatCard(
+        'SPESA TOTALE',
+        _formatCurrency(totals['total_spent']),
+        Iconsax.card_slash,
+        _spentColor,
+        totals['total_spent'],
+        valueFontSize,
+      ),
+    ];
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-    dynamic rawValue,
-  ) {
-    // Proviamo a convertire il valore grezzo in un numero per l'animazione
+  List<Widget> _buildTopPerformersList() {
+    final topCategory = _statsData['topCategory'];
+    final topBrand = _statsData['topBrand'];
+
+    return [
+      _buildTopPerformerCard(
+        title: 'CATEGORIA TOP',
+        name: topCategory?['category_name'] ?? 'N/D',
+        count: _parseCount(topCategory?['sales_count']),
+        icon: Iconsax.category,
+      ),
+      // Rimosso SizedBox(width: 8) per unire i widget come richiesto
+      _buildTopPerformerCard(
+        title: 'BRAND TOP',
+        name: topBrand?['brand'] ?? 'N/D',
+        count: _parseCount(topBrand?['sales_count']),
+        icon: Iconsax.tag,
+      ),
+    ];
+  }
+
+  // ---------------------------------------------------------------------------
+  // SINGOLI WIDGET (CARD)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color, dynamic rawValue, double fontSize) {
     final double? numericValue = double.tryParse(rawValue.toString());
     final bool isNegative = numericValue != null && numericValue < 0;
 
-    return Expanded(
-      child: Card(
-        color: Theme.of(context).cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 24, color: color),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+    return Card(
+      margin: const EdgeInsets.all(4),
+      color: Theme.of(context).cardColor,
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // --- INIZIO MODIFICA ---
-              // Se abbiamo un numero valido, usiamo l'animazione
-              if (numericValue != null)
-                _AnimatedCount(
-                  endValue: numericValue,
-                  style: GoogleFonts.inconsolata(
-                    textStyle: Theme.of(context).textTheme.headlineSmall,
-                    color: isNegative ? Colors.red[700] : color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  // Formatta il numero mentre scorre
-                  formatter: (val) => '€ ${val.toStringAsFixed(2)}',
-                )
-              else
-                // Fallback statico se il valore non è numerico
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              // --- FINE MODIFICA ---
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (numericValue != null)
+              _AnimatedCount(
+                endValue: numericValue,
+                style: GoogleFonts.inconsolata(
+                  fontSize: fontSize, // Usa la dimensione passata dinamicamente
+                  color: isNegative ? Colors.red[700] : color,
+                  fontWeight: FontWeight.bold,
+                ),
+                formatter: (val) => '€ ${val.toStringAsFixed(2)}',
+              )
+            else
+              Text(
+                value,
+                style: GoogleFonts.inconsolata(
+                  fontSize: fontSize, // Usa la dimensione passata dinamicamente
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -476,89 +356,67 @@ class _StatisticsPageState extends State<StatisticsPage> {
     required IconData icon,
   }) {
     return Card(
+      margin: const EdgeInsets.all(4),
       color: const Color(0xFF161616),
       clipBehavior: Clip.antiAlias,
-      // Aggiungiamo un po' di elevazione per staccarla dal fondo
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Stack(
         children: [
-          // --- 1. WATERMARK (Icona Gigante di Sfondo) ---
           Positioned(
-            right: -20,
-            bottom: -20,
+            right: -15,
+            bottom: -15,
             child: Transform.rotate(
               angle: -0.2,
               child: Icon(
                 icon,
-                size: 140, // Ancora più grande per riempire meglio su PC
+                size: 100,
                 color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
               ),
             ),
           ),
-
-          // --- 2. CONTENUTO REALE (Distribuito verticalmente) ---
+          
           Padding(
-            padding: const EdgeInsets.all(20.0), // Più padding interno
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              // Questo distribuisce gli elementi per occupare tutta l'altezza disponibile
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // A. IL TITOLO (Piccolo in alto)
                 Text(
                   title.toUpperCase(),
                   style: GoogleFonts.outfit(
                     color: Colors.grey[600],
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
+                    letterSpacing: 1.2,
                   ),
                 ),
-
-                const SizedBox(height: 12),
-
-                // B. IL NOME (Gigante al centro)
-                // Rimosso l'icona piccola, ora il testo è protagonista
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      name,
-                      style: GoogleFonts.outfit(
-                        fontSize: 32, // Molto grande
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        height: 1.1,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  name,
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.1,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-
-                const SizedBox(height: 12),
-
-                // C. IL CONTEGGIO (In basso)
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: _AnimatedCount(
                     endValue: count,
                     style: GoogleFonts.inconsolata(
                       color: Theme.of(context).colorScheme.primary,
-                      fontSize: 16,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
-                    formatter: (val) => '${val.toInt()} PEZZI VENDUTI',
+                    formatter: (val) => '${val.toInt()} VENDUTI',
                   ),
                 ),
               ],
@@ -569,108 +427,55 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-
-  Widget _buildTopCategoryCard() {
-    final topCategory = _statsData['topCategory'];
-    return _buildTopPerformerCard(
-      title: 'CATEGORIA PIÙ VENDUTA',
-      name: topCategory?['category_name'] ?? 'N/D',
-      count: _parseCount(topCategory?['sales_count']), // <-- FIX
-      icon: Iconsax.category,
-    );
-  }
-
-  Widget _buildTopBrandCard() {
-    final topBrand = _statsData['topBrand'];
-    return _buildTopPerformerCard(
-      title: 'BRAND PIÙ VENDUTO',
-      name: topBrand?['brand'] ?? 'N/D',
-      count: _parseCount(topBrand?['sales_count']), // <-- FIX
-      icon: Iconsax.tag,
-    );
-  }
-
-  Widget _buildResponsiveTopPerformers() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const double desktopBreakpoint = 900.0;
-
-        if (constraints.maxWidth >= desktopBreakpoint) {
-          return IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildTopCategoryCard()),
-                const SizedBox(width: 16),
-                Expanded(child: _buildTopBrandCard()),
-              ],
-            ),
-          );
-        } else {
-          return Column(
-            children: [
-              _buildTopCategoryCard(),
-              const SizedBox(height: 16),
-              _buildTopBrandCard(),
-            ],
-          );
-        }
-      },
+  Widget _buildSkeletonLoader() {
+    final Color baseColor = Colors.grey[850]!;
+    final Color highlightColor = Colors.grey[700]!;
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          Row(children: [Expanded(child: Container(height: 100, color: baseColor)), const SizedBox(width: 10), Expanded(child: Container(height: 100, color: baseColor))]),
+          const SizedBox(height: 10),
+          Row(children: [Expanded(child: Container(height: 100, color: baseColor)), const SizedBox(width: 10), Expanded(child: Container(height: 100, color: baseColor))]),
+          const SizedBox(height: 30),
+          Container(height: 200, decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(12))),
+        ],
+      ),
     );
   }
 }
 
-// --- NUOVO WIDGET PER L'ANIMAZIONE DEI NUMERI ---
+// --- UTILS: ANIMATED COUNT & CHART ---
+
 class _AnimatedCount extends StatefulWidget {
   final num endValue;
   final TextStyle? style;
   final String Function(num) formatter;
-
-  const _AnimatedCount({
-    required this.endValue,
-    required this.formatter,
-    this.style,
-  });
+  const _AnimatedCount({required this.endValue, required this.formatter, this.style});
 
   @override
   State<_AnimatedCount> createState() => _AnimatedCountState();
 }
 
-class _AnimatedCountState extends State<_AnimatedCount>
-    with SingleTickerProviderStateMixin {
+class _AnimatedCountState extends State<_AnimatedCount> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(
-        seconds: 1,
-      ), // Durata dell'animazione (es. 2 secondi)
-    );
-
-    // Animazione curva per un effetto più naturale (rallenta alla fine)
-    _animation = Tween<double>(
-      begin: 0,
-      end: widget.endValue.toDouble(),
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
-
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+    _animation = Tween<double>(begin: 0, end: widget.endValue.toDouble()).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
     _controller.forward();
   }
 
   @override
   void didUpdateWidget(_AnimatedCount oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Se il valore cambia, riavvia l'animazione dal vecchio valore al nuovo
     if (oldWidget.endValue != widget.endValue) {
-      _animation = Tween<double>(
-        begin: oldWidget.endValue.toDouble(),
-        end: widget.endValue.toDouble(),
-      ).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo),
-      );
+      _animation = Tween<double>(begin: oldWidget.endValue.toDouble(), end: widget.endValue.toDouble()).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
       _controller.reset();
       _controller.forward();
     }
@@ -686,9 +491,7 @@ class _AnimatedCountState extends State<_AnimatedCount>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animation,
-      builder: (context, child) {
-        return Text(widget.formatter(_animation.value), style: widget.style);
-      },
+      builder: (context, child) => Text(widget.formatter(_animation.value), style: widget.style),
     );
   }
 }
@@ -696,51 +499,27 @@ class _AnimatedCountState extends State<_AnimatedCount>
 class _SalesTrendChart extends StatefulWidget {
   final List<dynamic> trendData;
   final bool isLoaded;
-
   const _SalesTrendChart({required this.trendData, required this.isLoaded});
-
   @override
   State<_SalesTrendChart> createState() => _SalesTrendChartState();
 }
 
 class _SalesTrendChartState extends State<_SalesTrendChart> {
-  List<Color> gradientColors = [
-    const Color(0xFF23b6e6),
-    const Color(0xFF02d39a),
-  ];
+  List<Color> gradientColors = [const Color(0xFF23b6e6), const Color(0xFF02d39a)];
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.isLoaded) {
-      return const SizedBox(
-        height: 250,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
+    if (!widget.isLoaded) return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
     if (widget.trendData.isEmpty) {
-      // Mostra un grafico piatto se non ci sono dati
-      return Container(
-        height: 250,
-        alignment: Alignment.center,
-        child: Text(
-          "Nessun dato di vendita recente",
-          style: TextStyle(color: Colors.grey[600]),
-        ),
-      );
+      return Container(height: 180, alignment: Alignment.center, child: Text("Nessun dato", style: TextStyle(color: Colors.grey[600])));
     }
 
     return Stack(
       children: [
         AspectRatio(
-          aspectRatio: 1.70,
+          aspectRatio: 2.5, 
           child: Padding(
-            padding: const EdgeInsets.only(
-              right: 18,
-              left: 12,
-              top: 24,
-              bottom: 12,
-            ),
+            padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
             child: LineChart(mainData()),
           ),
         ),
@@ -749,57 +528,32 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
   }
 
   LineChartData mainData() {
-    // Prepara i dati
     List<FlSpot> spots = [];
     double maxY = 0;
-
     for (int i = 0; i < widget.trendData.length; i++) {
-      final day = widget.trendData[i];
-      final double val = double.tryParse(day['daily_total'].toString()) ?? 0.0;
+      final val = double.tryParse(widget.trendData[i]['daily_total'].toString()) ?? 0.0;
       if (val > maxY) maxY = val;
       spots.add(FlSpot(i.toDouble(), val));
     }
-
-    // Aggiungi un po' di margine sopra
-    maxY = maxY * 1.2;
+    maxY = maxY == 0 ? 100 : maxY * 1.2;
 
     return LineChartData(
-      gridData: FlGridData(
-        show: true,
-        drawVerticalLine: false,
-        horizontalInterval: maxY / 5, // 5 linee orizzontali
-        getDrawingHorizontalLine: (value) {
-          return FlLine(color: Colors.white10, strokeWidth: 1);
-        },
-      ),
+      gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: maxY / 5, getDrawingHorizontalLine: (value) => FlLine(color: Colors.white10, strokeWidth: 1)),
       titlesData: FlTitlesData(
         show: true,
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
+        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
-            interval:
-                (widget.trendData.length / 5)
-                    .ceilToDouble(), // Mostra circa 5 date
+            interval: (widget.trendData.length / 5).ceilToDouble(),
             getTitlesWidget: (value, meta) {
-              final int index = value.toInt();
+              final index = value.toInt();
               if (index >= 0 && index < widget.trendData.length) {
-                final dateStr = widget.trendData[index]['date'];
-                final date = DateTime.parse(dateStr.toString());
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    DateFormat('dd/MM').format(date),
-                    style: const TextStyle(
-                      color: Color(0xff68737d),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+                  child: Text(DateFormat('dd/MM').format(DateTime.parse(widget.trendData[index]['date'])), style: const TextStyle(color: Color(0xff68737d), fontWeight: FontWeight.bold, fontSize: 12)),
                 );
               }
               return const Text('');
@@ -810,22 +564,8 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
           sideTitles: SideTitles(
             showTitles: true,
             interval: maxY / 5,
-            getTitlesWidget: (value, meta) {
-              // Formatta i numeri (es. 1k, 500)
-              if (value == 0) return const Text('');
-              return Text(
-                value >= 1000
-                    ? '${(value / 1000).toStringAsFixed(1)}k'
-                    : value.toInt().toString(),
-                style: const TextStyle(
-                  color: Color(0xff67727d),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-                textAlign: TextAlign.left,
-              );
-            },
-            reservedSize: 42,
+            getTitlesWidget: (value, meta) => value == 0 ? const Text('') : Text(value >= 1000 ? '${(value / 1000).toStringAsFixed(1)}k' : value.toInt().toString(), style: const TextStyle(color: Color(0xff67727d), fontWeight: FontWeight.bold, fontSize: 12)),
+            reservedSize: 40,
           ),
         ),
       ),
@@ -837,56 +577,14 @@ class _SalesTrendChartState extends State<_SalesTrendChart> {
       lineBarsData: [
         LineChartBarData(
           spots: spots,
-          isCurved: true, // Curva morbida
+          isCurved: true,
           gradient: LinearGradient(colors: gradientColors),
           barWidth: 4,
           isStrokeCapRound: true,
-          dotData: const FlDotData(
-            show: false,
-          ), // Nascondi i punti (mostrali solo al tocco se vuoi)
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              colors:
-                  gradientColors
-                      .map((color) => color.withOpacity(0.3))
-                      .toList(),
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
+          dotData: const FlDotData(show: false),
+          belowBarData: BarAreaData(show: true, gradient: LinearGradient(colors: gradientColors.map((color) => color.withOpacity(0.3)).toList(), begin: Alignment.topCenter, end: Alignment.bottomCenter)),
         ),
       ],
-      // Interazione e Tooltip
-      lineTouchData: LineTouchData(
-        touchTooltipData: LineTouchTooltipData(
-          tooltipRoundedRadius: 8,
-          getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-            return touchedBarSpots.map((barSpot) {
-              final flSpot = barSpot;
-              // Mostra la data e il valore
-              final dateStr = widget.trendData[flSpot.x.toInt()]['date'];
-              final date = DateTime.parse(dateStr.toString());
-              return LineTooltipItem(
-                '${DateFormat('dd MMM').format(date)}\n',
-                const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-                children: [
-                  TextSpan(
-                    text: '€ ${flSpot.y.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: gradientColors[0], // Colore del testo
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              );
-            }).toList();
-          },
-        ),
-      ),
     );
   }
 }
