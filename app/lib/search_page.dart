@@ -8,6 +8,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:eclettico/empty_state_widget.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class SearchPage extends StatefulWidget {
   final int? preselectedItemId;
@@ -30,12 +31,11 @@ class _SearchPageState extends State<SearchPage> {
   int? _selectedCategoryId;
   String? _selectedBrand;
   bool _showOnlyAvailable = false;
-  
 
   Map<String, dynamic>? _selectedItem;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   // Breakpoint per tablet
-  
+
   bool _dataDidChange = false;
 
   @override
@@ -290,7 +290,8 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isTablet = constraints.maxWidth >= SearchPage.kTabletBreakpoint;
+        final bool isTablet =
+            constraints.maxWidth >= SearchPage.kTabletBreakpoint;
 
         if (isTablet) {
           return _buildTabletLayout();
@@ -506,7 +507,8 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
     if (_filteredItems.isEmpty) {
-      final bool isFiltering = _searchController.text.isNotEmpty ||
+      final bool isFiltering =
+          _searchController.text.isNotEmpty ||
           _selectedCategoryId != null ||
           _selectedBrand != null ||
           _showOnlyAvailable;
@@ -515,27 +517,39 @@ class _SearchPageState extends State<SearchPage> {
         return const EmptyStateWidget(
           icon: Iconsax.search_status,
           title: 'Nessun risultato',
-          subtitle: 'Non abbiamo trovato articoli che corrispondono alla tua ricerca. Prova a cambiare i filtri.',
+          subtitle:
+              'Non abbiamo trovato articoli che corrispondono alla tua ricerca. Prova a cambiare i filtri.',
         );
       } else {
         return EmptyStateWidget(
           icon: Iconsax.box_add,
           title: 'Magazzino Vuoto',
-          subtitle: 'Non ci sono ancora articoli nel tuo magazzino.\nInizia aggiungendone uno!',
+          subtitle:
+              'Non ci sono ancora articoli nel tuo magazzino.\nInizia aggiungendone uno!',
           actionLabel: 'Aggiungi Articolo',
           onAction: () => _navigateAndReload(context, const AddItemPage()),
         );
       }
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
-      itemCount: _filteredItems.length,
-      itemBuilder: (context, index) {
-        final item = _filteredItems[index];
-        // Passiamo 'isTablet' al builder della card
-        return _buildItemCard(item, isTablet: isTablet);
-      },
+    return AnimationLimiter(
+      child: ListView.builder(
+        padding: const EdgeInsets.all(8.0),
+        itemCount: _filteredItems.length,
+        itemBuilder: (context, index) {
+          final item = _filteredItems[index];
+          return AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 375),
+            child: SlideAnimation(
+              verticalOffset: 50.0,
+              child: FadeInAnimation(
+                child: _buildItemCard(item, isTablet: isTablet),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 

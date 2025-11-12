@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/edit_sale_dialog.dart';
 import 'package:eclettico/empty_state_widget.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class SalesLogPage extends StatefulWidget {
   final List salesLog;
@@ -59,93 +60,125 @@ class _SalesLogPageState extends State<SalesLogPage> {
         Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Storico Vendite'),
-        ),
-        body: _currentSalesLog.isEmpty
-            ? const EmptyStateWidget(
-                icon: Iconsax.receipt_1, // O Iconsax.empty_wallet
-                title: 'Nessuna Vendita',
-                subtitle: 'Non hai ancora registrato nessuna vendita per questo articolo.',
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(8.0),
-                itemCount: _currentSalesLog.length,
-                itemBuilder: (context, index) {
-                  final sale = _currentSalesLog[index];
-                  String title = sale['platform_name'] ?? 'N/D';
-                  if (sale['variant_name'] != null) {
-                    title = '${sale['variant_name']} / $title';
-                  }
-                  String date =
-                      sale['sale_date']?.split('T')[0] ?? 'Data sconosciuta';
+        appBar: AppBar(title: const Text('Storico Vendite')),
+        body:
+            _currentSalesLog.isEmpty
+                ? const EmptyStateWidget(
+                  icon: Iconsax.receipt_1, // O Iconsax.empty_wallet
+                  title: 'Nessuna Vendita',
+                  subtitle:
+                      'Non hai ancora registrato nessuna vendita per questo articolo.',
+                )
+                : AnimationLimiter(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: _currentSalesLog.length,
+                    itemBuilder: (context, index) {
+                      final sale = _currentSalesLog[index];
+                      // ... (tua logica per titolo e date) ...
+                      String title = sale['platform_name'] ?? 'N/D';
+                      if (sale['variant_name'] != null) {
+                        title = '${sale['variant_name']} / $title';
+                      }
+                      String date =
+                          sale['sale_date']?.split('T')[0] ??
+                          'Data sconosciuta';
 
-                  return Card(
-                    color: Theme.of(context).cardColor,
-                    margin: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: ListTile(
-                      leading: Icon(Iconsax.coin, color: availableColor),
-                      title: Text(
-                        title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'Data: $date | Q.tà: ${sale['quantity_sold']} | Totale: € ${sale['total_price']}',
-                      ),
-                      trailing: Icon(
-                        Iconsax.edit,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      onTap: () async {
-                        // --- Logica per trovare lo stock (presa da item_detail_content) ---
-                        int? currentStock;
-                        final int? saleVariantId =
-                            (sale['variant_id'] as num?)?.toInt();
+                      return AnimationConfiguration.staggeredList(
+                        position: index,
+                        duration: const Duration(milliseconds: 375),
+                        child: SlideAnimation(
+                          verticalOffset: 50.0,
+                          child: FadeInAnimation(
+                            child: Card(
+                              // ... (Il contenuto della tua Card rimane identico) ...
+                              color: Theme.of(context).cardColor,
+                              margin: const EdgeInsets.symmetric(vertical: 4.0),
+                              child: ListTile(
+                                leading: Icon(
+                                  Iconsax.coin,
+                                  color: availableColor,
+                                ),
+                                title: Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  'Data: $date | Q.tà: ${sale['quantity_sold']} | Totale: € ${sale['total_price']}',
+                                ),
+                                trailing: Icon(
+                                  Iconsax.edit,
+                                  size: 20,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                onTap: () async {
+                                  // --- Logica per trovare lo stock (presa da item_detail_content) ---
+                                  int? currentStock;
+                                  final int? saleVariantId =
+                                      (sale['variant_id'] as num?)?.toInt();
 
-                        if (saleVariantId != null) {
-                          final matchingVariant = _currentVariants.firstWhere(
-                            (v) => (v['variant_id'] as num?)?.toInt() == saleVariantId,
-                            orElse: () => null,
-                          );
-                          if (matchingVariant != null) {
-                            currentStock = (matchingVariant['quantity'] as num?)?.toInt();
-                          }
-                        } else {
-                          if (_currentItem['has_variants'] == 0) {
-                            currentStock = (_currentItem['quantity'] as num?)?.toInt();
-                          } else {
-                            currentStock = null;
-                          }
-                        }
+                                  if (saleVariantId != null) {
+                                    final matchingVariant = _currentVariants
+                                        .firstWhere(
+                                          (v) =>
+                                              (v['variant_id'] as num?)
+                                                  ?.toInt() ==
+                                              saleVariantId,
+                                          orElse: () => null,
+                                        );
+                                    if (matchingVariant != null) {
+                                      currentStock =
+                                          (matchingVariant['quantity'] as num?)
+                                              ?.toInt();
+                                    }
+                                  } else {
+                                    if (_currentItem['has_variants'] == 0) {
+                                      currentStock =
+                                          (_currentItem['quantity'] as num?)
+                                              ?.toInt();
+                                    } else {
+                                      currentStock = null;
+                                    }
+                                  }
 
-                        if (currentStock == null) {
-                          _showError('Errore: Stock non trovato (articolo/variante inesistente?).');
-                          return;
-                        }
-                        // --- Fine logica stock ---
+                                  if (currentStock == null) {
+                                    _showError(
+                                      'Errore: Stock non trovato (articolo/variante inesistente?).',
+                                    );
+                                    return;
+                                  }
+                                  // --- Fine logica stock ---
 
-                        final bool? dataChanged = await showDialog(
-                          context: context,
-                          builder: (context) => ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 600),
-                            child: EditSaleDialog(
-                              sale: sale,
-                              allPlatforms: widget.allPlatforms,
-                              currentStock: currentStock!,
+                                  final bool? dataChanged = await showDialog(
+                                    context: context,
+                                    builder:
+                                        (context) => ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 600,
+                                          ),
+                                          child: EditSaleDialog(
+                                            sale: sale,
+                                            allPlatforms: widget.allPlatforms,
+                                            currentStock: currentStock!,
+                                          ),
+                                        ),
+                                  );
+                                  if (dataChanged == true) {
+                                    // Se una vendita è stata modificata o eliminata,
+                                    // forza l'aggiornamento.
+                                    _refreshData();
+                                  }
+                                },
+                              ),
                             ),
                           ),
-                        );
-                        if (dataChanged == true) {
-                          // Se una vendita è stata modificata o eliminata,
-                          // forza l'aggiornamento.
-                          _refreshData();
-                        }
-                      },
-                    ),
-                  );
-                },
-              ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
       ),
     );
   }

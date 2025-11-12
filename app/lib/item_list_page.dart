@@ -1,5 +1,3 @@
-// lib/item_list_page.dart
-
 import 'dart:convert';
 import 'package:eclettico/item_detail_page.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:eclettico/empty_state_widget.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class ItemListPage extends StatefulWidget {
   final int categoryId;
@@ -83,13 +82,25 @@ class _ItemListPageState extends State<ItemListPage> {
                   subtitle:
                       'Non ci sono ancora articoli associati a questa categoria.',
                 )
-                : ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: _items.length,
-                  itemBuilder: (context, index) {
-                    final item = _items[index];
-                    return _buildItemCard(item);
-                  },
+                : AnimationLimiter(
+                  // 1. Limita le animazioni iniziali
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: _items.length,
+                    itemBuilder: (context, index) {
+                      final item = _items[index];
+
+                      // 2. Configura l'animazione per ogni elemento
+                      return AnimationConfiguration.staggeredList(
+                        position: index,
+                        duration: const Duration(milliseconds: 375),
+                        child: SlideAnimation(
+                          verticalOffset: 50.0, // Scivola dal basso
+                          child: FadeInAnimation(child: _buildItemCard(item)),
+                        ),
+                      );
+                    },
+                  ),
                 ),
       ),
     );
