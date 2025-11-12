@@ -139,26 +139,25 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       }
                       // 2. REGISTRA VENDITA
                       else if (result == 'sell') {
-                        showDialog(
+                        showModalBottomSheet(
                           context: context,
-                          builder:
-                              (context) => ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 600,
-                                ),
-                                child: SellItemDialog(
-                                  itemId: _currentItem['item_id'],
-                                  variants: _variants,
-                                  allPlatforms: _allPlatforms,
-                                  hasVariants:
-                                      _currentItem['has_variants'] == 1,
-                                  mainItemQuantity:
-                                      (_currentItem['quantity'] as num?)
-                                          ?.toInt() ??
-                                      0,
-                                ),
-                              ),
+                          isScrollControlled: true, // FONDAMENTALE: permette al sheet di alzarsi con la tastiera
+                          backgroundColor: Colors.transparent, // Lo sfondo lo gestisce il widget stesso
+                          builder: (context) => Padding(
+                            // Padding per gestire la tastiera
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).viewInsets.bottom,
+                            ),
+                            child: SellItemDialog(
+                              itemId: _currentItem['item_id'],
+                              variants: _variants,
+                              allPlatforms: _allPlatforms,
+                              hasVariants: _currentItem['has_variants'] == 1,
+                              mainItemQuantity: (_currentItem['quantity'] as num?)?.toInt() ?? 0,
+                            ),
+                          ),
                         ).then((dataChanged) {
+                          
                           if (dataChanged == true) {
                             _markChanged();
                             _refreshAllData();

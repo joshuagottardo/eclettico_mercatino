@@ -156,7 +156,7 @@ class _SellItemDialogState extends State<SellItemDialog> {
         _sliderController.success();
 
         // 4. Aspetta un attimo per far godere l'animazione all'utente
-        await Future.delayed(const Duration(milliseconds: 1200));
+        await Future.delayed(const Duration(milliseconds: 1500));
 
         if (mounted) Navigator.pop(context, true);
       } else {
@@ -187,209 +187,219 @@ class _SellItemDialogState extends State<SellItemDialog> {
     _userController.dispose();
     _dateController.dispose();
     _sliderController.dispose();
+
     _audioPlayer.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final double dialogWidth = (MediaQuery.of(context).size.width * 0.9).clamp(
-      0.0,
-      500.0,
-    );
+    // Padding per la tastiera: fa salire il foglio quando esce la tastiera
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return AlertDialog(
-      backgroundColor: const Color(
-        0xFF1E1E1E,
-      ), // O Colors.transparent se usi GlassDialog
-      title: const Text('Registra Vendita'),
-      content: SizedBox(
-        width: dialogWidth,
-        child: Form(
-          // Rimosso il controllo _isLoading, ora lo slider gestisce il loading
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // --- Piattaforme ---
-                DropdownButtonFormField<int>(
-                  decoration: const InputDecoration(labelText: 'Piattaforma'),
-
-                  items:
-                      _platforms.map<DropdownMenuItem<int>>((platform) {
-                        return DropdownMenuItem<int>(
-                          value: platform['platform_id'],
-                          child: Text(platform['name']),
-                        );
-                      }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedPlatformId = value;
-                    });
-                  },
-                  validator: (value) => value == null ? 'Obbligatorio' : null,
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _dateController,
-                  readOnly: true,
-                  decoration: const InputDecoration(labelText: 'Data Vendita'),
-                  onTap: () => _selectDate(context),
-                ),
-                const SizedBox(height: 16),
-
-                // --- Varianti (Condizionale) ---
-                if (widget.hasVariants)
-                  DropdownButtonFormField<int>(
-                    decoration: const InputDecoration(labelText: 'Variante'),
-
-                    items:
-                        widget.variants
-                            // 1. Assicura che la lista sia di tipo Mappa
-                            .cast<Map<String, dynamic>>()
-                            // 2. Dichiara ESPLICITAMENTE il tipo di 'v'
-                            .where((Map<String, dynamic> v) {
-                              final q = v['quantity'];
-                              final qty =
-                                  q is num
-                                      ? q.toInt()
-                                      : int.tryParse(q?.toString() ?? '') ?? 0;
-                              return qty > 0;
-                            })
-                            // 3. Dichiara esplicitamente anche qui per coerenza
-                            .map<DropdownMenuItem<int>>((
-                              Map<String, dynamic> variant,
-                            ) {
-                              return DropdownMenuItem<int>(
-                                value: variant['variant_id'],
-                                // Mostra lo stock disponibile nel menu
-                                child: Text(
-                                  '${variant['variant_name']} (Pz: ${variant['quantity']})',
-                                ),
-                              );
-                            })
-                            .toList(),
-                    onChanged: (value) {
-                      //  Aggiorna lo stock max
-                      setState(() {
-                        _selectedVariantId = value;
-                        if (value != null) {
-                          final selectedVariant = widget.variants.firstWhere(
-                            (v) => v['variant_id'] == value,
-                            orElse: () => null,
-                          );
-                          _maxAvailableQuantity =
-                              (selectedVariant?['quantity'] as num?)?.toInt();
-                        } else {
-                          _maxAvailableQuantity = null;
-                        }
-                        _formKey.currentState
-                            ?.validate(); // Riconvalida il form
-                      });
-                    },
-                    validator: (value) => value == null ? 'Obbligatorio' : null,
-                  ),
-
-                if (widget.hasVariants) const SizedBox(height: 16),
-
-                // --- Quantità e Prezzo ---
-                Row(
-                  children: [
-                    Expanded(
-                      //  Campo Quantità
-                      child: TextFormField(
-                        controller: _quantityController,
-                        decoration: InputDecoration(labelText: 'Quantità'),
-                        keyboardType: TextInputType.number,
-
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Obbl.';
-                          }
-                          final int? enteredQuantity = int.tryParse(value);
-                          if (enteredQuantity == null) return 'Num.';
-                          if (enteredQuantity <= 0) return '> 0';
-
-                          if (_maxAvailableQuantity != null &&
-                              enteredQuantity > _maxAvailableQuantity!) {
-                            return 'Max: $_maxAvailableQuantity';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _priceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Totale (€)',
-                        ),
-                        keyboardType: TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: (v) => v!.isEmpty ? 'Obbl.' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _userController,
-                  decoration: const InputDecoration(
-                    labelText: 'Utente (opzionale)',
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                ActionSlider.standard(
-                  controller: _sliderController,
-                  width: dialogWidth - 32,
-                  height: 50.0, // <-- 1. PIÙ BASSO (Default era ~70)
-                  backgroundColor: const Color(0xFF333333),
-
-                  // 2. COLORE VERDE (Toggle/Cursore)
-                  toggleColor: Colors.green[600],
-
-                  // 3. Icona bianca (per contrasto col verde)
-                  icon: const Icon(Iconsax.money_send, color: Colors.white),
-
-                  loadingIcon: const CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                  successIcon: const Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                  ),
-                  action: (controller) async {
-                    await _submitSale();
-                  },
-                  child: Text(
-                    'Scorri per vendere',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+      ),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // --- 1. MANIGLIA (Drag Handle) ---
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[700],
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
-        ),
+
+          // --- 2. TITOLO ---
+          Text(
+            'Registra Vendita',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // --- 3. IL FORM ---
+          Flexible(
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // --- Piattaforme ---
+                    DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(
+                        labelText: 'Piattaforma',
+                      ),
+                      items:
+                          _platforms.map<DropdownMenuItem<int>>((platform) {
+                            return DropdownMenuItem<int>(
+                              value: platform['platform_id'],
+                              child: Text(platform['name']),
+                            );
+                          }).toList(),
+                      onChanged:
+                          (value) =>
+                              setState(() => _selectedPlatformId = value),
+                      validator:
+                          (value) => value == null ? 'Obbligatorio' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _dateController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Data Vendita',
+                      ),
+                      onTap: () => _selectDate(context),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- Varianti ---
+                    if (widget.hasVariants)
+                      DropdownButtonFormField<int>(
+                        decoration: const InputDecoration(
+                          labelText: 'Variante',
+                        ),
+                        items:
+                            widget.variants
+                                .cast<Map<String, dynamic>>()
+                                .where((v) {
+                                  final q = v['quantity'];
+                                  final qty =
+                                      q is num
+                                          ? q.toInt()
+                                          : int.tryParse(q?.toString() ?? '') ??
+                                              0;
+                                  return qty > 0;
+                                })
+                                .map<DropdownMenuItem<int>>((variant) {
+                                  return DropdownMenuItem<int>(
+                                    value: variant['variant_id'],
+                                    child: Text(
+                                      '${variant['variant_name']} (Pz: ${variant['quantity']})',
+                                    ),
+                                  );
+                                })
+                                .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedVariantId = value;
+                            if (value != null) {
+                              final selectedVariant = widget.variants
+                                  .firstWhere(
+                                    (v) => v['variant_id'] == value,
+                                    orElse: () => null,
+                                  );
+                              _maxAvailableQuantity =
+                                  (selectedVariant?['quantity'] as num?)
+                                      ?.toInt();
+                            } else {
+                              _maxAvailableQuantity = null;
+                            }
+                            _formKey.currentState?.validate();
+                          });
+                        },
+                        validator:
+                            (value) => value == null ? 'Obbligatorio' : null,
+                      ),
+
+                    if (widget.hasVariants) const SizedBox(height: 16),
+
+                    // --- Quantità e Prezzo ---
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _quantityController,
+                            decoration: InputDecoration(labelText: 'Quantità'),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty)
+                                return 'Obbl.';
+                              final int? enteredQuantity = int.tryParse(value);
+                              if (enteredQuantity == null) return 'Num.';
+                              if (enteredQuantity <= 0) return '> 0';
+                              if (_maxAvailableQuantity != null &&
+                                  enteredQuantity > _maxAvailableQuantity!) {
+                                return 'Max: $_maxAvailableQuantity';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _priceController,
+                            decoration: const InputDecoration(
+                              labelText: 'Totale (€)',
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _userController,
+                      decoration: const InputDecoration(
+                        labelText: 'Utente (opzionale)',
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // --- 4. SLIDER AZIONE ---
+                    ActionSlider.standard(
+                      controller: _sliderController,
+                      height: 50.0,
+                      backgroundColor: const Color(0xFF333333),
+                      toggleColor: Colors.green[600],
+                      icon: const Icon(Iconsax.money_send, color: Colors.white),
+                      loadingIcon: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                      successIcon: const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                      ),
+                      action: (controller) async {
+                        await _submitSale();
+                      },
+                      child: Text(
+                        'Scorri per vendere',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      actions: [
-        // Manteniamo solo "Annulla", il tasto "Registra" è sostituito dallo slider
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annulla', style: TextStyle(color: Colors.grey)),
-        ),
-      ],
     );
   }
 }
