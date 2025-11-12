@@ -512,7 +512,7 @@ class _AnimatedCountState extends State<_AnimatedCount>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(
-        seconds: 2,
+        seconds: 1,
       ), // Durata dell'animazione (es. 2 secondi)
     );
 
