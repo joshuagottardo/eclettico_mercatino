@@ -636,6 +636,45 @@ app.get("/api/items/category/:id", async (req, res) => {
 });
 
 /*
+ * GET /api/sales
+ * Recupera TUTTO lo storico vendite (per la pagina dedicata)
+ */
+app.get("/api/sales", async (req, res) => {
+  try {
+    const sql = `
+            SELECT 
+                s.sale_id,
+                s.item_id,
+                s.variant_id,
+                s.platform_id,
+                s.sale_date,
+                s.quantity_sold,
+                s.total_price,
+                s.sold_by_user,
+                p.name AS platform_name, 
+                v.variant_name,
+                i.name AS item_name  -- Ci serve il nome dell'articolo!
+            FROM 
+                sales_log s
+            JOIN 
+                items i ON s.item_id = i.item_id
+            JOIN 
+                platforms p ON s.platform_id = p.platform_id
+            LEFT JOIN 
+                variants v ON s.variant_id = v.variant_id
+            ORDER BY 
+                s.sale_date DESC;
+        `;
+
+    const [sales] = await pool.query(sql);
+    res.json(sales);
+  } catch (error) {
+    console.error("Errore in GET /api/sales:", error);
+    res.status(500).json({ error: "Errore nel recupero di tutte le vendite" });
+  }
+});
+
+/*
  * POST /api/sales
  * Registra una nuova vendita e aggiorna le quantità
  */

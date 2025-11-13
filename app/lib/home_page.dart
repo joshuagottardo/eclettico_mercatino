@@ -10,6 +10,7 @@ import 'package:eclettico/api_config.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:eclettico/bouncy_button.dart';
+import 'package:eclettico/sales_list_page.dart';
 import 'package:eclettico/snackbar_helper.dart';
 
 class HomePage extends StatefulWidget {
@@ -382,13 +383,38 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'ULTIME VENDITE',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+        // --- MODIFICA QUI ---
+        // Header con Titolo e Freccia
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'ULTIME VENDITE',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                // Naviga alla pagina con tutte le vendite
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SalesListPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Iconsax.arrow_right_1),
+              tooltip: 'Vedi tutte',
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).cardColor.withOpacity(0.5),
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
+          ],
         ),
+        // ---------------------
         const SizedBox(height: 8),
         if (_latestSales.isEmpty)
           const Text('Nessuna vendita recente.')

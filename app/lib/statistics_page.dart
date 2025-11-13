@@ -302,7 +302,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         title: 'CATEGORIA PIÙ VENDUTA',
         name: topCategory?['category_name'] ?? 'N/D',
         count: _parseCount(topCategory?['sales_count']),
-        icon: getIconForCategory(categoryName),
+        icon: IconHelper.getIconForCategory(categoryName),
       ),
       // Rimosso SizedBox(width: 8) per unire i widget come richiesto
       _buildTopPerformerCard(

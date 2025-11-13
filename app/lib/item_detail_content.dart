@@ -1071,7 +1071,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           'CATEGORIA',
           _currentItem['category_name'],
           _currentItem['category_name'] != null
-              ? getIconForCategory(_currentItem['category_name'])
+              ? IconHelper.getIconForCategory(_currentItem['category_name'])
               : Iconsax.box_1,
         ),
         _buildInfoRow('BRAND', _currentItem['brand'], Iconsax.tag),

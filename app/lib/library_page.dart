@@ -77,7 +77,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     return _buildCategoryButton(
                       context,
                       label: category['name'],
-                      icon: getIconForCategory(category['name']),
+                      icon: IconHelper.getIconForCategory(category['name']),
                       onTap: () async {
                         final result = await Navigator.push(
                           context,

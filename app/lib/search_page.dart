@@ -558,7 +558,7 @@ class _SearchPageState extends State<SearchPage> {
       actions: [
         IconButton(
           icon: Icon(
-            Iconsax.filter,
+            Iconsax.sort,
             color:
                 (_selectedCategoryId != null ||
                         _selectedBrand != null ||
