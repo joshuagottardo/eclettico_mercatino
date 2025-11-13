@@ -24,6 +24,7 @@ import 'package:flutter/gestures.dart';
 import 'package:eclettico/sales_log_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:eclettico/snackbar_helper.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class ItemDetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -262,11 +263,15 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
                     // 4. PIATTAFORME (Modificato: niente titolo se vuoto)
                     if (_currentItem['has_variants'] != 1) ...[
-                      if (_allPlatforms.isNotEmpty && !_platformsLoading)
-                        _buildPlatformsSection(),
-                      // Lo spazio viene aggiunto solo se la sezione non è vuota,
-                      // gestito dentro _buildPlatformsSection o logicamente qui.
-                      // Per sicurezza, controlliamo se ci sono piattaforme selezionate:
+                      // Mostra la sezione solo se ci sono piattaforme
+                      if ((_currentItem['platforms'] as List?)?.isNotEmpty ==
+                          true)
+                        Align(
+                          // <--- Aggiungi Align per forzare l'allineamento a destra nel layout verticale
+                          alignment: Alignment.centerRight,
+                          child: _buildPlatformsSection(),
+                        ),
+
                       if ((_currentItem['platforms'] as List?)?.isNotEmpty ==
                           true)
                         const SizedBox(height: 24),
@@ -1474,9 +1479,8 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // MODIFICATO: Ritorna widget vuoto se non ci sono piattaforme
+  // MODIFICATO: Usa le icone invece dei chip testuali
   Widget _buildPlatformsSection() {
-    final Color accentColor = Theme.of(context).colorScheme.primary;
     final List<dynamic> selectedIds = _currentItem['platforms'] ?? [];
 
     // Se vuoto, nascondi completamente
@@ -1484,50 +1488,53 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       return const SizedBox.shrink();
     }
 
-    if (_allPlatforms.isEmpty) {
-      // Se le piattaforme totali non sono caricate ma ci sono ID, attendiamo o mostriamo vuoto
-      return const SizedBox.shrink();
-    }
-
-    // Filtra e mostra titolo + chip
-    final List<String> platformNames =
-        _allPlatforms
-            .where((platform) => selectedIds.contains(platform['platform_id']))
-            .map((platform) => platform['name'].toString())
-            .toList();
-
-    if (platformNames.isEmpty) return const SizedBox.shrink();
+    // Costruiamo la lista delle icone basata sugli ID selezionati
+    // Nota: Non serve nemmeno aspettare _allPlatforms se usiamo IconHelper che lavora sugli ID
+    // Ma è buona norma verificare che l'ID esista se vuoi essere rigoroso.
+    // Per semplicità e velocità, usiamo direttamente gli ID salvati nell'item.
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.end, // Allinea titolo e icone a destra
       children: [
-        Text(
-          'PIATTAFORME',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
-        ),
-        const SizedBox(height: 8),
         Wrap(
-          spacing: 8.0,
-          runSpacing: 4.0,
+          spacing: 12.0, // Spazio tra le icone
+          runSpacing: 8.0,
+          alignment:
+              WrapAlignment.end, // Allinea il contenuto del Wrap a destra
           children:
-              platformNames
-                  .map(
-                    (name) => Chip(
-                      label: Text(name),
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      labelStyle: TextStyle(
-                        fontSize: 10,
-                        color: accentColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      backgroundColor: accentColor.withAlpha(25),
-                      side: BorderSide.none,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              selectedIds.map((platformId) {
+                final String iconAsset = IconHelper.getPlatformIconPath(
+                  platformId,
+                );
+
+                // Se l'icona non esiste (stringa vuota), saltiamo
+                if (iconAsset.isEmpty) return const SizedBox.shrink();
+
+                return Tooltip(
+                  message:
+                      'ID Piattaforma: $platformId', // O cerca il nome se preferisci
+                  child: SizedBox(
+                    width: 32,
+                    height: 32,
+                    // Usa SvgPicture.asset se hai convertito in SVG, altrimenti Image.asset
+                    child: SvgPicture.asset(
+                      iconAsset,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback se l'asset non si trova
+                        return Icon(
+                          Iconsax.global,
+                          size: 24,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.5),
+                        );
+                      },
                     ),
-                  )
-                  .toList(),
+                  ),
+                );
+              }).toList(),
         ),
       ],
     );
