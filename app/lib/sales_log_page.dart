@@ -4,6 +4,7 @@ import 'package:eclettico/edit_sale_dialog.dart';
 import 'package:eclettico/empty_state_widget.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:eclettico/snackbar_helper.dart';
+import 'package:intl/intl.dart';
 
 class SalesLogPage extends StatefulWidget {
   final List salesLog;
@@ -50,147 +51,229 @@ class _SalesLogPageState extends State<SalesLogPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Color availableColor = Colors.green[500]!;
+    // Definiamo un colore per il prezzo (verde soldi o il primario dell'app)
+    final priceColor = Colors.greenAccent[400];
 
     return PopScope(
-      // Notifica la pagina precedente se i dati sono cambiati
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('Storico Vendite')),
-        body:
-            _currentSalesLog.isEmpty
-                ? const EmptyStateWidget(
-                  icon: Iconsax.receipt_1, // O Iconsax.empty_wallet
-                  title: 'Nessuna Vendita',
-                  subtitle:
-                      'Non hai ancora registrato nessuna vendita per questo articolo.',
-                )
-                : AnimationLimiter(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(8.0),
-                    itemCount: _currentSalesLog.length,
-                    itemBuilder: (context, index) {
-                      final sale = _currentSalesLog[index];
-                      // ... (tua logica per titolo e date) ...
-                      String title = sale['platform_name'] ?? 'N/D';
-                      if (sale['variant_name'] != null) {
-                        title = '${sale['variant_name']} / $title';
-                      }
-                      String date =
-                          sale['sale_date']?.split('T')[0] ??
-                          'Data sconosciuta';
+        body: _currentSalesLog.isEmpty
+            ? const EmptyStateWidget(
+                icon: Iconsax.receipt_1,
+                title: 'Nessuna Vendita',
+                subtitle:
+                    'Non hai ancora registrato nessuna vendita per questo articolo.',
+              )
+            : AnimationLimiter(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                  itemCount: _currentSalesLog.length,
+                  itemBuilder: (context, index) {
+                    final sale = _currentSalesLog[index];
+                    
+                    // --- DATI ---
+                    final String platformName = sale['platform_name'] ?? 'Piattaforma sconosciuta';
+                    final String? variantName = sale['variant_name'];
+                    final String? userName = sale['sold_by_user'];
+                    final int quantity = sale['quantity_sold'] ?? 0;
+                    final double totalPrice = double.tryParse(sale['total_price'].toString()) ?? 0.0;
+                    
+                    // Formattazione Data estesa (es. 12/10/2024)
+                    // Se vuoi "12 Ottobre 2024", usa DateFormat('dd MMMM yyyy', 'it_IT') (richiede locale inizializzato)
+                    // Per ora usiamo un formato chiaro numerico o standard
+                    String formattedDate = 'Data sconosciuta';
+                    if (sale['sale_date'] != null) {
+                       final dateObj = DateTime.parse(sale['sale_date']);
+                       formattedDate = DateFormat('dd/MM/yyyy').format(dateObj);
+                    }
 
-                      return AnimationConfiguration.staggeredList(
-                        position: index,
-                        duration: const Duration(milliseconds: 375),
-                        child: SlideAnimation(
-                          verticalOffset: 50.0,
-                          child: FadeInAnimation(
-                            child: Card(
-                              // ... (Il contenuto della tua Card rimane identico) ...
-                              color: Theme.of(context).cardColor,
-                              margin: const EdgeInsets.symmetric(vertical: 4.0),
-                              child: ListTile(
-                                leading: Icon(
-                                  Iconsax.coin,
-                                  color: availableColor,
-                                ),
-                                title: Text(
-                                  title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  'Data: $date | Q.tà: ${sale['quantity_sold']} | Totale: € ${sale['total_price']}',
-                                ),
-                                trailing: Icon(
-                                  Iconsax.edit,
-                                  size: 20,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                onTap: () async {
-                                  // 1. CALCOLO DELLO STOCK ATTUALE (Necessario per definire currentStock)
-                                  int? currentStock;
-                                  final int? saleVariantId =
-                                      (sale['variant_id'] as num?)?.toInt();
+                    return AnimationConfiguration.staggeredList(
+                      position: index,
+                      duration: const Duration(milliseconds: 375),
+                      child: SlideAnimation(
+                        verticalOffset: 50.0,
+                        child: FadeInAnimation(
+                          child: Card(
+                            elevation: 4, // Un po' più di ombra per staccare
+                            margin: const EdgeInsets.only(bottom: 16.0),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () async {
+                                // --- LOGICA CLICK (Copiata dal tuo codice originale) ---
+                                int? currentStock;
+                                final int? saleVariantId = (sale['variant_id'] as num?)?.toInt();
 
-                                  if (saleVariantId != null) {
-                                    // Se la vendita è legata a una variante, cerchiamo la quantità di quella variante
-                                    final matchingVariant = _currentVariants
-                                        .firstWhere(
-                                          (v) =>
-                                              (v['variant_id'] as num?)
-                                                  ?.toInt() ==
-                                              saleVariantId,
-                                          orElse: () => null,
-                                        );
-                                    if (matchingVariant != null) {
-                                      currentStock =
-                                          (matchingVariant['quantity'] as num?)
-                                              ?.toInt();
-                                    }
+                                if (saleVariantId != null) {
+                                  final matchingVariant = _currentVariants.firstWhere(
+                                    (v) => (v['variant_id'] as num?)?.toInt() == saleVariantId,
+                                    orElse: () => null,
+                                  );
+                                  if (matchingVariant != null) {
+                                    currentStock = (matchingVariant['quantity'] as num?)?.toInt();
+                                  }
+                                } else {
+                                  if (_currentItem['has_variants'] == 0) {
+                                    currentStock = (_currentItem['quantity'] as num?)?.toInt();
                                   } else {
-                                    // Se la vendita è dell'articolo principale (senza varianti)
-                                    if (_currentItem['has_variants'] == 0) {
-                                      currentStock =
-                                          (_currentItem['quantity'] as num?)
-                                              ?.toInt();
-                                    } else {
-                                      // Caso limite: vendita senza variante ID ma l'item ora ha varianti
-                                      currentStock = null;
-                                    }
+                                    currentStock = null;
                                   }
+                                }
 
-                                  // Se non riusciamo a determinare lo stock, mostriamo errore e ci fermiamo
-                                  if (currentStock == null) {
-                                    _showError(
-                                      'Errore: Stock non trovato (articolo/variante inesistente?).',
-                                    );
-                                    return;
-                                  }
+                                if (currentStock == null) {
+                                  _showError('Errore: Stock non trovato (articolo/variante inesistente?).');
+                                  return;
+                                }
 
-                                  // 2. APERTURA DEL MODALE (Ora currentStock è definito)
-                                  final bool?
-                                  dataChanged = await showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 1920,
+                                final bool? dataChanged = await showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (context) => Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: MediaQuery.of(context).viewInsets.bottom,
                                     ),
-                                    builder:
-                                        (context) => Padding(
-                                          padding: EdgeInsets.only(
-                                            bottom:
-                                                MediaQuery.of(
-                                                  context,
-                                                ).viewInsets.bottom,
+                                    child: EditSaleDialog(
+                                      sale: sale,
+                                      allPlatforms: widget.allPlatforms,
+                                      currentStock: currentStock!,
+                                    ),
+                                  ),
+                                );
+
+                                if (dataChanged == true) {
+                                  _refreshData();
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0), // SPAZIOSO
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // --- COLONNA SX: Piattaforma, Variante, Data ---
+                                    Expanded(
+                                      flex: 3,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Riga Piattaforma con Icona
+                                          Row(
+                                            children: [
+                                              Icon(Iconsax.shop, size: 18, color: Colors.grey[400]),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                platformName,
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          child: EditSaleDialog(
-                                            sale: sale,
-                                            allPlatforms: widget.allPlatforms,
-                                            currentStock:
-                                                currentStock!, // Qui usiamo la variabile calcolata sopra
+                                          if (variantName != null) ...[
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              'Variante: $variantName',
+                                              style: TextStyle(
+                                                color: Colors.grey[400],
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Venduto il $formattedDate',
+                                            style: TextStyle(
+                                              color: Colors.grey[500],
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    // --- COLONNA CENTRALE: Dettagli Quantità e Utente ---
+                                    Expanded(
+                                      flex: 2,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Quantità venduta',
+                                            style: TextStyle(
+                                              fontSize: 12, 
+                                              color: Colors.grey[500]
+                                            ),
+                                          ),
+                                          Text(
+                                            '$quantity ${quantity == 1 ? "pezzo" : "pezzi"}',
+                                            style: const TextStyle(fontSize: 15),
+                                          ),
+                                          if (userName != null && userName.isNotEmpty) ...[
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Venditore',
+                                              style: TextStyle(
+                                                fontSize: 12, 
+                                                color: Colors.grey[500]
+                                              ),
+                                            ),
+                                            Text(
+                                              userName,
+                                              style: const TextStyle(fontSize: 14),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ]
+                                        ],
+                                      ),
+                                    ),
+
+                                    // --- COLONNA DX: PREZZO (HERO) ---
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'TOTALE',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.0,
+                                            color: Colors.grey[600],
                                           ),
                                         ),
-                                  );
-
-                                  if (dataChanged == true) {
-                                    _refreshData();
-                                  }
-                                },
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '€ ${totalPrice.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            fontSize: 22, // Molto grande
+                                            fontWeight: FontWeight.bold,
+                                            color: priceColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        // Icona edit piccola e discreta sotto il prezzo
+                                        Icon(
+                                          Iconsax.edit_2,
+                                          size: 16,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
+              ),
       ),
     );
   }
