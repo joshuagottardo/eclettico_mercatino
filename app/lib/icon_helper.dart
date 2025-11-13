@@ -33,13 +33,13 @@ class IconHelper {
     // nella tua tabella 'platforms' del database!
     switch (id) {
       case 1: 
-        return 'assets/icons/subito.png';
+        return 'assets/icons/subito.svg';
       case 2: 
-        return 'assets/icons/vinted.png';
+        return 'assets/icons/vinted.svg';
       case 3: 
-        return 'assets/icons/wallapop.png'; // o ebay, a seconda del tuo DB
+        return 'assets/icons/wallapop.svg';
       case 4: 
-        return 'assets/icons/vestiaire_collective.png';
+        return 'assets/icons/vestiaire_collective.svg';
       default: 
         // Ritorna un percorso vuoto o un'icona generica se l'ID non c'è
         return ''; 

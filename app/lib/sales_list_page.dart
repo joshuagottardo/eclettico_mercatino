@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Per HapticFeedback
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:eclettico/api_config.dart';
 import 'package:eclettico/icon_helper.dart';
 import 'package:eclettico/item_detail_page.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 enum SortType { date, amount }
 
@@ -65,7 +67,7 @@ class _SalesListPageState extends State<SalesListPage> {
     }
   }
 
-  // --- NUOVO METODO: FOGLIO DI STILE IDENTICO A SEARCH_PAGE ---
+  // --- FOGLIO DI STILE PER ORDINAMENTO ---
   void _showSortSheet() {
     showModalBottomSheet(
       context: context,
@@ -80,7 +82,6 @@ class _SalesListPageState extends State<SalesListPage> {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
               ),
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -109,7 +110,7 @@ class _SalesListPageState extends State<SalesListPage> {
                   const SizedBox(height: 16),
                   const Divider(color: Colors.white10),
 
-                  // --- OPZIONE 1: DATA ---
+                  // --- OPZIONI ---
                   _buildRadioOption(
                     title: 'Data (Più recenti)',
                     icon: Iconsax.calendar_1,
@@ -125,8 +126,6 @@ class _SalesListPageState extends State<SalesListPage> {
                       Navigator.pop(context);
                     },
                   ),
-
-                  // --- OPZIONE 2: IMPORTO ---
                   _buildRadioOption(
                     title: 'Importo (Decrescente)',
                     icon: Iconsax.money_4,
@@ -151,7 +150,6 @@ class _SalesListPageState extends State<SalesListPage> {
     );
   }
 
-  // Widget helper per le opzioni radio con stile personalizzato
   Widget _buildRadioOption({
     required String title,
     required IconData icon,
@@ -219,16 +217,15 @@ class _SalesListPageState extends State<SalesListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tutte le Vendite'),
+        title: const Text('Vendite'),
         actions: [
-          // --- PULSANTE FILTRO/ORDINA ---
           IconButton(
             icon: Icon(
               Iconsax.sort,
               color: Theme.of(context).colorScheme.primary,
             ),
             tooltip: 'Ordina',
-            onPressed: _showSortSheet, // Apre il modale stile SearchPage
+            onPressed: _showSortSheet,
           ),
         ],
       ),
@@ -262,13 +259,11 @@ class _SalesListPageState extends State<SalesListPage> {
                       formattedDate = DateFormat('dd/MM/yyyy').format(dateObj);
                     }
 
-                    final List<String> metaParts = [];
-                    if (variantName != null) metaParts.add(variantName);
+                    // Costruzione stringa "Data • Utente"
+                    String dateUserMeta = formattedDate;
                     if (userName != null && userName.isNotEmpty) {
-                      metaParts.add(userName);
+                      dateUserMeta = '$dateUserMeta • $userName';
                     }
-                    metaParts.add(formattedDate);
-                    final String subTitle = metaParts.join(' • ');
 
                     return AnimationConfiguration.staggeredList(
                       position: index,
@@ -298,26 +293,18 @@ class _SalesListPageState extends State<SalesListPage> {
                                 padding: const EdgeInsets.all(16.0),
                                 child: Row(
                                   children: [
-                                    // 1. ICONA PIATTAFORMA
-                                    Container(
-                                      width: 48,
-                                      height: 48,
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Theme.of(context).brightness ==
-                                                    Brightness.dark
-                                                ? Colors.white.withOpacity(0.05)
-                                                : Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Image.asset(
+                                    // 1. ICONA PIATTAFORMA (Senza sfondo)
+                                    SizedBox(
+                                      width: 40,
+                                      height: 40,
+                                      // Rimosso il padding se l'SVG ha già i suoi spazi,
+                                      // oppure lascialo se serve (padding: const EdgeInsets.all(8))
+                                      child: SvgPicture.asset(
                                         iconAsset,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (
-                                          context,
-                                          error,
-                                          stackTrace,
+                                        // placeholderBuilder sostituisce errorBuilder per gli SVG
+                                        placeholderBuilder: (
+                                          BuildContext context,
                                         ) {
                                           return Icon(
                                             Iconsax.shop,
@@ -329,9 +316,9 @@ class _SalesListPageState extends State<SalesListPage> {
                                         },
                                       ),
                                     ),
-                                    const SizedBox(width: 14),
+                                    const SizedBox(width: 16),
 
-                                    // 2. TESTI
+                                    // 2. TESTI (Strutturati su righe diverse)
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -339,11 +326,12 @@ class _SalesListPageState extends State<SalesListPage> {
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
+                                          // RIGA 1: Nome Articolo
                                           Text(
                                             itemName,
                                             style: TextStyle(
                                               fontSize: 16,
-                                              fontWeight: FontWeight.w700,
+                                              fontWeight: FontWeight.bold,
                                               color:
                                                   Theme.of(
                                                     context,
@@ -352,16 +340,40 @@ class _SalesListPageState extends State<SalesListPage> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            subTitle,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey[500],
-                                              fontWeight: FontWeight.w500,
+
+                                          // RIGA 2: Variante (se esiste)
+                                          if (variantName != null &&
+                                              variantName.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 2.0,
+                                              ),
+                                              child: Text(
+                                                variantName,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[400],
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+
+                                          // RIGA 3: Data e Utente
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 4.0,
+                                            ),
+                                            child: Text(
+                                              dateUserMeta,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -376,11 +388,11 @@ class _SalesListPageState extends State<SalesListPage> {
                                       children: [
                                         Text(
                                           '€ ${totalPrice.toStringAsFixed(2)}',
-                                          style: TextStyle(
+                                          style: GoogleFonts.inconsolata(
+                                            // Font Inconsolata
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.greenAccent[400],
-                                            letterSpacing: -0.5,
                                           ),
                                         ),
                                         const SizedBox(height: 6),
@@ -404,7 +416,7 @@ class _SalesListPageState extends State<SalesListPage> {
                                             ),
                                           ),
                                           child: Text(
-                                            'x$quantity',
+                                            quantity.toString(), // Solo numero
                                             style: const TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,

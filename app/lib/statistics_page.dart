@@ -81,13 +81,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Statistiche'),
-        actions: [
-          IconButton(
-            icon: const Icon(Iconsax.refresh),
-            onPressed: _isLoading ? null : _fetchStatistics,
-            tooltip: 'Aggiorna Statistiche',
-          ),
-        ],
       ),
       body:
           _isLoading
@@ -202,43 +195,40 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   // 3. MOBILE: Griglia riordinata e compattata
   Widget _buildMobileLayout() {
-    // Indici originali della lista _buildFinancialStatsList:
-    // 0: Valore Magazzino
-    // 1: Margine Profitto
-    // 2: Guadagno Lordo
-    // 3: Spesa Totale
     final finStats = _buildFinancialStatsList(valueFontSize: 20.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Riga 1: Margine Profitto (1) + Guadagno Lordo (2)
-        Row(
-          children: [
-            Expanded(child: finStats[1]),
-            Expanded(child: finStats[2]),
-          ],
+        IntrinsicHeight(
+          // <--- Mantiene altezza uniforme
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.stretch, // <--- Espande i figli in altezza
+            children: [
+              Expanded(child: finStats[1]),
+              Expanded(child: finStats[2]),
+            ],
+          ),
         ),
 
         // Riga 2: Spesa Totale (3) + Valore Magazzino (0)
-        Row(
-          children: [
-            Expanded(child: finStats[3]),
-            Expanded(child: finStats[0]),
-          ],
+        IntrinsicHeight(
+          // <--- Mantiene altezza uniforme
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.stretch, // <--- Espande i figli in altezza
+            children: [
+              Expanded(child: finStats[3]),
+              Expanded(child: finStats[0]),
+            ],
+          ),
         ),
 
-        const SizedBox(height: 16), // Spazio normale prima dei Top Performers
-        // Top Performers: Rimosso padding eccessivo
-        // Usiamo il map index per non mettere spazio sotto l'ultimo elemento se necessario,
-        // ma qui semplicemente mettiamo un piccolo margine.
+        const SizedBox(height: 16),
         ..._buildTopPerformersList().map(
-          (w) => Padding(
-            padding: const EdgeInsets.only(
-              bottom: 4.0,
-            ), // Ridotto da 16 a 4 per avvicinarli
-            child: w,
-          ),
+          (w) => Padding(padding: const EdgeInsets.only(bottom: 4.0), child: w),
         ),
       ],
     );
@@ -339,6 +329,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(icon, size: 20, color: color),
                 const SizedBox(width: 8),
@@ -350,8 +341,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

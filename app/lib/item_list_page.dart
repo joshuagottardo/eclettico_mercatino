@@ -62,16 +62,27 @@ class _ItemListPageState extends State<ItemListPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Se i dati sono cambiati (_dataDidChange == true), canPop diventa false.
+    // Questo blocca la gesture SOLO se dobbiamo forzare il passaggio dei dati.
+    // Se non hai fatto modifiche, la gesture funzionerà fluidamente.
     return PopScope(
-      canPop: false,
+      canPop: !_dataDidChange,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
-
-        // Passa il risultato (se i dati sono cambiati) alla pagina precedente
+        // Se siamo qui, canPop era false (quindi i dati sono cambiati).
+        // Eseguiamo il pop manuale passando il risultato.
         Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.categoryName)),
+        appBar: AppBar(
+          title: Text(widget.categoryName),
+          // Aggiungiamo un leading personalizzato per assicurare
+          // che il pulsante freccia funzioni sempre correttamente
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context, _dataDidChange),
+          ),
+        ),
         body:
             _isLoading
                 ? _buildSkeletonList()
@@ -83,19 +94,16 @@ class _ItemListPageState extends State<ItemListPage> {
                       'Non ci sono ancora articoli associati a questa categoria.',
                 )
                 : AnimationLimiter(
-                  // 1. Limita le animazioni iniziali
                   child: ListView.builder(
                     padding: const EdgeInsets.all(8.0),
                     itemCount: _items.length,
                     itemBuilder: (context, index) {
                       final item = _items[index];
-
-                      // 2. Configura l'animazione per ogni elemento
                       return AnimationConfiguration.staggeredList(
                         position: index,
                         duration: const Duration(milliseconds: 375),
                         child: SlideAnimation(
-                          verticalOffset: 50.0, // Scivola dal basso
+                          verticalOffset: 50.0,
                           child: FadeInAnimation(child: _buildItemCard(item)),
                         ),
                       );

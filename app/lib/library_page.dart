@@ -7,7 +7,6 @@ import 'package:eclettico/item_list_page.dart';
 import 'package:eclettico/icon_helper.dart';
 import 'package:eclettico/api_config.dart';
 
-
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
 
@@ -52,18 +51,26 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      // Gesture attiva se NON ci sono cambiamenti, bloccata se ci sono
+      canPop: !_dataDidChange,
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
-
         Navigator.pop(context, _dataDidChange);
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Libreria')),
+        appBar: AppBar(
+          title: const Text('Libreria'),
+          // Tasto indietro manuale per sicurezza
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context, _dataDidChange),
+          ),
+        ),
         body:
             _isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator())
                 : GridView.builder(
+                  // ... resto del codice identico ...
                   padding: const EdgeInsets.all(16.0),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: _getCrossAxisCount(context),
@@ -91,6 +98,8 @@ class _LibraryPageState extends State<LibraryPage> {
                         );
 
                         if (result == true) {
+                          // Se la lista articoli è cambiata, segniamo che
+                          // anche la libreria è "sporca"
                           _dataDidChange = true;
                         }
                       },

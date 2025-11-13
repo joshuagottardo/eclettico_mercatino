@@ -117,48 +117,42 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Iconsax.refresh),
-            onPressed: _isLoading ? null : _fetchDashboardData,
-            tooltip: 'Aggiorna',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Dashboard')),
       body:
           _isLoading
               ? Center(child: CircularProgressIndicator())
               : _errorMessage != null
               ? Center(child: Text(_errorMessage!))
-              : ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  _buildButtonLayout(context),
+              : RefreshIndicator(
+                // Aggiunto RefreshIndicator anche qui per permettere l'aggiornamento "pull-to-refresh"
+                onRefresh: _fetchDashboardData,
+                child: ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    _buildButtonLayout(context),
+                    const SizedBox(height: 16),
 
-                  const SizedBox(height: 16),
-
-                  // Card ULTIME VENDITE
-                  Card(
-                    color: Colors.black,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: _buildSalesList(),
+                    // Card ULTIME VENDITE
+                    Card(
+                      color: Colors.black,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: _buildSalesList(),
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 8),
 
-                  // Card ULTIMI ARRIVI
-                  Card(
-                    color: Colors.black,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: _buildArrivalsList(),
+                    // Card ULTIMI ARRIVI
+                    Card(
+                      color: Colors.black,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: _buildArrivalsList(),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
     );
   }
