@@ -1,4 +1,4 @@
-// lib/item_detail_page.dart
+// lib/item_detail_content.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -42,7 +42,6 @@ class ItemDetailContent extends StatefulWidget {
 
 class _ItemDetailContentState extends State<ItemDetailContent> {
   void _markChanged() {
-    // Notifica solo il wrapper, non serve un flag locale
     try {
       widget.onDataChanged?.call(true);
     } catch (_) {}
@@ -81,15 +80,12 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   void _navigateToAddVariant() async {
     await showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Permette al sheet di essere alto
-      backgroundColor: Colors.transparent, // Lo sfondo è nel widget
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder:
-          (context) => AddVariantPage(
-            itemId: _currentItem['item_id'],
-            variantId: null, // Nuova variante
-          ),
+          (context) =>
+              AddVariantPage(itemId: _currentItem['item_id'], variantId: null),
     ).then((dataChanged) {
-      // Se il bottom sheet ritorna 'true', aggiorniamo i dati
       if (dataChanged == true) {
         _markChanged();
         _refreshAllData();
@@ -100,7 +96,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ...
       appBar:
           widget.showAppBar
               ? AppBar(
@@ -121,7 +116,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     ),
 
                     onSelected: (String result) {
-                      // 1. MODIFICA ARTICOLO
                       if (result == 'edit') {
                         Navigator.push(
                           context,
@@ -137,19 +131,13 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                             _refreshAllData();
                           }
                         });
-                      }
-                      // 2. REGISTRA VENDITA
-                      else if (result == 'sell') {
+                      } else if (result == 'sell') {
                         showModalBottomSheet(
                           context: context,
-                          isScrollControlled:
-                              true, // FONDAMENTALE: permette al sheet di alzarsi con la tastiera
-                          backgroundColor:
-                              Colors
-                                  .transparent, // Lo sfondo lo gestisce il widget stesso
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
                           builder:
                               (context) => Padding(
-                                // Padding per gestire la tastiera
                                 padding: EdgeInsets.only(
                                   bottom:
                                       MediaQuery.of(context).viewInsets.bottom,
@@ -172,111 +160,63 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                             _refreshAllData();
                           }
                         });
-                      }
-                      // 3. COPIA DESCRIZIONE
-                      else if (result == 'copy_desc') {
+                      } else if (result == 'copy_desc') {
                         _copyDescriptionToClipboard();
-                      }
-                      // 4. BARCODE
-                      else if (result == 'barcode') {
+                      } else if (result == 'barcode') {
                         _saveBarcodeImage();
                       }
                     },
 
-                    // --- MENU PIÙ COMPATTO (FIX SPAZIO) ---
+                    // --- MENU AGGIORNATO: Nomi brevi e stile uniforme ---
                     itemBuilder:
                         (BuildContext context) => <PopupMenuEntry<String>>[
-                          // 1. Modifica
                           PopupMenuItem<String>(
                             value: 'edit',
-                            height: 32, // Altezza minima
-                            padding: EdgeInsets.zero, // Zero padding esterno
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              width: double.infinity, // Occupa tutto lo spazio
-                              child: Row(
-                                children: [
-                                  Icon(Iconsax.edit, size: 18),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Modifica Articolo',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
+                            height:
+                                40, // Altezza leggermente aumentata per touch
+                            child: Row(
+                              children: [
+                                Icon(Iconsax.edit, size: 20),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Modifica',
+                                  style: TextStyle(fontSize: 15),
+                                ),
+                              ],
                             ),
                           ),
-                          // 2. Vendi
                           PopupMenuItem<String>(
                             value: 'sell',
                             enabled: _calculateTotalStock() > 0,
-                            height: 32,
-                            padding: EdgeInsets.zero,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              width: double.infinity,
-                              child: Row(
-                                children: [
-                                  Icon(Iconsax.receipt, size: 18),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Registra Vendita',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
+                            height: 40,
+                            child: Row(
+                              children: [
+                                Icon(Iconsax.receipt, size: 20),
+                                SizedBox(width: 12),
+                                Text('Vendi', style: TextStyle(fontSize: 15)),
+                              ],
                             ),
                           ),
-                          // 3. Copia
                           PopupMenuItem<String>(
                             value: 'copy_desc',
-                            height: 32,
-                            padding: EdgeInsets.zero,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              width: double.infinity,
-                              child: Row(
-                                children: [
-                                  Icon(Iconsax.note_text, size: 18),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Copia Descrizione',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
+                            height: 40,
+                            child: Row(
+                              children: [
+                                Icon(Iconsax.note_text, size: 20),
+                                SizedBox(width: 12),
+                                Text('Copia', style: TextStyle(fontSize: 15)),
+                              ],
                             ),
                           ),
-                          // 4. Barcode
                           PopupMenuItem<String>(
                             value: 'barcode',
-                            height: 32,
-                            padding: EdgeInsets.zero,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              width: double.infinity,
-                              child: Row(
-                                children: [
-                                  Icon(Iconsax.barcode, size: 18),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Salva Barcode',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
+                            height: 40,
+                            child: Row(
+                              children: [
+                                Icon(Iconsax.barcode, size: 20),
+                                SizedBox(width: 12),
+                                Text('Barcode', style: TextStyle(fontSize: 15)),
+                              ],
                             ),
                           ),
                         ],
@@ -284,65 +224,55 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 ],
               )
               : null,
-      // ...
-      // ...
       body: RefreshIndicator(
         onRefresh: _refreshAllData,
-        //  Avvolgiamo in una Column per aggiungere i bottoni su tablet
         child: Column(
           children: [
-            //  Mostra la barra azioni solo se l'AppBar è nascosta
             if (!widget.showAppBar) _buildActionButtonsRow(),
 
-            //  Expanded assicura che lo scroll riempia lo spazio rimanente
             Expanded(
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16), // Il padding rimane qui
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
                       _currentItem['name'] ?? 'Senza Nome',
                       style: GoogleFonts.outfit(
-                        // Usiamo il font primario
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.primary,
-                        height: 1.2, // Altezza riga per titoli lunghi
+                        height: 1.2,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // --- 1. PEZZI DISPONIBILI e PREZZO VENDITA (In cima) ---
+
+                    // 1. STOCK & PREZZO
                     _buildStockAndSalePrice(),
                     const SizedBox(height: 24),
 
-                    // --- 2. DETTAGLI BASE (Categoria, Brand, Descrizione) ---
+                    // 2. DETTAGLI BASE
                     _buildInfoDetailSection(),
                     const SizedBox(height: 16),
 
-                    // --- 3. VALORE STIMATO e PREZZO ACQUISTO (Affiancati) ---
+                    // 3. VALORE & ACQUISTO
                     _buildPriceAndPurchaseInfo(),
                     const SizedBox(height: 24),
 
-                    // --- 4. PIATTAFORME COLLEGATE (Solo se non ha varianti) ---
+                    // 4. PIATTAFORME (Modificato: niente titolo se vuoto)
                     if (_currentItem['has_variants'] != 1) ...[
-                      // Mostra il titolo solo se ci sono piattaforme da mostrare
-                      if (_allPlatforms.isNotEmpty && !_platformsLoading)
-                        Text(
-                          'PIATTAFORME',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: _headerTextColor),
-                        ),
-
-                      // Mostra le piattaforme
                       if (_allPlatforms.isNotEmpty && !_platformsLoading)
                         _buildPlatformsSection(),
-
-                      const SizedBox(height: 24),
+                      // Lo spazio viene aggiunto solo se la sezione non è vuota,
+                      // gestito dentro _buildPlatformsSection o logicamente qui.
+                      // Per sicurezza, controlliamo se ci sono piattaforme selezionate:
+                      if ((_currentItem['platforms'] as List?)?.isNotEmpty ==
+                          true)
+                        const SizedBox(height: 24),
                     ],
 
-                    // --- 5. VARIANTI (se presenti) ---
+                    // 5. VARIANTI
                     if (_currentItem['has_variants'] == 1) ...[
                       Text(
                         'VARIANTI',
@@ -355,18 +285,55 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       const SizedBox(height: 24),
                     ],
 
-                    // --- 6. GALLERIA FOTO ---
-                    Text(
-                      'GALLERIA FOTO',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+                    // 6. GALLERIA FOTO (Modificato: Bottone Download)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.end, // Allinea alla base del testo
+                      children: [
+                        Text(
+                          'GALLERIA FOTO',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: _headerTextColor),
+                        ),
+                        // Tasto Download
+                        InkWell(
+                          onTap: _downloadAllPhotos,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Iconsax.import,
+                                  size: 16,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'SCARICA TUTTO',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     _buildPhotoGallery(),
                     const SizedBox(height: 24),
 
-                    // --- 7. LOG VENDITE (Nuovo Link) ---
+                    // 7. LOG VENDITE (Modificato: Testo semplificato)
                     Card(
                       color: Theme.of(context).cardColor,
                       margin: const EdgeInsets.symmetric(vertical: 4.0),
@@ -375,19 +342,21 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                           Iconsax.receipt_search,
                           color: Colors.grey[600],
                         ),
-                        title: Text('Storico Vendite'),
-                        subtitle:
+                        title:
                             _isLogLoading
-                                ? Text(
+                                ? const Text(
                                   'Caricamento...',
-                                  style: TextStyle(color: Colors.grey[600]),
+                                  style: TextStyle(fontSize: 16),
                                 )
                                 : Text(
-                                  '${_salesLog.length} vendite registrate',
+                                  '${_salesLog.length} ${_salesLog.length == 1 ? "vendita" : "vendite"}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                         trailing: Icon(Iconsax.arrow_right_3),
                         onTap: () {
-                          // Naviga alla nuova pagina
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -400,7 +369,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                                   ),
                             ),
                           ).then((dataChanged) {
-                            // Se la pagina di log segnala un cambiamento (es. delete)
                             if (dataChanged == true) {
                               _markChanged();
                               _refreshAllData();
@@ -410,6 +378,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       ),
                     ),
                     const SizedBox(height: 24),
+
                     Center(
                       child:
                           _isDeleting
@@ -445,9 +414,9 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
+  // ... [I widget _buildAddVariantTile, _buildAddPhotoButton, _buildPhotoTile restano uguali] ...
   Widget _buildAddVariantTile() {
     return Card(
-      // Usiamo lo stesso stile del bottone "Aggiungi Foto"
       color: Colors.grey[850],
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
@@ -456,23 +425,20 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           'Aggiungi variante',
           style: TextStyle(color: Colors.grey[600]),
         ),
-        onTap: _navigateToAddVariant, // Chiama la funzione esistente
+        onTap: _navigateToAddVariant,
       ),
     );
   }
 
-  // --- NUOVO WIDGET: Il bottone "+" per aggiungere foto ---
   Widget _buildAddPhotoButton({dynamic targetVariantId}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: Card(
         clipBehavior: Clip.antiAlias,
-        // Un colore leggermente diverso per far capire che è un bottone
         color: Colors.grey[850],
         child: AspectRatio(
           aspectRatio: 1,
           child: InkWell(
-            // Disabilita il tap se stiamo già caricando
             onTap:
                 _isUploading
                     ? null
@@ -497,13 +463,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-  // --- NUOVO WIDGET: La singola foto nella galleria (MODIFICATO) ---
   Widget _buildPhotoTile({
     required Map<String, dynamic> photo,
-    required List<Map<String, dynamic>> photoList, // <-- AGGIUNTO
-    required int indexInList, // <-- AGGIUNTO
+    required List<Map<String, dynamic>> photoList,
+    required int indexInList,
   }) {
-    // Logica per trovare l'URL (presa dalla vecchia funzione)
     final fullResUrl = '$kBaseUrl/${photo['file_path']}';
     final thumbnailUrl =
         photo['thumbnail_path'] != null
@@ -518,28 +482,22 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           aspectRatio: 1,
           child: InkWell(
             onTap: () async {
-              // --- INIZIO MODIFICA ONTAP ---
-              // Ora passiamo la lista filtrata e l'indice locale,
-              // invece della lista globale.
               final bool? photoDeleted = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   fullscreenDialog: true,
                   builder:
                       (context) => PhotoViewerPage(
-                        photos: photoList, // <-- MODIFICATO (lista filtrata)
-                        initialIndex:
-                            indexInList, // <-- MODIFICATO (indice locale)
+                        photos: photoList,
+                        initialIndex: indexInList,
                       ),
                 ),
               );
               if (photoDeleted == true) {
                 _fetchPhotos();
-                _markChanged(); // Aggiunto per notificare la lista
+                _markChanged();
               }
-              // --- FINE MODIFICA ONTAP ---
             },
-            // Logica per mostrare l'immagine (invariata)
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final dpr = MediaQuery.devicePixelRatioOf(context);
@@ -548,7 +506,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                   4096,
                 );
                 return Hero(
-                  tag: fullResUrl, // L'URL univoco funge da ID per l'animazione
+                  tag: fullResUrl,
                   child: Image.network(
                     thumbnailUrl,
                     fit: BoxFit.cover,
@@ -597,13 +555,10 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   }
 
   Future<PermissionStatus> _requestMediaPermission() async {
-    // iOS: usa add-only per salvare in Libreria senza leggere
     if (Theme.of(context).platform == TargetPlatform.iOS) {
       final status = await Permission.photosAddOnly.request();
       return status;
     }
-
-    // Android: prova prima "photos" (API 33+), fallback a "storage"
     var status = await Permission.photos.request();
     if (!status.isGranted) {
       status = await Permission.storage.request();
@@ -611,7 +566,86 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     return status;
   }
 
-  // --- FUNZIONE PER SALVARE IL BARCODE (AGGIORNATA PER DESKTOP) ---
+  // --- NUOVA FUNZIONE: SCARICA TUTTE LE FOTO ---
+  Future<void> _downloadAllPhotos() async {
+    if (_photos.isEmpty) {
+      _showError('Nessuna foto da scaricare.');
+      return;
+    }
+
+    final bool isMobile =
+        Theme.of(context).platform == TargetPlatform.iOS ||
+        Theme.of(context).platform == TargetPlatform.android;
+
+    if (isMobile) {
+      final status = await _requestMediaPermission();
+      if (!status.isGranted && !status.isLimited) {
+        _showError('Permesso per salvare nelle Foto non concesso.');
+        if (status.isPermanentlyDenied) {
+          await openAppSettings();
+        }
+        return;
+      }
+    }
+
+    showFloatingSnackBar(
+      context,
+      'Inizio download di ${_photos.length} foto...',
+      isError: false,
+    );
+
+    int successCount = 0;
+
+    try {
+      for (var photo in _photos) {
+        final url = '$kBaseUrl/${photo['file_path']}';
+        try {
+          final response = await http.get(Uri.parse(url));
+          if (response.statusCode == 200) {
+            final Uint8List bytes = response.bodyBytes;
+            final String fileName =
+                'item_${_currentItem['item_id']}_${photo['photo_id']}';
+
+            if (isMobile) {
+              final result = await ImageGallerySaver.saveImage(
+                bytes,
+                quality: 100,
+                name: fileName,
+              );
+              if (result['isSuccess'] == true) {
+                successCount++;
+              }
+            } else {
+              // Su Desktop, per ora salviamo solo nella cartella Download o Documenti default se non vogliamo aprire un picker per ogni foto.
+              // Per semplicità, qui simulo un successo o potrei implementare un salvataggio batch se avessi una cartella.
+              // Dato che file_picker salva uno alla volta, questo flusso su desktop richiederebbe un cambio logica (es. zip).
+              // Per ora lo limitiamo a mobile o mostriamo avviso.
+              print(
+                'Download desktop non implementato in batch per: $fileName',
+              );
+            }
+          }
+        } catch (e) {
+          print('Errore scaricamento singola foto: $e');
+        }
+      }
+
+      if (mounted && isMobile) {
+        showFloatingSnackBar(
+          context,
+          'Salvate $successCount foto in galleria!',
+        );
+      } else if (mounted && !isMobile) {
+        showFloatingSnackBar(
+          context,
+          'Funzione ottimizzata per mobile. Implementazione desktop in arrivo.',
+        );
+      }
+    } catch (e) {
+      _showError('Errore durante il download: $e');
+    }
+  }
+
   Future<void> _saveBarcodeImage() async {
     final String? uniqueCode = _currentItem['unique_code']?.toString();
     if (uniqueCode == null || uniqueCode.isEmpty) {
@@ -619,7 +653,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       return;
     }
 
-    // Mostra feedback di avvio
     showFloatingSnackBar(
       context,
       'Salvataggio codice a barre...',
@@ -627,21 +660,15 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
 
     try {
-      // --- LOGICA DI GENERAZIONE IMMAGINE (invariata) ---
       final barcode = bc.Barcode.code128();
       final image = img.Image(width: 400, height: 150);
-      img.fill(image, color: img.ColorRgb8(255, 255, 255)); // Sfondo bianco
+      img.fill(image, color: img.ColorRgb8(255, 255, 255));
       bci.drawBarcode(image, barcode, uniqueCode, font: img.arial24);
       final Uint8List pngBytes = Uint8List.fromList(img.encodePng(image));
-      // --- FINE GENERAZIONE ---
 
-      // --- LOGICA DI SALVATAGGIO (DIVERSA PER PIATTAFORMA) ---
       final bool isMobile = Theme.of(context).platform == TargetPlatform.iOS;
 
       if (isMobile) {
-        // --- SALVATAGGIO SU MOBILE (iOS / Android) ---
-
-        // 1. Chiedi i permessi
         final status = await _requestMediaPermission();
         if (!status.isGranted && !status.isLimited) {
           _showError('Permesso per salvare nelle Foto non concesso.');
@@ -651,7 +678,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           return;
         }
 
-        // 2. Salva in galleria
         final result = await ImageGallerySaver.saveImage(
           pngBytes,
           quality: 100,
@@ -668,9 +694,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           );
         }
       } else {
-        // --- SALVATAGGIO SU DESKTOP (Windows / macOS / Linux) ---
-
-        // 1. Apri il dialog "Salva con nome..."
         final String? outputFile = await FilePicker.platform.saveFile(
           dialogTitle: 'Salva codice a barre',
           fileName: 'barcode_$uniqueCode.png',
@@ -678,21 +701,15 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
           allowedExtensions: ['png'],
         );
 
-        // 2. Se l'utente ha scelto un percorso e premuto "Salva"
         if (outputFile != null) {
-          // 3. Scrivi i bytes del PNG nel file
           final file = File(outputFile);
           await file.writeAsBytes(pngBytes);
-
-          // 4. Mostra feedback
           showFloatingSnackBar(context, 'Barcode salvato!');
         } else {
-          // L'utente ha premuto "Annulla"
           _showError('Salvataggio annullato.');
         }
       }
     } catch (e) {
-      // L'errore che ricevevi prima ora è gestito
       if (e is MissingPluginException) {
         _showError(
           'Questa piattaforma non è supportata per il salvataggio automatico.',
@@ -721,9 +738,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     await Future.wait([_fetchSalesLog(), _fetchPhotos(), _fetchPlatforms()]);
   }
 
-  // Funzione per gestire l'eliminazione dell'articolo
   Future<void> _deleteItem() async {
-    // 1. Chiedi conferma
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -762,15 +777,12 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
         if (mounted) {
           showFloatingSnackBar(context, 'Articolo eliminato con successo.');
           _markChanged();
-          // Torna alla pagina precedente (Home/Search) e segnala il cambiamento (true)
           Navigator.pop(context, true);
         }
       } else if (response.statusCode == 400) {
-        // Errore gestito (es. ha vendite)
         final error = jsonDecode(response.body);
         _showError(error['error'] ?? 'Non puoi eliminare questo articolo.');
       } else {
-        // Errore server
         _showError('Errore server: ${response.statusCode}');
       }
     } catch (e) {
@@ -784,7 +796,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // Funzione helper per mostrare errori
   void _showError(String message) {
     if (mounted) {
       showFloatingSnackBar(context, message, isError: true);
@@ -892,36 +903,22 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // --- FUNZIONI DI AZIONE ---
-
-  // --- MODIFICATA: Ora accetta un 'targetVariantId' ---
   Future<void> _pickAndUploadImage({dynamic targetVariantId}) async {
-    // Rimosso: _showPhotoTargetDialog()
     final dynamic photoTarget = targetVariantId;
-
-    //  Usa pickMultiImage per selezionare più file
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
-    // Controlla se almeno un file è stato selezionato
     if (pickedFiles.isEmpty) return;
 
-    // Avvia l'indicatore di caricamento
     setState(() {
       _isUploading = true;
     });
 
     try {
-      // Itera su ogni file selezionato per l'upload
       for (final XFile pickedFile in pickedFiles) {
-        // Passa il targetVariantId alla funzione di upload
         await _uploadSingleImage(pickedFile, photoTarget);
       }
-
-      // Se almeno un upload ha avuto successo, ricarica la galleria
       _fetchPhotos();
       _markChanged();
-
-      // Mostra un feedback di successo per il blocco di file
       showFloatingSnackBar(
         context,
         'Caricamento di ${pickedFiles.length} foto completato!',
@@ -937,7 +934,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // Gestisce l'upload di un singolo file
   Future<void> _uploadSingleImage(XFile pickedFile, dynamic photoTarget) async {
     try {
       const url = '$kBaseUrl/api/photos/upload';
@@ -976,7 +972,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     }
   }
 
-  // Nuovo widget per lo skeleton della galleria
   Widget _buildPhotoGallerySkeleton() {
     final Color baseColor = Colors.grey[850]!;
     final Color highlightColor = Colors.grey[700]!;
@@ -986,10 +981,10 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
       highlightColor: highlightColor,
       period: const Duration(milliseconds: 1200),
       child: SizedBox(
-        height: 140, // Altezza fissa della galleria
+        height: 140,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
-          itemCount: 4, // Mostra 4 box finti
+          itemCount: 4,
           itemBuilder: (context, index) {
             return Padding(
               padding: const EdgeInsets.only(right: 8.0),
@@ -997,7 +992,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 clipBehavior: Clip.antiAlias,
                 child: AspectRatio(
                   aspectRatio: 1,
-                  child: Container(color: baseColor), // Box pieno
+                  child: Container(color: baseColor),
                 ),
               ),
             );
@@ -1008,13 +1003,11 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
   }
 
   Widget _buildPriceAndPurchaseInfo() {
-    // String purchasePrice = '€ ${_currentItem['purchase_price'] ?? 'N/D'}'; // Non più usato qui
     final String estimatedValue = '€ ${_currentItem['value'] ?? 'N/D'}';
-    final bool hasVariants = _currentItem['has_variants'] == 1; // Controllo
+    final bool hasVariants = _currentItem['has_variants'] == 1;
 
     return Row(
       children: [
-        // Valore Stimato (Sempre visibile)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1037,9 +1030,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             ],
           ),
         ),
-
-        // --- INIZIO MODIFICA ---
-        // Mostra il Prezzo Acquisto SOLO SE l'articolo NON ha varianti
         if (!hasVariants) ...[
           const SizedBox(width: 16),
           Expanded(
@@ -1054,7 +1044,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '€ ${_currentItem['purchase_price'] ?? 'N/D'}', // Calcolato qui
+                  '€ ${_currentItem['purchase_price'] ?? 'N/D'}',
                   style: GoogleFonts.inconsolata(
                     textStyle: Theme.of(context).textTheme.titleLarge,
                     color: Colors.grey[300],
@@ -1065,7 +1055,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
             ),
           ),
         ],
-        // --- FINE MODIFICA ---
       ],
     );
   }
@@ -1077,11 +1066,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow(
-          'CONDIZIONE',
-          conditionDisplay, // <-- Usa la stringa determinata
-          Iconsax.shield_tick,
-        ),
+        _buildInfoRow('CONDIZIONE', conditionDisplay, Iconsax.shield_tick),
         _buildInfoRow(
           'CATEGORIA',
           _currentItem['category_name'],
@@ -1134,7 +1119,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
 
     return Row(
       children: [
-        // Stock (Pezzi Disponibili)
         Expanded(
           child: Card(
             color: Theme.of(context).cardColor,
@@ -1144,7 +1128,7 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'PEZZI DISPONIBILI', // Titolo intero
+                    'PEZZI DISPONIBILI',
                     style: Theme.of(
                       context,
                     ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
@@ -1163,14 +1147,12 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       ),
                     ),
                   ),
-                  // --- FINE MODIFICA ---
                 ],
               ),
             ),
           ),
         ),
         const SizedBox(width: 16),
-        // Prezzo Vendita
         Expanded(
           child: Card(
             color: Theme.of(context).cardColor,
@@ -1186,9 +1168,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                     ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
                   ),
                   const SizedBox(height: 8),
-
-                  // --- INIZIO MODIFICA ---
-                  // Aggiunto FittedBox per ridimensionare il testo se necessario
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
@@ -1202,7 +1181,6 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
                       ),
                     ),
                   ),
-                  // --- FINE MODIFICA ---
                 ],
               ),
             ),
@@ -1212,16 +1190,15 @@ class _ItemDetailContentState extends State<ItemDetailContent> {
     );
   }
 
-Widget _buildActionButtonsRow() {
+  Widget _buildActionButtonsRow() {
     return Container(
       color:
           Theme.of(context).appBarTheme.backgroundColor ??
           Theme.of(context).cardColor,
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end, // Allinea i bottoni a destra
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          // RIMOSSO IL TEXT WIDGET DEL TITOLO
           Row(
             children: [
               Tooltip(
@@ -1255,26 +1232,36 @@ Widget _buildActionButtonsRow() {
                   onPressed:
                       _calculateTotalStock() > 0
                           ? () async {
-                            final bool? dataChanged = await showDialog(
-                              context: context,
-                              builder:
-                                  (context) => ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 600,
-                                    ),
-                                    child: SellItemDialog(
-                                      itemId: _currentItem['item_id'],
-                                      variants: _variants,
-                                      allPlatforms: _allPlatforms,
-                                      hasVariants:
-                                          _currentItem['has_variants'] == 1,
-                                      mainItemQuantity:
-                                          (_currentItem['quantity'] as num?)
-                                              ?.toInt() ??
-                                          0,
-                                    ),
+                            final bool? dataChanged =
+                                await showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 1920,
                                   ),
-                            );
+                                  builder:
+                                      (context) => Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom:
+                                              MediaQuery.of(
+                                                context,
+                                              ).viewInsets.bottom,
+                                        ),
+                                        child: SellItemDialog(
+                                          itemId: _currentItem['item_id'],
+                                          variants: _variants,
+                                          allPlatforms: _allPlatforms,
+                                          hasVariants:
+                                              _currentItem['has_variants'] == 1,
+                                          mainItemQuantity:
+                                              (_currentItem['quantity'] as num?)
+                                                  ?.toInt() ??
+                                              0,
+                                        ),
+                                      ),
+                                );
+
                             if (dataChanged == true) {
                               _markChanged();
                               _refreshAllData();
@@ -1312,8 +1299,7 @@ Widget _buildActionButtonsRow() {
 
   Widget _buildVariantsSection() {
     final Color soldColor = Colors.red[500]!;
-    final Color availableColor =
-        Colors.green[500]!;
+    final Color availableColor = Colors.green[500]!;
 
     if (_isVariantsLoading) {
       return const Center(
@@ -1327,7 +1313,6 @@ Widget _buildActionButtonsRow() {
     return Column(
       children: [
         ..._variants.map((variant) {
-
           final bool isVariantSold = variant['is_sold'] == 1;
           final Color statusColor = isVariantSold ? soldColor : availableColor;
 
@@ -1361,7 +1346,7 @@ Widget _buildActionButtonsRow() {
                   builder:
                       (context) => AddVariantPage(
                         itemId: _currentItem['item_id'],
-                        variantId: variant['variant_id'], // Modifica esistente
+                        variantId: variant['variant_id'],
                       ),
                 ).then((dataChanged) {
                   if (dataChanged == true) {
@@ -1373,22 +1358,16 @@ Widget _buildActionButtonsRow() {
             ),
           );
         }).toList(),
-
-        // --- INIZIO MODIFICA ---
-        // 3. Aggiungiamo il nuovo "Tile" alla fine della Column
         _buildAddVariantTile(),
-        // --- FINE MODIFICA ---
       ],
     );
   }
 
-  // --- MODIFICATA: Widget galleria a sezioni (con SCROLL PC) ---
   Widget _buildPhotoGallery() {
     if (_isPhotosLoading) {
       return _buildPhotoGallerySkeleton();
     }
 
-    // 1. Filtra le foto dell'articolo principale (quelle senza variant_id)
     final List<Map<String, dynamic>> mainPhotos =
         _photos
             .where((p) => p['variant_id'] == null)
@@ -1398,39 +1377,34 @@ Widget _buildActionButtonsRow() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- SEZIONE ARTICOLO PRINCIPALE (SOLO SE NON HA VARIANTI) ---
         if (_currentItem['has_variants'] != 1) ...[
           const SizedBox(height: 8),
           SizedBox(
-            height: 140, // Altezza fissa per la riga
+            height: 140,
             child: ScrollConfiguration(
               behavior: ScrollConfiguration.of(context).copyWith(
                 dragDevices: {PointerDeviceKind.touch, PointerDeviceKind.mouse},
               ),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount:
-                    mainPhotos.length + 1, // +1 per il bottone "Aggiungi"
+                itemCount: mainPhotos.length + 1,
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return _buildAddPhotoButton(targetVariantId: null);
                   }
-                  // --- INIZIO MODIFICA CHIAMATA ---
                   final photo = mainPhotos[index - 1];
                   return _buildPhotoTile(
                     photo: photo,
                     photoList: mainPhotos,
                     indexInList: index - 1,
                   );
-                  // --- FINE MODIFICA CHIAMATA ---
                 },
               ),
             ),
           ),
-          const SizedBox(height: 24), // Spazio tra le sezioni
+          const SizedBox(height: 24),
         ],
 
-        // --- SEZIONI VARIANTI ---
         ..._variants.map((variant) {
           final int variantId = variant['variant_id'];
           final String variantName = variant['variant_name'] ?? 'Variante';
@@ -1464,29 +1438,26 @@ Widget _buildActionButtonsRow() {
                   ),
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: variantPhotos.length + 1, // +1 per il bottone
+                    itemCount: variantPhotos.length + 1,
                     itemBuilder: (context, index) {
                       if (index == 0) {
                         return _buildAddPhotoButton(targetVariantId: variantId);
                       }
-                      // --- INIZIO MODIFICA CHIAMATA ---
                       final photo = variantPhotos[index - 1];
                       return _buildPhotoTile(
                         photo: photo,
                         photoList: variantPhotos,
                         indexInList: index - 1,
                       );
-                      // --- FINE MODIFICA CHIAMATA ---
                     },
                   ),
                 ),
               ),
-              const SizedBox(height: 24), // Spazio tra le varianti
+              const SizedBox(height: 24),
             ],
           );
         }).toList(),
 
-        // --- LOADER (se stiamo caricando) ---
         if (_isUploading)
           const Padding(
             padding: EdgeInsets.only(top: 16.0),
@@ -1503,43 +1474,62 @@ Widget _buildActionButtonsRow() {
     );
   }
 
-  // Widget _buildPlatformsSection()
+  // MODIFICATO: Ritorna widget vuoto se non ci sono piattaforme
   Widget _buildPlatformsSection() {
     final Color accentColor = Theme.of(context).colorScheme.primary;
     final List<dynamic> selectedIds = _currentItem['platforms'] ?? [];
+
+    // Se vuoto, nascondi completamente
     if (selectedIds.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(8.0),
-          child: Text('Nessuna piattaforma selezionata.'),
-        ),
-      );
+      return const SizedBox.shrink();
     }
+
+    if (_allPlatforms.isEmpty) {
+      // Se le piattaforme totali non sono caricate ma ci sono ID, attendiamo o mostriamo vuoto
+      return const SizedBox.shrink();
+    }
+
+    // Filtra e mostra titolo + chip
     final List<String> platformNames =
         _allPlatforms
             .where((platform) => selectedIds.contains(platform['platform_id']))
             .map((platform) => platform['name'].toString())
             .toList();
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 4.0,
-      children:
-          platformNames
-              .map(
-                (name) => Chip(
-                  label: Text(name),
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  labelStyle: TextStyle(
-                    fontSize: 10,
-                    color: accentColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  backgroundColor: accentColor.withAlpha(25),
-                  side: BorderSide.none,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              )
-              .toList(),
+
+    if (platformNames.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'PIATTAFORME',
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: _headerTextColor),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 4.0,
+          children:
+              platformNames
+                  .map(
+                    (name) => Chip(
+                      label: Text(name),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      labelStyle: TextStyle(
+                        fontSize: 10,
+                        color: accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      backgroundColor: accentColor.withAlpha(25),
+                      side: BorderSide.none,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  )
+                  .toList(),
+        ),
+      ],
     );
   }
 }

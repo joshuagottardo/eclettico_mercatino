@@ -113,12 +113,13 @@ class _SalesLogPageState extends State<SalesLogPage> {
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
                                 onTap: () async {
-                                  // --- Logica per trovare lo stock (presa da item_detail_content) ---
+                                  // 1. CALCOLO DELLO STOCK ATTUALE (Necessario per definire currentStock)
                                   int? currentStock;
                                   final int? saleVariantId =
                                       (sale['variant_id'] as num?)?.toInt();
 
                                   if (saleVariantId != null) {
+                                    // Se la vendita è legata a una variante, cerchiamo la quantità di quella variante
                                     final matchingVariant = _currentVariants
                                         .firstWhere(
                                           (v) =>
@@ -133,40 +134,52 @@ class _SalesLogPageState extends State<SalesLogPage> {
                                               ?.toInt();
                                     }
                                   } else {
+                                    // Se la vendita è dell'articolo principale (senza varianti)
                                     if (_currentItem['has_variants'] == 0) {
                                       currentStock =
                                           (_currentItem['quantity'] as num?)
                                               ?.toInt();
                                     } else {
+                                      // Caso limite: vendita senza variante ID ma l'item ora ha varianti
                                       currentStock = null;
                                     }
                                   }
 
+                                  // Se non riusciamo a determinare lo stock, mostriamo errore e ci fermiamo
                                   if (currentStock == null) {
                                     _showError(
                                       'Errore: Stock non trovato (articolo/variante inesistente?).',
                                     );
                                     return;
                                   }
-                                  // --- Fine logica stock ---
 
-                                  final bool? dataChanged = await showDialog(
+                                  // 2. APERTURA DEL MODALE (Ora currentStock è definito)
+                                  final bool?
+                                  dataChanged = await showModalBottomSheet(
                                     context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 1920,
+                                    ),
                                     builder:
-                                        (context) => ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                            maxWidth: 600,
+                                        (context) => Padding(
+                                          padding: EdgeInsets.only(
+                                            bottom:
+                                                MediaQuery.of(
+                                                  context,
+                                                ).viewInsets.bottom,
                                           ),
                                           child: EditSaleDialog(
                                             sale: sale,
                                             allPlatforms: widget.allPlatforms,
-                                            currentStock: currentStock!,
+                                            currentStock:
+                                                currentStock!, // Qui usiamo la variabile calcolata sopra
                                           ),
                                         ),
                                   );
+
                                   if (dataChanged == true) {
-                                    // Se una vendita è stata modificata o eliminata,
-                                    // forza l'aggiornamento.
                                     _refreshData();
                                   }
                                 },

@@ -37,22 +37,43 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedPlatformId = widget.sale['platform_id'];
-    _quantityController.text = widget.sale['quantity_sold']?.toString() ?? '1';
+
+    // 1. GESTIONE PIATTAFORMA
+    // Recuperiamo l'ID grezzo e assicuriamo che sia un int pulito
+    final rawSalePlatformId = widget.sale['platform_id'];
+    if (rawSalePlatformId != null) {
+      _selectedPlatformId = int.tryParse(rawSalePlatformId.toString());
+
+      // DEBUG (Opzionale): Controlla se l'ID esiste nella lista delle piattaforme
+      // Se questo ID non esiste in widget.allPlatforms, il dropdown apparirà vuoto.
+      // bool exists = widget.allPlatforms.any((p) => int.parse(p['platform_id'].toString()) == _selectedPlatformId);
+      // if (!exists) _selectedPlatformId = null;
+    }
+
+    // 2. GESTIONE QUANTITÀ E STOCK
+    // Inizializziamo il controller della quantità
+    String currentSoldStr = widget.sale['quantity_sold']?.toString() ?? '1';
+    _quantityController.text = currentSoldStr;
+
+    // Calcoliamo il massimo disponibile:
+    // È lo stock attuale in magazzino (currentStock) + quello che "liberiamo" modificando questa vendita (quantity_sold attuale)
+    int currentSoldQty = int.tryParse(currentSoldStr) ?? 0;
+    _maxAvailableQuantity = widget.currentStock + currentSoldQty;
+
+    // 3. GESTIONE PREZZO E UTENTE
     _priceController.text = widget.sale['total_price']?.toString() ?? '0';
     _userController.text = widget.sale['sold_by_user'] ?? '';
-    _selectedDate = DateTime.parse(widget.sale['sale_date']);
-    _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
 
-    // Calcola lo stock massimo
-    // Stock attuale + Quantità già inclusa in questa vendita = Totale
-    _maxAvailableQuantity =
-        (widget.currentStock +
-                (num.tryParse(widget.sale['quantity_sold'].toString()) ?? 0))
-            .toInt();
+    // 4. GESTIONE DATA (Fix Principale)
+    if (widget.sale['sale_date'] != null) {
+      _selectedDate = DateTime.parse(widget.sale['sale_date']);
+    } else {
+      _selectedDate = DateTime.now();
+    }
+    // AGGIUNTA FONDAMENTALE: Aggiorna il testo visibile nel campo input
+    _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
   }
 
-  // Funzione per MODIFICARE la vendita
   Future<void> _submitUpdate() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPlatformId == null) return;
@@ -65,7 +86,9 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       "platform_id": _selectedPlatformId,
       "sale_date": DateFormat('yyyy-MM-dd').format(_selectedDate),
       "quantity_sold": int.tryParse(_quantityController.text),
-      "total_price": double.tryParse(_priceController.text.replaceAll(',', '.')),
+      "total_price": double.tryParse(
+        _priceController.text.replaceAll(',', '.'),
+      ),
       "sold_by_user":
           _userController.text.isNotEmpty ? _userController.text : null,
     };
@@ -81,7 +104,6 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
       if (response.statusCode == 200) {
         if (context.mounted) Navigator.pop(context, true);
       } else {
-        // Mostra l'errore del server (es. "Quantità non valida")
         final error = jsonDecode(response.body);
         _showError(error['error'] ?? 'Errore server: ${response.statusCode}');
       }
@@ -96,7 +118,6 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
     }
   }
 
-  // Funzione per ELIMINARE la vendita
   Future<void> _deleteSale() async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -175,125 +196,203 @@ class _EditSaleDialogState extends State<EditSaleDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final double dialogWidth = (MediaQuery.of(context).size.width * 0.9).clamp(
-      0.0,
-      500.0,
-    );
+    final bool isDesktop = MediaQuery.of(context).size.width > 600;
 
-    return AlertDialog(
-      backgroundColor: const Color(0xFF1E1E1E),
-      actionsAlignment: MainAxisAlignment.spaceBetween,
-      title: const Text('Modifica Vendita'),
-      content: SizedBox(
-        width: dialogWidth,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<int>(
-                decoration: const InputDecoration(labelText: 'Piattaforma'),
-                
-                items:
-                    widget.allPlatforms.map<DropdownMenuItem<int>>((platform) {
-                      return DropdownMenuItem<int>(
-                        value: platform['platform_id'],
-                        child: Text(platform['name']),
-                      );
-                    }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedPlatformId = value;
-                  });
-                },
-                validator: (value) => value == null ? 'Obbligatorio' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _dateController,
-                readOnly: true,
-                decoration: const InputDecoration(labelText: 'Data Vendita'),
-                onTap: () => _selectDate(context),
-              ),
-              const SizedBox(height: 16),
-
-              // --- Quantità e Prezzo ---
-              Row(
-                children: [
-                  Expanded(
-                    //  Campo Quantità
-                    child: TextFormField(
-                      controller: _quantityController,
-                      decoration: InputDecoration(
-                        labelText: 'Quantità',
-                        helperStyle: TextStyle(color: Colors.grey[400]),
-                      ),
-                      keyboardType: TextInputType.number,
-                      // Validatore
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Obbl.';
-                        final int? enteredQuantity = int.tryParse(value);
-                        if (enteredQuantity == null) return 'Num.';
-                        if (enteredQuantity <= 0) return '> 0';
-
-                        if (_maxAvailableQuantity != null &&
-                            enteredQuantity > _maxAvailableQuantity!) {
-                          return 'Max: $_maxAvailableQuantity';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _priceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Totale (€)',
-                      ),
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      validator: (v) => v!.isEmpty ? 'Obbl.' : null,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _userController,
-                decoration: const InputDecoration(
-                  labelText: 'Utente (opzionale)',
+    // --- COSTRUZIONE DEL CONTENUTO (STILE MODALE) ---
+    Widget content = GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Container(
+        width: isDesktop ? 500 : double.infinity,
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Maniglia
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ],
-          ),
+            ),
+
+            // Intestazione
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Modifica Vendita',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                IconButton(
+                  onPressed: _isLoading ? null : _deleteSale,
+                  icon: Icon(
+                    Iconsax.trash,
+                    color: _isLoading ? Colors.grey : Colors.red,
+                  ),
+                  tooltip: 'Elimina Vendita',
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Form
+            Flexible(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<int>(
+                        decoration: const InputDecoration(
+                          labelText: 'Piattaforma',
+                        ),
+                        value:
+                            _selectedPlatformId, // Qui ora il valore è sicuro
+                        items:
+                            widget.allPlatforms.map<DropdownMenuItem<int>>((
+                              platform,
+                            ) {
+                              // Assicuriamo conversione pulita in int
+                              final int pId = int.parse(
+                                platform['platform_id'].toString(),
+                              );
+                              return DropdownMenuItem<int>(
+                                value: pId,
+                                child: Text(platform['name']),
+                              );
+                            }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPlatformId = value;
+                          });
+                        },
+                        validator:
+                            (value) => value == null ? 'Obbligatorio' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _dateController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Data Vendita',
+                        ),
+                        onTap: () => _selectDate(context),
+                      ),
+                      const SizedBox(height: 16),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _quantityController,
+                              decoration: InputDecoration(
+                                labelText: 'Quantità',
+                                suffixText: '/ $_maxAvailableQuantity',
+                                suffixStyle: TextStyle(color: Colors.grey),
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty)
+                                  return 'Obbl.';
+                                final int? enteredQuantity = int.tryParse(
+                                  value,
+                                );
+                                if (enteredQuantity == null) return 'Num.';
+                                if (enteredQuantity <= 0) return '> 0';
+                                if (_maxAvailableQuantity != null &&
+                                    enteredQuantity > _maxAvailableQuantity!) {
+                                  return 'Max: $_maxAvailableQuantity';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _priceController,
+                              decoration: const InputDecoration(
+                                labelText: 'Totale (€)',
+                              ),
+                              keyboardType: TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              validator: (v) => v!.isEmpty ? 'Obbl.' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _userController,
+                        decoration: const InputDecoration(
+                          labelText: 'Utente (opzionale)',
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Bottone Salva Modale
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _submitUpdate,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.black,
+                          ),
+                          icon:
+                              _isLoading
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
+                                  )
+                                  : const Icon(Iconsax.save_2),
+                          label: const Text(
+                            'Salva Modifiche',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        IconButton(
-          onPressed: _isLoading ? null : _deleteSale,
-          icon: Icon(
-            Iconsax.trash,
-            color: _isLoading ? Colors.grey : Colors.red,
-          ),
-          tooltip: 'Elimina Vendita',
-        ),
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Annulla'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _submitUpdate,
-          child:
-              _isLoading
-                  ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                  : const Text('Salva Modifiche'),
-        ),
-      ],
+    );
+
+    // --- CHIUSURA SU CLICK ESTERNO ---
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      behavior: HitTestBehavior.opaque,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Material(type: MaterialType.transparency, child: content),
+      ),
     );
   }
 }

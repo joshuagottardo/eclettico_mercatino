@@ -561,6 +561,7 @@ app.get("/api/items/:id/sales", async (req, res) => {
             SELECT 
                 s.sale_id,
                 s.variant_id,
+                s.platform_id,
                 s.sale_date,
                 s.quantity_sold,
                 s.total_price,

@@ -179,43 +179,42 @@ class _SellItemDialogState extends State<SellItemDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // FIX 1: Determina se siamo su desktop
+    // Determina se siamo su desktop per limitare la larghezza
     final bool isDesktop = MediaQuery.of(context).size.width > 600;
 
-    // Costruiamo il contenuto principale del form
+    // Widget Contenuto del Form
+    // Questo GestureDetector INTERNO gestisce i click SUL box bianco/nero.
+    // Fa l'unfocus della tastiera e impedisce al click di risalire al padre.
     Widget content = GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
+      onTap: () {
+        // Chiude la tastiera se aperta
+        FocusScope.of(context).unfocus();
+        // NON chiamiamo pop qui, quindi il modale resta aperto
+      },
       child: Container(
+        // Larghezza: Limitata su Desktop, Piena su Mobile
         width: isDesktop ? 500 : double.infinity,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius:
-              isDesktop
-                  ? BorderRadius.circular(24.0)
-                  : const BorderRadius.vertical(top: Radius.circular(24.0)),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1E1E),
+          // Bordi: Sempre arrotondati SOLO sopra
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
         ),
-        // FIX 2: RIMOSSO viewInsets.bottom da qui.
-        // Il padding è gestito dal chiamante (showModalBottomSheet) su mobile
-        // o è ininfluente su desktop (Dialog).
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Maniglia (solo mobile)
-            if (!isDesktop)
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+            // Maniglia
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-
-            if (isDesktop) const SizedBox(height: 8),
+            ),
 
             Text(
               'Registra Vendita',
@@ -228,13 +227,13 @@ class _SellItemDialogState extends State<SellItemDialog> {
 
             Flexible(
               child: SingleChildScrollView(
-                // Chiude la tastiera allo scroll
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
+                      // ... (TUTTI I CAMPI DEL FORM RIMANGONO UGUALI) ...
                       DropdownButtonFormField<int>(
                         decoration: const InputDecoration(
                           labelText: 'Piattaforma',
@@ -408,16 +407,21 @@ class _SellItemDialogState extends State<SellItemDialog> {
       ),
     );
 
-    // FIX 3: Logica Desktop vs Mobile
-    if (isDesktop) {
-      // Su Desktop: Centro + Material (per stile Dialog popup)
-      return Center(
-        child: Material(type: MaterialType.transparency, child: content),
-      );
-    } else {
-      // Su Mobile: Bottom Sheet classico
-      // Non usiamo Center, così si ancora al fondo
-      return Material(type: MaterialType.transparency, child: content);
-    }
+    // --- LOGICA DI CHIUSURA AL CLICK ESTERNO ---
+    // Questo GestureDetector ESTERNO copre tutto lo schermo (anche la parte trasparente).
+    // Se il click arriva qui (cioè non è stato intercettato dal 'content'), chiudiamo il modale.
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      behavior:
+          HitTestBehavior.opaque, // Intercetta i click anche sul trasparente
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Material(
+          type: MaterialType.transparency,
+          child:
+              content, // Il contenuto interno ha il suo GestureDetector che blocca la risalita
+        ),
+      ),
+    );
   }
 }
